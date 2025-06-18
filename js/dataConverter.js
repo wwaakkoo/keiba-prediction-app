@@ -379,7 +379,6 @@ class DataConverter {
             if (raceTrackCondition) horse.trackCondition = raceTrackCondition;
         });
         
-        HorseManager.displayHorses();
         showMessage('レース基本情報を全馬に適用しました', 'success');
     }
     
@@ -398,22 +397,25 @@ class DataConverter {
             }
         });
         
-        HorseManager.displayHorses();
         showMessage('休養日数を再計算しました', 'success');
     }
     
     static bulkInput() {
-        const csvData = document.getElementById('bulkInput').value;
-        if (!csvData.trim()) {
-            alert('CSVデータを入力してください');
+        const rawDataInput = document.getElementById('rawDataInput');
+        if (!rawDataInput) {
+            alert('生データ入力エリアが見つかりません');
+            return;
+        }
+        
+        const rawData = rawDataInput.value;
+        if (!rawData.trim()) {
+            alert('生データを入力してください');
             return;
         }
         
         try {
-            const horses = DataConverter.parseStructuredHorseData(csvData);
-            horses.forEach(horse => HorseManager.addHorseFromData(horse));
-            document.getElementById('bulkInput').value = '';
-            showMessage(`${horses.length}頭のデータを追加しました`, 'success');
+            // データ変換機能を呼び出し
+            DataConverter.convertRawData();
         } catch (error) {
             console.error('一括入力エラー:', error);
             alert('一括入力中にエラーが発生しました。');

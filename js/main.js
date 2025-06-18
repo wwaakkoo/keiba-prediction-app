@@ -34,9 +34,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // 携帯簡易モードの初期化
     initializeMobileMode();
     
-    // 初期表示
-    HorseManager.displayHorses();
-    
+    // 初期表示（displayHorsesメソッドは存在しないため削除）
     console.log('初期化完了');
 });
 
