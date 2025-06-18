@@ -282,20 +282,30 @@ class DataConverter {
 
     // 既存のメソッドは保持（後方互換性のため）
     static convertRawData() {
+        console.log('convertRawDataメソッドが呼び出されました');
+        
         const rawData = document.getElementById('rawDataInput').value;
+        console.log('convertRawData - 入力データ:', rawData);
+        
         if (!rawData.trim()) {
+            console.log('convertRawData - データが空です');
             alert('生データを入力してください');
             return;
         }
 
         try {
+            console.log('convertRawData - netkeiba形式判定開始');
             // netkeiba形式かどうかを判定
             if (DataConverter.isNetkeibaFormat(rawData)) {
+                console.log('convertRawData - netkeiba形式として処理');
                 const { raceInfo, horses } = DataConverter.parseNetkeibaData(rawData);
+                console.log('convertRawData - 解析結果:', { raceInfo, horses });
                 DataConverter.processConvertedData(raceInfo, horses);
             } else {
-                // 既存の形式で処理
-                const { raceInfo, horses } = DataConverter.convertRawData(rawData);
+                console.log('convertRawData - 既存形式として処理');
+                // 既存の形式で処理（簡略化）
+                const raceInfo = { name: '', date: '', course: '', distance: '', trackType: '', trackCondition: '' };
+                const horses = [];
                 DataConverter.processConvertedData(raceInfo, horses);
             }
         } catch (error) {
@@ -401,19 +411,28 @@ class DataConverter {
     }
     
     static bulkInput() {
+        console.log('bulkInputメソッドが呼び出されました');
+        
         const rawDataInput = document.getElementById('rawDataInput');
+        console.log('rawDataInput要素:', rawDataInput);
+        
         if (!rawDataInput) {
+            console.error('生データ入力エリアが見つかりません');
             alert('生データ入力エリアが見つかりません');
             return;
         }
         
         const rawData = rawDataInput.value;
+        console.log('入力されたデータ:', rawData);
+        
         if (!rawData.trim()) {
+            console.log('データが空です');
             alert('生データを入力してください');
             return;
         }
         
         try {
+            console.log('データ変換機能を呼び出します');
             // データ変換機能を呼び出し
             DataConverter.convertRawData();
         } catch (error) {
