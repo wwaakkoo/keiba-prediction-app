@@ -120,8 +120,12 @@ class DataConverter {
             // 馬名の抽出
             if (section === 'basic' && horse.name === '' && line.length > 0 && !line.includes('消') && !line.includes('kg') && !line.includes('人気')) {
                 // 血統情報を除外して馬名を抽出
-                if (!line.includes('(') && !line.includes('・') && !line.includes('先中') && !line.includes('差中')) {
-                    horse.name = line;
+                if (!line.includes('(') && !line.includes('・') && !line.includes('先中') && !line.includes('差中') && !line.includes('kg') && !line.includes('人気') && !line.includes('牡') && !line.includes('牝') && !line.includes('セ')) {
+                    // 枠番・馬番のパターンを除外
+                    if (!/^\d+\s+\d+\s*$/.test(line)) {
+                        horse.name = line;
+                        console.log('馬名抽出:', horse.name);
+                    }
                 }
             }
             
@@ -151,10 +155,24 @@ class DataConverter {
             }
             
             // 騎手名の抽出
-            if (line.includes('kg') && !line.includes('kg(')) {
+            if (line.includes('kg') && !line.includes('kg(') && !line.includes('kg(')) {
                 const jockeyMatch = line.match(/([^\s]+)\s*(\d+\.?\d*)$/);
                 if (jockeyMatch) {
                     horse.jockey = jockeyMatch[1];
+                    console.log('騎手名抽出:', horse.jockey);
+                }
+            }
+            
+            // 騎手名の抽出（別パターン）
+            if (horse.jockey === '' && line.length > 0 && !line.includes('kg') && !line.includes('人気') && !line.includes('(') && !line.includes(')') && !line.includes('・') && !line.includes('先中') && !line.includes('差中')) {
+                // 既知の騎手名パターンをチェック
+                const knownJockeys = ['横山和', '横山武', '菱田裕', '武豊', '川田将雅', 'C.ルメール', '戸崎圭太', '福永祐一', '横山和生'];
+                for (const jockey of knownJockeys) {
+                    if (line.includes(jockey)) {
+                        horse.jockey = jockey;
+                        console.log('騎手名抽出（パターンマッチ）:', horse.jockey);
+                        break;
+                    }
                 }
             }
             
@@ -178,31 +196,36 @@ class DataConverter {
     static parseNetkeibaLastRace(lines, startIndex) {
         const lastRace = {};
         let i = startIndex;
+        let foundFirstRace = false; // 最初の前走を見つけたかどうか
         
-        while (i < lines.length && i < startIndex + 10) {
+        while (i < lines.length && i < startIndex + 20) { // 範囲を拡大
             const line = lines[i].trim();
             
-            // 前走着順の抽出
-            if (line.includes('頭') && line.includes('番') && line.includes('人')) {
+            // 前走着順の抽出（最初の前走のみ）
+            if (!foundFirstRace && line.includes('頭') && line.includes('番') && line.includes('人')) {
                 const orderMatch = line.match(/(\d+)頭\s+(\d+)番\s+(\d+)人/);
                 if (orderMatch) {
                     lastRace.lastRaceHorseCount = parseInt(orderMatch[1]);
                     lastRace.lastRace = parseInt(orderMatch[2]);
                     lastRace.lastRacePopularity = parseInt(orderMatch[3]);
+                    foundFirstRace = true;
+                    console.log('前走着順抽出:', lastRace.lastRace, '着');
                 }
             }
             
-            // 前走タイムの抽出
-            if (line.includes('芝') && line.match(/\d+:\d+\.\d+/)) {
+            // 前走タイムの抽出（最初の前走のみ）
+            if (!foundFirstRace && line.includes('芝') && line.match(/\d+:\d+\.\d+/)) {
                 const timeMatch = line.match(/(\d+):(\d+\.\d+)/);
                 if (timeMatch) {
                     lastRace.lastRaceTime = `${timeMatch[1]}:${timeMatch[2]}`;
+                    console.log('前走タイム抽出:', lastRace.lastRaceTime);
                 }
                 
                 // 距離の抽出
                 const distanceMatch = line.match(/芝(\d+)/);
                 if (distanceMatch) {
                     lastRace.lastRaceDistance = parseInt(distanceMatch[1]);
+                    console.log('前走距離抽出:', lastRace.lastRaceDistance);
                 }
                 
                 // 馬場状態の抽出
@@ -211,6 +234,16 @@ class DataConverter {
                     else if (line.includes('稍重')) lastRace.lastRaceTrackCondition = '稍重';
                     else if (line.includes('重')) lastRace.lastRaceTrackCondition = '重';
                     else if (line.includes('不良')) lastRace.lastRaceTrackCondition = '不良';
+                    console.log('前走馬場状態抽出:', lastRace.lastRaceTrackCondition);
+                }
+            }
+            
+            // 前走騎手の抽出（最初の前走のみ）
+            if (!foundFirstRace && line.includes('kg') && !line.includes('kg(')) {
+                const jockeyMatch = line.match(/([^\s]+)\s*(\d+\.?\d*)$/);
+                if (jockeyMatch) {
+                    lastRace.lastRaceJockey = jockeyMatch[1];
+                    console.log('前走騎手抽出:', lastRace.lastRaceJockey);
                 }
             }
             
