@@ -1,0 +1,16 @@
+{
+  "name": "keiba-prediction-app",
+  "version": "1.0.0",
+  "description": "競馬予測アプリ",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  },
+  "keywords": ["競馬", "予測", "機械学習"],
+  "author": "競馬予測アプリ開発者",
+  "license": "MIT"
+} 

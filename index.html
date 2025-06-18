@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>競馬予測アプリ（機械学習対応）</title>
+    <link rel="stylesheet" href="styles/main.css">
+</head>
+<body>
+    <!-- ナビゲーションボタン -->
+    <div class="nav-buttons">
+        <button class="nav-btn" onclick="scrollToTop()" title="一番上へ">↑</button>
+        <button class="nav-btn" onclick="scrollToBottom()" title="一番下へ">↓</button>
+    </div>
+
+    <div class="container">
+        <h1>🏇 競馬予測アプリ（機械学習対応）</h1>
+        
+        <!-- モード切り替えボタン（携帯用） -->
+        <div class="mode-switch" style="text-align: center; margin-bottom: 20px;">
+            <button class="btn" id="modeToggle" style="background: linear-gradient(45deg, #28a745, #20c997); max-width: 200px;">
+                📱 携帯簡易モード
+            </button>
+        </div>
+
+        <!-- レース基本情報入力セクション -->
+        <div class="section" id="raceInfoSection">
+            <h2>🏁 レース基本情報</h2>
+            <div class="race-info-grid">
+                <div class="form-group">
+                    <label>レース名</label>
+                    <input type="text" id="raceName" placeholder="例：大阪杯、天皇賞(春)等">
+                </div>
+                <div class="form-group">
+                    <label>開催日</label>
+                    <input type="date" id="raceDate" placeholder="開催日を選択">
+                </div>
+                <div class="form-group">
+                    <label>コース</label>
+                    <select id="raceCourse">
+                        <option value="中山">中山</option>
+                        <option value="東京">東京</option>
+                        <option value="京都">京都</option>
+                        <option value="阪神">阪神</option>
+                        <option value="新潟">新潟</option>
+                        <option value="福島">福島</option>
+                        <option value="中京">中京</option>
+                        <option value="小倉">小倉</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>距離</label>
+                    <select id="raceDistance">
+                        <option value="1000">1000m</option>
+                        <option value="1200">1200m</option>
+                        <option value="1400">1400m</option>
+                        <option value="1600" selected>1600m</option>
+                        <option value="1800">1800m</option>
+                        <option value="2000">2000m</option>
+                        <option value="2200">2200m</option>
+                        <option value="2400">2400m</option>
+                        <option value="2500">2500m</option>
+                        <option value="3000">3000m</option>
+                        <option value="3200">3200m</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>馬場種別</label>
+                    <select id="raceTrackType">
+                        <option value="芝" selected>芝</option>
+                        <option value="ダート">ダート</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>馬場状態</label>
+                    <select id="raceTrackCondition">
+                        <option value="良" selected>良</option>
+                        <option value="稍重">稍重</option>
+                        <option value="重">重</option>
+                        <option value="不良">不良</option>
+                    </select>
+                </div>
+            </div>
+            <div class="button-group">
+                <button class="btn" onclick="DataConverter.applyRaceInfoToAllHorses()">📋 全馬に適用</button>
+            </div>
+        </div>
+
+        <!-- 一括入力セクション -->
+        <div class="section" style="background: #fff3cd; border-left: 4px solid #ffc107;">
+            <h3 style="color: #856404;">📋 一括テキスト入力</h3>
+            
+            <!-- データ変換機能 -->
+            <div style="background: #e3f2fd; padding: 12px; margin-bottom: 15px; border-radius: 8px;">
+                <h4 style="margin-bottom: 8px; color: #1976d2;">🔄 競馬データ変換</h4>
+                <div class="form-group">
+                    <label for="rawDataInput">生データを貼り付け（netkeiba等から）</label>
+                    <textarea id="rawDataInput" placeholder="競馬の生データをここに貼り付けてください..." style="height: 120px; font-family: monospace; font-size: 12px;"></textarea>
+                </div>
+                <div class="btn-grid">
+                    <button class="btn" style="background: linear-gradient(45deg, #9c27b0, #673ab7);" onclick="loadSampleRawData()">📝 サンプル生データ</button>
+                </div>
+            </div>
+
+            <div class="btn-grid">
+                <button class="btn" onclick="DataConverter.bulkInput()">📊 一括入力実行</button>
+                <button class="btn" style="background: linear-gradient(45deg, #6c757d, #495057);" onclick="document.getElementById('rawDataInput').value = ''">🗑️ クリア</button>
+            </div>
+        </div>
+
+        <!-- 馬追加セクション -->
+        <div class="section">
+            <h3>🐎 馬を追加</h3>
+            <div class="btn-grid">
+                <button class="btn" onclick="addHorse()">➕ 馬を追加</button>
+                <button class="btn" onclick="addSampleHorses()">📝 サンプルデータ追加</button>
+                <button class="btn" onclick="clearAllHorses()">🗑️ 全クリア</button>
+            </div>
+        </div>
+
+        <!-- 馬データ入力エリア -->
+        <div id="horsesContainer"></div>
+
+        <!-- 予測実行 -->
+        <div class="section">
+            <h3>🔮 予測実行</h3>
+            <div class="btn-grid">
+                <button class="btn" style="background: linear-gradient(45deg, #28a745, #1e7e34);" onclick="calculatePredictions()">🚀 予測開始</button>
+            </div>
+        </div>
+
+        <!-- 予測結果 -->
+        <div id="results" class="results hidden">
+            <h3>📊 予測結果</h3>
+            <div id="resultsContainer"></div>
+            
+            <!-- 学習セクション -->
+            <div id="learningSection" class="section" style="background: #f0f8ff; border-left: 4px solid #2196f3; margin-top: 20px;">
+                <h3 style="color: #1976d2;">📝 レース結果を入力して学習</h3>
+                <div class="form-group">
+                    <label>実際の着順結果（1着, 2着, 3着の馬名を入力）</label>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                        <input type="text" id="actualFirst" placeholder="1着の馬名">
+                        <input type="text" id="actualSecond" placeholder="2着の馬名">
+                        <input type="text" id="actualThird" placeholder="3着の馬名">
+                    </div>
+                    <p style="color: #1976d2; font-size: 0.85em; margin-bottom: 15px;">
+                        💡 馬名の一部でも認識します（例: ベラジオ → ベラジオオペラ）
+                    </p>
+                </div>
+                <div class="btn-grid">
+                    <button class="btn" style="background: linear-gradient(45deg, #2196f3, #1976d2);" onclick="processRaceResult()">🧠 結果を学習に反映</button>
+                    <button class="btn" style="background: linear-gradient(45deg, #4caf50, #2e7d32);" onclick="showLearningStats()">📈 学習状況を確認</button>
+                    <button class="btn" style="background: linear-gradient(45deg, #f44336, #d32f2f); font-size: 0.9em;" onclick="resetLearningData()">🔄 学習データリセット</button>
+                </div>
+                <div id="learningFeedback" style="margin-top: 15px;"></div>
+            </div>
+            
+            <!-- 買い目推奨セクション -->
+            <div id="bettingRecommendations" class="section" style="background: #fff8e1; border-left: 4px solid #ff9800; margin-top: 20px;">
+                <h3 style="color: #f57c00;">🎯 買い目おすすめ</h3>
+                <div id="bettingContainer"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/config.js"></script>
+    <script src="js/dataConverter.js"></script>
+    <script src="js/horseManager.js"></script>
+    <script src="js/predictionEngine.js"></script>
+    <script src="js/bettingRecommender.js"></script>
+    <script src="js/learningSystem.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html> 

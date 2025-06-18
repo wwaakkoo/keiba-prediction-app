@@ -1,0 +1,555 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    padding: 10px;
+    color: #333;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 20px;
+    padding: 25px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+}
+
+h1 {
+    text-align: center;
+    color: #333;
+    margin-bottom: 25px;
+    font-size: 2.2em;
+    background: linear-gradient(45deg, #667eea, #764ba2);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.section {
+    background: #f8f9fa;
+    border-radius: 15px;
+    padding: 20px;
+    margin-bottom: 20px;
+    border-left: 4px solid #007bff;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 600;
+    color: #495057;
+}
+
+input, select, textarea {
+    width: 100%;
+    padding: 8px 12px;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: border-color 0.3s ease;
+}
+
+input:focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 5px rgba(102, 126, 234, 0.3);
+}
+
+.btn {
+    background: linear-gradient(45deg, #007bff, #0056b3);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    margin: 5px;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+
+.btn-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.horse-card {
+    background: linear-gradient(135deg, #ffffff, #f8f9fa);
+    border: 2px solid #e9ecef;
+    border-radius: 15px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+}
+
+.horse-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.horse-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #e9ecef;
+}
+
+.horse-header h3 {
+    margin: 0;
+    color: #495057;
+    font-size: 1.2em;
+}
+
+.btn-remove {
+    background: linear-gradient(45deg, #dc3545, #c82333);
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: all 0.3s ease;
+}
+
+.btn-remove:hover {
+    background: linear-gradient(45deg, #c82333, #bd2130);
+    transform: scale(1.05);
+}
+
+.horse-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr;
+    gap: 15px;
+}
+
+.horse-section {
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 2px solid #e9ecef;
+}
+
+.horse-section h4 {
+    margin: 0 0 15px 0;
+    color: #495057;
+    font-size: 1.1em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.horse-section .horse-content {
+    grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr;
+    gap: 15px;
+}
+
+/* 前走情報セクションのグリッド調整 */
+.horse-section:last-child .horse-content {
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    gap: 12px;
+}
+
+/* 前走情報の読み取り専用フィールド */
+.horse-section input[readonly] {
+    background-color: #f8f9fa;
+    color: #6c757d;
+    cursor: not-allowed;
+}
+
+/* 前走情報の入力フィールドスタイル */
+.horse-section input[name="lastRaceTime"] {
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+}
+
+.horse-section input[name="lastRaceWeight"],
+.horse-section input[name="lastRaceOdds"],
+.horse-section input[name="lastRacePopularity"],
+.horse-section input[name="lastRaceHorseCount"] {
+    text-align: center;
+}
+
+.horse-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 2fr;
+    gap: 15px;
+    align-items: center;
+}
+
+.results {
+    background: #f8f9fa;
+    border-radius: 15px;
+    padding: 20px;
+    margin-top: 20px;
+}
+
+.hidden {
+    display: none;
+}
+
+.result-item {
+    background: white;
+    padding: 15px;
+    border-radius: 10px;
+    margin-bottom: 10px;
+    border-left: 5px solid #007bff;
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
+    gap: 15px;
+    align-items: center;
+}
+
+.confidence-high { border-left-color: #28a745; }
+.confidence-medium { border-left-color: #ffc107; }
+.confidence-low { border-left-color: #dc3545; }
+
+/* ナビゲーションボタンのスタイル */
+.nav-buttons {
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 1000;
+}
+
+.nav-btn {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: linear-gradient(45deg, #667eea, #764ba2);
+    color: white;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    transition: all 0.3s ease;
+}
+
+.nav-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+}
+
+.nav-btn:active {
+    transform: scale(0.95);
+}
+
+@media (max-width: 768px) {
+    .horse-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+    
+    .result-item {
+        grid-template-columns: 1fr;
+        text-align: center;
+    }
+    
+    .container {
+        padding: 15px;
+        margin: 5px;
+    }
+
+    .nav-buttons {
+        right: 10px;
+        bottom: 10px;
+    }
+
+    .nav-btn {
+        width: 45px;
+        height: 45px;
+        font-size: 18px;
+    }
+}
+
+/* レース基本情報セクション */
+.race-info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr;
+    gap: 15px;
+    margin-bottom: 20px;
+    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+    padding: 20px;
+    border-radius: 10px;
+    border: 1px solid #dee2e6;
+}
+
+.race-info-grid .form-group {
+    margin: 0;
+}
+
+.race-info-grid label {
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 8px;
+    display: block;
+}
+
+.race-info-grid input,
+.race-info-grid select {
+    width: 100%;
+    padding: 10px;
+    border: 2px solid #ced4da;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    background: white;
+}
+
+.race-info-grid input:focus,
+.race-info-grid select:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+    outline: none;
+}
+
+/* レスポンシブ対応 */
+@media (max-width: 768px) {
+    .race-info-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        padding: 15px;
+    }
+    
+    .horse-content {
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+    }
+    
+    .horse-section .horse-content {
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+    }
+    
+    .horse-section:last-child .horse-content {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+    
+    .btn-grid {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .btn {
+        width: 100%;
+        margin: 2px 0;
+        padding: 12px 15px;
+        font-size: 16px;
+    }
+    
+    .horse-card {
+        padding: 15px;
+        margin-bottom: 15px;
+    }
+    
+    .horse-header {
+        flex-direction: column;
+        gap: 10px;
+        align-items: flex-start;
+    }
+    
+    .btn-remove {
+        align-self: flex-end;
+        padding: 6px 12px;
+        font-size: 0.8em;
+    }
+    
+    .section {
+        padding: 15px;
+        margin-bottom: 15px;
+    }
+    
+    .form-group {
+        margin-bottom: 12px;
+    }
+    
+    input, select, textarea {
+        padding: 10px 12px;
+        font-size: 16px; /* iOSでズームを防ぐ */
+    }
+    
+    h1 {
+        font-size: 1.8em;
+        margin-bottom: 20px;
+    }
+    
+    h2 {
+        font-size: 1.4em;
+    }
+    
+    h3 {
+        font-size: 1.2em;
+    }
+}
+
+@media (max-width: 480px) {
+    .race-info-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+        padding: 10px;
+    }
+    
+    .horse-content {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+    
+    .horse-section .horse-content {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+    
+    .container {
+        padding: 10px;
+        margin: 5px;
+        border-radius: 15px;
+    }
+    
+    .nav-buttons {
+        right: 5px;
+        bottom: 5px;
+    }
+    
+    .nav-btn {
+        width: 40px;
+        height: 40px;
+        font-size: 16px;
+    }
+    
+    /* 携帯での入力しやすさ向上 */
+    .horse-card {
+        padding: 12px;
+    }
+    
+    .horse-section {
+        margin-top: 15px;
+        padding-top: 12px;
+    }
+    
+    .horse-section h4 {
+        font-size: 1.0em;
+        margin-bottom: 12px;
+    }
+    
+    /* 結果表示の最適化 */
+    .result-item {
+        padding: 12px;
+        margin-bottom: 8px;
+    }
+    
+    /* 学習フィードバックの最適化 */
+    #learningFeedback {
+        font-size: 0.9em;
+    }
+    
+    /* ボタンのタッチしやすさ向上 */
+    .btn {
+        min-height: 44px; /* iOS推奨 */
+        touch-action: manipulation;
+    }
+    
+    /* 入力フィールドのタッチしやすさ向上 */
+    input, select, textarea {
+        min-height: 44px; /* iOS推奨 */
+        touch-action: manipulation;
+    }
+}
+
+/* 携帯簡易モード用スタイル */
+.mobile-mode .horse-section {
+    display: none !important;
+}
+
+.mobile-mode .simple-input-field {
+    display: block !important;
+}
+
+.mobile-mode .horse-content {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
+}
+
+.mobile-mode .btn-grid {
+    flex-direction: column !important;
+    gap: 8px !important;
+}
+
+.mobile-mode .btn {
+    width: 100% !important;
+    margin: 2px 0 !important;
+    padding: 12px 15px !important;
+    font-size: 16px !important;
+    min-height: 44px !important;
+}
+
+/* 携帯での使いやすさ向上 */
+.mobile-mode .horse-card {
+    padding: 12px !important;
+    margin-bottom: 15px !important;
+}
+
+.mobile-mode .section {
+    padding: 15px !important;
+    margin-bottom: 15px !important;
+}
+
+.mobile-mode .form-group {
+    margin-bottom: 12px !important;
+}
+
+.mobile-mode input, 
+.mobile-mode select, 
+.mobile-mode textarea {
+    padding: 10px 12px !important;
+    font-size: 16px !important;
+    min-height: 44px !important;
+}
+
+/* 簡易入力フィールドのスタイル */
+.simple-input-field {
+    display: none;
+}
+
+.simple-input-field h4 {
+    margin: 0 0 8px 0;
+    font-size: 1.0em;
+}
+
+.simple-input-field label {
+    font-size: 0.9em;
+    margin-bottom: 4px;
+}
+
+.simple-input-field select {
+    width: 100%;
+    padding: 8px;
+    font-size: 14px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background: white;
+} 
