@@ -373,11 +373,11 @@ class HorseManager {
             <div class="horse-content">
                 <div class="form-group">
                     <label>馬名</label>
-                    <input type="text" name="horseName" value="${horseData.name || ''}" placeholder="馬名を入力">
+                    <input type="text" name="horseName" placeholder="馬名を入力" value="${horseData.name || ''}">
                 </div>
                 <div class="form-group">
                     <label>オッズ</label>
-                    <input type="number" name="odds" value="${horseData.odds || 10}" step="0.1" min="1" max="100">
+                    <input type="number" name="odds" step="0.1" placeholder="10.0" value="${horseData.odds || ''}">
                 </div>
                 <div class="form-group">
                     <label>前走着順</label>
@@ -409,9 +409,9 @@ class HorseManager {
                         <option value="池添謙一" ${horseData.jockey === '池添謙一' ? 'selected' : ''}>池添謙一</option>
                         <option value="横山和生" ${horseData.jockey === '横山和生' ? 'selected' : ''}>横山和生</option>
                         <option value="D.レーン" ${horseData.jockey === 'D.レーン' ? 'selected' : ''}>D.レーン</option>
-                        <option value="custom" ${!['武豊', '川田将雅', 'C.ルメール', '横山武史', '戸崎圭太', '福永祐一', 'M.デムーロ', '横山典弘', '岩田康誠', '池添謙一', '横山和生', 'D.レーン'].includes(horseData.jockey) ? 'selected' : ''}>その他（入力）</option>
+                        <option value="custom" ${!['武豊', '川田将雅', 'C.ルメール', '横山武史', '戸崎圭太', '福永祐一', 'M.デムーロ', '横山典弘', '岩田康誠', '池添謙一', '横山和生', 'D.レーン'].includes(horseData.jockey) && horseData.jockey ? 'selected' : ''}>その他（入力）</option>
                     </select>
-                    <input type="text" name="jockeyCustom" placeholder="騎手名を入力" style="display: ${!['武豊', '川田将雅', 'C.ルメール', '横山武史', '戸崎圭太', '福永祐一', 'M.デムーロ', '横山典弘', '岩田康誠', '池添謙一', '横山和生', 'D.レーン'].includes(horseData.jockey) ? 'block' : 'none'}; margin-top: 5px;" value="${!['武豊', '川田将雅', 'C.ルメール', '横山武史', '戸崎圭太', '福永祐一', 'M.デムーロ', '横山典弘', '岩田康誠', '池添謙一', '横山和生', 'D.レーン'].includes(horseData.jockey) ? horseData.jockey : ''}">
+                    <input type="text" name="jockeyCustom" placeholder="騎手名を入力" value="${!['武豊', '川田将雅', 'C.ルメール', '横山武史', '戸崎圭太', '福永祐一', 'M.デムーロ', '横山典弘', '岩田康誠', '池添謙一', '横山和生', 'D.レーン'].includes(horseData.jockey) && horseData.jockey ? horseData.jockey : ''}" style="display: ${!['武豊', '川田将雅', 'C.ルメール', '横山武史', '戸崎圭太', '福永祐一', 'M.デムーロ', '横山典弘', '岩田康誠', '池添謙一', '横山和生', 'D.レーン'].includes(horseData.jockey) && horseData.jockey ? 'block' : 'none'}; margin-top: 5px;">
                 </div>
                 <div class="form-group">
                     <label>年齢</label>
@@ -510,70 +510,80 @@ class HorseManager {
                 <div class="horse-content">
                     <div class="form-group">
                         <label>前走コース</label>
-                        <input type="text" name="lastRaceCourse" value="${horseData.lastRaceCourse || ''}" readonly>
+                        <input type="text" name="lastRaceCourse" readonly value="${horseData.lastRaceCourse || ''}">
                     </div>
                     <div class="form-group">
                         <label>前走距離</label>
-                        <input type="text" name="lastRaceDistance" value="${horseData.lastRaceDistance || ''}" readonly>
+                        <input type="text" name="lastRaceDistance" readonly value="${horseData.lastRaceDistance || ''}">
                     </div>
                     <div class="form-group">
                         <label>前走馬場</label>
-                        <input type="text" name="lastRaceTrackType" value="${horseData.lastRaceTrackType || ''}" readonly>
+                        <input type="text" name="lastRaceTrackType" readonly value="${horseData.lastRaceTrackType || ''}">
                     </div>
                     <div class="form-group">
                         <label>前走日</label>
-                        <input type="text" name="lastRaceDate" value="${horseData.lastRaceDate || ''}" readonly>
+                        <input type="text" name="lastRaceDate" readonly value="${horseData.lastRaceDate || ''}">
                     </div>
                     <div class="form-group">
                         <label>前走タイム</label>
-                        <input type="text" name="lastRaceTime" placeholder="例: 1:35.2" style="font-family: monospace;">
+                        <input type="text" name="lastRaceTime" placeholder="例: 1:35.2" style="font-family: monospace;" value="${horseData.lastRaceTime || ''}">
                     </div>
                     <div class="form-group">
                         <label>前走馬場状態</label>
                         <select name="lastRaceTrackCondition">
-                            <option value="">選択してください</option>
-                            <option value="良">良</option>
-                            <option value="稍重">稍重</option>
-                            <option value="重">重</option>
-                            <option value="不良">不良</option>
+                            <option value="" ${!horseData.lastRaceTrackCondition ? 'selected' : ''}>選択してください</option>
+                            <option value="良" ${horseData.lastRaceTrackCondition === '良' ? 'selected' : ''}>良</option>
+                            <option value="稍重" ${horseData.lastRaceTrackCondition === '稍重' ? 'selected' : ''}>稍重</option>
+                            <option value="重" ${horseData.lastRaceTrackCondition === '重' ? 'selected' : ''}>重</option>
+                            <option value="不良" ${horseData.lastRaceTrackCondition === '不良' ? 'selected' : ''}>不良</option>
                         </select>
                     </div>
                     <div class="form-group">
                         <label>前走天候</label>
                         <select name="lastRaceWeather">
-                            <option value="">選択してください</option>
-                            <option value="晴">晴</option>
-                            <option value="曇">曇</option>
-                            <option value="雨">雨</option>
-                            <option value="小雨">小雨</option>
-                            <option value="雪">雪</option>
+                            <option value="" ${!horseData.lastRaceWeather ? 'selected' : ''}>選択してください</option>
+                            <option value="晴" ${horseData.lastRaceWeather === '晴' ? 'selected' : ''}>晴</option>
+                            <option value="曇" ${horseData.lastRaceWeather === '曇' ? 'selected' : ''}>曇</option>
+                            <option value="雨" ${horseData.lastRaceWeather === '雨' ? 'selected' : ''}>雨</option>
+                            <option value="小雨" ${horseData.lastRaceWeather === '小雨' ? 'selected' : ''}>小雨</option>
+                            <option value="雪" ${horseData.lastRaceWeather === '雪' ? 'selected' : ''}>雪</option>
                         </select>
                     </div>
                     <div class="form-group">
                         <label>前走斤量</label>
-                        <input type="number" name="lastRaceWeight" step="0.5" placeholder="例: 56.0">
+                        <input type="number" name="lastRaceWeight" step="0.5" placeholder="例: 56.0" value="${horseData.lastRaceWeight || ''}">
                     </div>
                     <div class="form-group">
                         <label>前走騎手</label>
-                        <input type="text" name="lastRaceJockey" placeholder="前走の騎手名">
+                        <input type="text" name="lastRaceJockey" placeholder="前走騎手名" value="${horseData.lastRaceJockey || ''}">
                     </div>
                     <div class="form-group">
                         <label>前走オッズ</label>
-                        <input type="number" name="lastRaceOdds" step="0.1" placeholder="例: 8.5">
+                        <input type="number" name="lastRaceOdds" step="0.1" placeholder="例: 3.5" value="${horseData.lastRaceOdds || ''}">
                     </div>
                     <div class="form-group">
                         <label>前走人気</label>
-                        <input type="number" name="lastRacePopularity" placeholder="例: 3">
+                        <input type="number" name="lastRacePopularity" placeholder="例: 1" value="${horseData.lastRacePopularity || ''}">
                     </div>
                     <div class="form-group">
                         <label>前走頭数</label>
-                        <input type="number" name="lastRaceHorseCount" placeholder="例: 16">
+                        <input type="number" name="lastRaceHorseCount" placeholder="例: 15" value="${horseData.lastRaceHorseCount || ''}">
+                    </div>
+                    <div class="form-group">
+                        <label>前走馬体重変化</label>
+                        <input type="number" name="lastRaceWeightChange" step="1" placeholder="例: +2" value="${horseData.lastRaceWeightChange || ''}">
                     </div>
                 </div>
             </div>
         `;
         
         container.appendChild(horseCard);
+        
+        // カスタム騎手入力フィールドの表示制御
+        const jockeySelect = horseCard.querySelector('select[name="jockey"]');
+        if (jockeySelect.value === 'custom') {
+            horseCard.querySelector('input[name="jockeyCustom"]').style.display = 'block';
+        }
     }
 }
 
