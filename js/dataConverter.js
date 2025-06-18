@@ -282,6 +282,9 @@ class DataConverter {
 
     // 既存のメソッドは保持（後方互換性のため）
     static convertRawData() {
+        console.log('=== convertRawDataメソッド開始 ===');
+        alert('convertRawDataメソッドが呼び出されました');
+        
         try {
             console.log('convertRawDataメソッドが呼び出されました');
             
@@ -327,6 +330,8 @@ class DataConverter {
             console.error('エラースタック:', error.stack);
             alert('データ変換中にエラーが発生しました: ' + error.message);
         }
+        
+        console.log('=== convertRawDataメソッド終了 ===');
     }
     
     // netkeiba形式かどうかを判定
@@ -354,12 +359,6 @@ class DataConverter {
         }
     }
 
-    // 既存のメソッド（簡略化）
-    static convertRawData(rawData) {
-        // 既存の変換ロジック（簡略化）
-        return { raceInfo: {}, horses: [] };
-    }
-    
     static extractRaceInfo(lines) {
         return { name: '', date: '', course: '', distance: '', trackType: '', trackCondition: '' };
     }
