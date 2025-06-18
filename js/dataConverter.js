@@ -282,25 +282,39 @@ class DataConverter {
 
     // 既存のメソッドは保持（後方互換性のため）
     static convertRawData() {
-        console.log('convertRawDataメソッドが呼び出されました');
-        
-        const rawData = document.getElementById('rawDataInput').value;
-        console.log('convertRawData - 入力データ:', rawData);
-        
-        if (!rawData.trim()) {
-            console.log('convertRawData - データが空です');
-            alert('生データを入力してください');
-            return;
-        }
-
         try {
+            console.log('convertRawDataメソッドが呼び出されました');
+            
+            const rawData = document.getElementById('rawDataInput').value;
+            console.log('convertRawData - 入力データ:', rawData);
+            
+            if (!rawData.trim()) {
+                console.log('convertRawData - データが空です');
+                alert('生データを入力してください');
+                return;
+            }
+
             console.log('convertRawData - netkeiba形式判定開始');
             // netkeiba形式かどうかを判定
-            if (DataConverter.isNetkeibaFormat(rawData)) {
+            let isNetkeiba = false;
+            try {
+                isNetkeiba = DataConverter.isNetkeibaFormat(rawData);
+                console.log('convertRawData - 形式判定結果:', isNetkeiba);
+            } catch (formatError) {
+                console.error('形式判定エラー:', formatError);
+                isNetkeiba = false;
+            }
+            
+            if (isNetkeiba) {
                 console.log('convertRawData - netkeiba形式として処理');
-                const { raceInfo, horses } = DataConverter.parseNetkeibaData(rawData);
-                console.log('convertRawData - 解析結果:', { raceInfo, horses });
-                DataConverter.processConvertedData(raceInfo, horses);
+                try {
+                    const { raceInfo, horses } = DataConverter.parseNetkeibaData(rawData);
+                    console.log('convertRawData - 解析結果:', { raceInfo, horses });
+                    DataConverter.processConvertedData(raceInfo, horses);
+                } catch (parseError) {
+                    console.error('netkeiba解析エラー:', parseError);
+                    alert('netkeibaデータの解析中にエラーが発生しました: ' + parseError.message);
+                }
             } else {
                 console.log('convertRawData - 既存形式として処理');
                 // 既存の形式で処理（簡略化）
@@ -309,8 +323,9 @@ class DataConverter {
                 DataConverter.processConvertedData(raceInfo, horses);
             }
         } catch (error) {
-            console.error('変換エラー:', error);
-            alert('データの変換中にエラーが発生しました。');
+            console.error('convertRawDataメソッド内エラー:', error);
+            console.error('エラースタック:', error.stack);
+            alert('データ変換中にエラーが発生しました: ' + error.message);
         }
     }
     
@@ -434,7 +449,13 @@ class DataConverter {
         try {
             console.log('データ変換機能を呼び出します');
             // データ変換機能を呼び出し
-            DataConverter.convertRawData();
+            try {
+                DataConverter.convertRawData();
+                console.log('データ変換機能の呼び出し完了');
+            } catch (convertError) {
+                console.error('convertRawData呼び出しエラー:', convertError);
+                alert('データ変換中にエラーが発生しました: ' + convertError.message);
+            }
         } catch (error) {
             console.error('一括入力エラー:', error);
             alert('一括入力中にエラーが発生しました。');
