@@ -2,7 +2,7 @@
 class MainApp {
     static init() {
         // アプリケーションの初期化
-        console.log('競馬予測アプリを初期化しました');
+        //console.log('競馬予測アプリを初期化しました');
         
         // 初期状態でサンプルデータを追加
         // HorseManager.addSampleHorses();
@@ -26,7 +26,7 @@ function scrollToBottom() {
 
 // ページ読み込み時の初期化
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('競馬予測アプリを初期化中...');
+    //console.log('競馬予測アプリを初期化中...');
     
     // 学習システムの初期化（保存データの読み込み）
     LearningSystem.initialize();
@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeMobileMode();
     
     // 初期表示（displayHorsesメソッドは存在しないため削除）
-    console.log('初期化完了');
+    //console.log('初期化完了');
 });
 
 // 携帯簡易モード機能
@@ -112,6 +112,22 @@ function showSimpleInputFields() {
         simpleField.innerHTML = `
             <h4 style="color: #2e7d32; margin-bottom: 8px;">📱 簡易入力</h4>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                <div>
+                    <label style="font-size: 0.9em;">馬名</label>
+                    <input type="text" name="simpleHorseName" placeholder="馬名" style="width: 100%; padding: 8px; font-size: 14px;">
+                </div>
+                <div>
+                    <label style="font-size: 0.9em;">オッズ</label>
+                    <input type="number" name="simpleOdds" placeholder="例: 4.5" style="width: 100%; padding: 8px; font-size: 14px;">
+                </div>
+                <div>
+                    <label style="font-size: 0.9em;">前走着順</label>
+                    <input type="number" name="simpleLastRaceOrder" placeholder="例: 1" style="width: 100%; padding: 8px; font-size: 14px;">
+                </div>
+                <div>
+                    <label style="font-size: 0.9em;">騎手</label>
+                    <input type="text" name="simpleJockey" placeholder="騎手名" style="width: 100%; padding: 8px; font-size: 14px;">
+                </div>
                 <div>
                     <label style="font-size: 0.9em;">年齢</label>
                     <select name="simpleAge" style="width: 100%; padding: 8px; font-size: 14px;">

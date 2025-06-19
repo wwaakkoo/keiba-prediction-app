@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="styles/main.css">
 </head>
 <body>
+    <div id="appMessage" style="display:none; position:fixed; top:20px; left:50%; transform:translateX(-50%); background:#ffc; color:#333; padding:12px 24px; border-radius:8px; box-shadow:0 2px 8px #0002; z-index:9999; font-size:1.1em;"></div>
     <!-- ナビゲーションボタン -->
     <div class="nav-buttons">
         <button class="nav-btn" onclick="scrollToTop()" title="一番上へ">↑</button>
@@ -83,6 +84,7 @@
             </div>
             <div class="button-group">
                 <button class="btn" onclick="DataConverter.applyRaceInfoToAllHorses()">📋 全馬に適用</button>
+                <button class="btn" onclick="DataConverter.recalculateRestDays()">📅 休養日数を再計算</button>
             </div>
         </div>
 
