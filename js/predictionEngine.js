@@ -37,22 +37,29 @@ class PredictionEngine {
             }
             score += oddsScore * adj.oddsWeight;
 
-            // 前走着順評価（学習調整済み）
-            let lastRaceScore = 0;
-            if (horse.lastRace === 99) {
-                lastRaceScore = -10;
-            } else if (horse.lastRace <= 3) {
-                lastRaceScore = 25;
-            } else if (horse.lastRace <= 5) {
-                lastRaceScore = 15;
-            } else if (horse.lastRace <= 8) {
-                lastRaceScore = 5;
-            } else if (horse.lastRace <= 12) {
-                lastRaceScore = -5;
+            // 前走上がり3F評価（学習調整済み）
+            let lastRace3FScore = 0;
+            if (horse.lastRace3F) {
+                const agari = parseFloat(horse.lastRace3F);
+                if (!isNaN(agari)) {
+                    if (agari <= 33.5) {
+                        lastRace3FScore = 25;
+                    } else if (agari <= 34.0) {
+                        lastRace3FScore = 20;
+                    } else if (agari <= 34.5) {
+                        lastRace3FScore = 10;
+                    } else if (agari <= 35.0) {
+                        lastRace3FScore = 0;
+                    } else if (agari <= 36.0) {
+                        lastRace3FScore = -5;
+                    } else {
+                        lastRace3FScore = -10;
+                    }
+                }
             } else {
-                lastRaceScore = -10;
+                lastRace3FScore = -10;
             }
-            score += lastRaceScore * adj.lastRaceWeight;
+            score += lastRace3FScore * adj.lastRaceWeight;
 
             // 騎手評価（学習調整済み）
             let jockeyScore = 0;

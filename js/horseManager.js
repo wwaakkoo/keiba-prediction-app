@@ -52,6 +52,22 @@ class HorseManager {
                         <option value="池添謙一">池添謙一</option>
                         <option value="横山和生">横山和生</option>
                         <option value="D.レーン">D.レーン</option>
+                        <option value="浜中俊">浜中俊</option>
+                        <option value="丹内祐次">丹内祐次</option>
+                        <option value="北村宏司">北村宏司</option>
+                        <option value="松山弘平">松山弘平</option>
+                        <option value="岩田望来">岩田望来</option>
+                        <option value="津村明秀">津村明秀</option>
+                        <option value="北村友一">北村友一</option>
+                        <option value="田辺裕信">田辺裕信</option>
+                        <option value="佐々木大輔">佐々木大輔</option>
+                        <option value="坂井瑠星">坂井瑠星</option>
+                        <option value="内田博幸">内田博幸</option>
+                        <option value="菅原明良">菅原明良</option>
+                        <option value="シュタルケ">シュタルケ</option>
+                        <option value="木幡巧也">木幡巧也</option>
+                        <option value="菊沢一樹">菊沢一樹</option>
+                        <option value="吉田豊">吉田豊</option>
                         <option value="custom">その他（入力）</option>
                     </select>
                     <input type="text" name="jockeyCustom" placeholder="騎手名を入力" style="display: none; margin-top: 5px;">
@@ -70,9 +86,9 @@ class HorseManager {
                 <div class="form-group">
                     <label>馬体重変化</label>
                     <select name="weightChange">
-                        <option value="0" ${horseData.weightChange === 0 ? 'selected' : ''}>変化なし</option>
-                        <option value="1" ${horseData.weightChange > 0 ? 'selected' : ''}>増加</option>
-                        <option value="-1" ${horseData.weightChange < 0 ? 'selected' : ''}>減少</option>
+                        <option value="0" selected>変化なし</option>
+                        <option value="1">増加</option>
+                        <option value="-1">減少</option>
                     </select>
                 </div>
             </div>
@@ -153,19 +169,19 @@ class HorseManager {
                 <div class="horse-content">
                     <div class="form-group">
                         <label>前走コース</label>
-                        <input type="text" name="lastRaceCourse" value="${horseData.lastRaceCourse || ''}">
+                        <input type="text" name="lastRaceCourse" value="">
                     </div>
                     <div class="form-group">
                         <label>前走距離</label>
-                        <input type="text" name="lastRaceDistance" value="${horseData.lastRaceDistance || ''}">
+                        <input type="text" name="lastRaceDistance" value="">
                     </div>
                     <div class="form-group">
                         <label>前走馬場</label>
-                        <input type="text" name="lastRaceTrackType" value="${horseData.lastRaceTrackType || ''}">
+                        <input type="text" name="lastRaceTrackType" value="">
                     </div>
                     <div class="form-group">
                         <label>前走日</label>
-                        <input type="text" name="lastRaceDate" value="${horseData.lastRaceDate || ''}">
+                        <input type="text" name="lastRaceDate" value="">
                     </div>
                     <div class="form-group">
                         <label>前走タイム</label>
@@ -197,6 +213,10 @@ class HorseManager {
                         <label>前走着順</label>
                         <input type="number" name="lastRaceOrder" placeholder="例: 1">
                     </div>
+                    <div class="form-group">
+                        <label>前走上がり3F</label>
+                        <input type="text" name="lastRaceAgari" placeholder="例: 34.1">
+                    </div>
                 </div>
             </div>
         `;
@@ -214,7 +234,7 @@ class HorseManager {
     }
 
     static removeHorse(button) {
-        button.parentNode.remove();
+        button.closest('.horse-card').remove();
     }
 
     static clearAllHorses() {
@@ -260,13 +280,25 @@ class HorseManager {
         const horses = [];
         
         horseCards.forEach(card => {
-            const horseNameInput = card.querySelector('input[name="name"]');
+            // 基本情報の取得（簡易モードとの互換性を考慮）
+            const horseNameInput = card.querySelector('input[name="horseName"], input[name="name"]');
             const horseName = horseNameInput ? horseNameInput.value : '名前未入力';
+            
             const oddsInput = card.querySelector('input[name="odds"]');
             const odds = oddsInput ? parseFloat(oddsInput.value) : 10;
+            
             const lastRaceSelect = card.querySelector('select[name="lastRace"]');
-            const lastRace = lastRaceSelect ? parseInt(lastRaceSelect.value) : 6;
+            const lastRaceOrderInput = card.querySelector('input[name="lastRaceOrder"]');
+            let lastRace;
+            if (lastRaceOrderInput && lastRaceOrderInput.value) {
+                lastRace = parseInt(lastRaceOrderInput.value);
+            } else if (lastRaceSelect) {
+                lastRace = parseInt(lastRaceSelect.value);
+            } else {
+                lastRace = 6;
+            }
 
+            // 騎手情報の取得
             const jockeySelect = card.querySelector('select[name="jockey"]');
             const jockeyCustom = card.querySelector('input[name="jockeyCustom"]');
             let jockey = '';
@@ -317,13 +349,15 @@ class HorseManager {
             const lastRaceJockey = lastRaceJockeyInput ? lastRaceJockeyInput.value : '';
             const lastRacePopularityInput = card.querySelector('input[name="lastRacePopularity"]');
             const lastRacePopularity = lastRacePopularityInput ? parseInt(lastRacePopularityInput.value) : 0;
-            const lastRaceOrderInput = card.querySelector('input[name="lastRaceOrder"]');
-            const lastRaceOrder = lastRaceOrderInput ? parseInt(lastRaceOrderInput.value) : 0;
+            const lastRaceAgariInput = card.querySelector('input[name="lastRaceAgari"]');
+            const lastRaceAgari = lastRaceAgariInput ? lastRaceAgariInput.value : '';
 
             horses.push({
                 name: horseName,
                 odds: odds,
                 lastRace: lastRace,
+                lastRaceOrder: lastRaceOrder,
+                lastRaceAgari: lastRaceAgari,
                 jockey: jockey,
                 age: age,
                 weightChange: weightChange,
@@ -344,7 +378,8 @@ class HorseManager {
                 lastRaceWeight: lastRaceWeight,
                 lastRaceJockey: lastRaceJockey,
                 lastRacePopularity: lastRacePopularity,
-                lastRaceOrder: lastRaceOrder
+                lastRaceOrder: lastRaceOrder,
+                lastRaceAgari: lastRaceAgari
             });
         });
 
@@ -364,7 +399,7 @@ class HorseManager {
         //console.log('=== addHorseFromData開始 ===');
         //console.log('入力データ:', horseData);
         
-        // 騎手名のマッピング
+        // 騎手名のマッピング（完全版）
         const jockeyMapping = {
             '横山和': '横山和生',
             '横山武': '横山武史',
@@ -374,7 +409,43 @@ class HorseManager {
             'C.ルメール': 'C.ルメール',
             '戸崎圭太': '戸崎圭太',
             '福永祐一': '福永祐一',
-            '横山和生': '横山和生'
+            '横山和生': '横山和生',
+            // 追加の騎手マッピング
+            '浜中': '浜中俊',
+            'ルメー': 'C.ルメール',
+            '丹内': '丹内祐次',
+            '北村宏': '北村宏司',
+            'レーン': 'D.レーン',
+            '松山': '松山弘平',
+            '岩田望': '岩田望来',
+            '津村': '津村明秀',
+            '池添': '池添謙一',
+            '北村友': '北村友一',
+            '田辺': '田辺裕信',
+            'Ｍデム': 'M.デムーロ',
+            'M.デム': 'M.デムーロ',
+            '佐々木': '佐々木大輔',
+            '坂井': '坂井瑠星',
+            '川田': '川田将雅',
+            '横山典': '横山典弘',
+            '戸崎': '戸崎圭太',
+            // 新たに発見された騎手マッピング
+            '内田博': '内田博幸',
+            '菅原明': '菅原明良',
+            '戸崎圭': '戸崎圭太',
+            'シュタ': 'シュタルケ',
+            '木幡巧': '木幡巧也',
+            '菊沢': '菊沢一樹',
+            '吉田豊': '吉田豊',
+            '幸英明': '幸英明',
+            '太宰啓介': '太宰啓介',
+            '長岡禎仁': '長岡禎仁',
+            '古川奈穂': '古川奈穂',
+            '吉田隼人': '吉田隼人',
+            '三浦皇成': '三浦皇成',
+            'ディー': 'W.ビュイック',
+            '松岡正海': '松岡正海',
+            '原優介': '原優介'
         };
         
         const mappedJockey = jockeyMapping[horseData.jockey] || horseData.jockey;
@@ -438,61 +509,80 @@ class HorseManager {
         horseCard.innerHTML = `
             <div class="horse-header">
                 <h3>🐎 ${horseData.name || '馬名未設定'}</h3>
-                <button type="button" onclick="removeHorse(this)" class="remove-btn">削除</button>
+                <button type="button" onclick="HorseManager.removeHorse(this)" class="btn-remove">削除</button>
             </div>
-            <div class="horse-section">
-                <h4>📋 基本情報</h4>
-                <div class="horse-content">
-                    <div class="form-group">
-                        <label>馬名</label>
-                        <input type="text" name="name" value="${horseData.name || ''}" required>
-                    </div>
-                    <div class="form-group">
-                        <label>オッズ</label>
-                        <input type="number" name="odds" step="0.1" placeholder="例: 3.5" value="${horseData.odds || ''}">
-                    </div>
-                    <div class="form-group">
-                        <label>人気</label>
-                        <input type="number" name="popularity" placeholder="例: 1" value="${horseData.popularity || ''}">
-                    </div>
-                    <div class="form-group">
-                        <label>騎手</label>
-                        <select name="jockey" onchange="HorseManager.toggleCustomJockey(this)">
-                            <option value="武豊" ${mappedJockey === '武豊' ? 'selected' : ''}>武豊</option>
-                            <option value="川田将雅" ${mappedJockey === '川田将雅' ? 'selected' : ''}>川田将雅</option>
-                            <option value="C.ルメール" ${mappedJockey === 'C.ルメール' ? 'selected' : ''}>C.ルメール</option>
-                            <option value="横山武史" ${mappedJockey === '横山武史' ? 'selected' : ''}>横山武史</option>
-                            <option value="戸崎圭太" ${mappedJockey === '戸崎圭太' ? 'selected' : ''}>戸崎圭太</option>
-                            <option value="福永祐一" ${mappedJockey === '福永祐一' ? 'selected' : ''}>福永祐一</option>
-                            <option value="M.デムーロ" ${mappedJockey === 'M.デムーロ' ? 'selected' : ''}>M.デムーロ</option>
-                            <option value="横山典弘" ${mappedJockey === '横山典弘' ? 'selected' : ''}>横山典弘</option>
-                            <option value="岩田康誠" ${mappedJockey === '岩田康誠' ? 'selected' : ''}>岩田康誠</option>
-                            <option value="池添謙一" ${mappedJockey === '池添謙一' ? 'selected' : ''}>池添謙一</option>
-                            <option value="横山和生" ${mappedJockey === '横山和生' ? 'selected' : ''}>横山和生</option>
-                            <option value="D.レーン" ${mappedJockey === 'D.レーン' ? 'selected' : ''}>D.レーン</option>
-                            <option value="custom" ${!isKnownJockey && mappedJockey ? 'selected' : ''}>その他（入力）</option>
-                        </select>
-                        <input type="text" name="jockeyCustom" placeholder="騎手名を入力" value="${!isKnownJockey && mappedJockey ? mappedJockey : ''}" style="display: ${!isKnownJockey && mappedJockey ? 'block' : 'none'}; margin-top: 5px;">
-                    </div>
-                    <div class="form-group">
-                        <label>年齢</label>
-                        <select name="age">
-                            <option value="3" ${horseData.age === 3 ? 'selected' : ''}>3歳</option>
-                            <option value="4" ${horseData.age === 4 ? 'selected' : ''}>4歳</option>
-                            <option value="5" ${horseData.age === 5 ? 'selected' : ''}>5歳</option>
-                            <option value="6" ${horseData.age === 6 ? 'selected' : ''}>6歳</option>
-                            <option value="7" ${horseData.age === 7 ? 'selected' : ''}>7歳</option>
-                            <option value="8" ${horseData.age === 8 ? 'selected' : ''}>8歳以上</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>馬体重変化</label>
-                        <select name="weightChange">
-                            <option value="0" ${weightChangeValue === 0 ? 'selected' : ''}>変化なし</option>
-                            <option value="1" ${weightChangeValue === 1 ? 'selected' : ''}>増加</option>
-                            <option value="-1" ${weightChangeValue === -1 ? 'selected' : ''}>減少</option>
-                        </select>
-                    </div>
+            <div class="horse-content">
+                <div class="form-group">
+                    <label>馬名</label>
+                    <input type="text" name="horseName" value="${horseData.name || ''}" required>
+                </div>
+                <div class="form-group">
+                    <label>オッズ</label>
+                    <input type="number" name="odds" step="0.1" placeholder="例: 3.5" value="${horseData.odds || ''}">
+                </div>
+                <div class="form-group">
+                    <label>前走着順</label>
+                    <input type="number" name="lastRaceOrder" placeholder="例: 1" value="${horseData.lastRaceOrder || ''}">
+                </div>
+                <!--
+                <div class="form-group">
+                    <label>前走上がり3F</label>
+                    <input type="text" name="lastRaceAgari" placeholder="例: 34.1" value="${horseData.lastRaceAgari || ''}">
+                </div>
+                -->
+                <div class="form-group">
+                    <label>騎手</label>
+                    <select name="jockey" onchange="HorseManager.toggleCustomJockey(this)">
+                        <option value="武豊" ${mappedJockey === '武豊' ? 'selected' : ''}>武豊</option>
+                        <option value="川田将雅" ${mappedJockey === '川田将雅' ? 'selected' : ''}>川田将雅</option>
+                        <option value="C.ルメール" ${mappedJockey === 'C.ルメール' ? 'selected' : ''}>C.ルメール</option>
+                        <option value="横山武史" ${mappedJockey === '横山武史' ? 'selected' : ''}>横山武史</option>
+                        <option value="戸崎圭太" ${mappedJockey === '戸崎圭太' ? 'selected' : ''}>戸崎圭太</option>
+                        <option value="福永祐一" ${mappedJockey === '福永祐一' ? 'selected' : ''}>福永祐一</option>
+                        <option value="M.デムーロ" ${mappedJockey === 'M.デムーロ' ? 'selected' : ''}>M.デムーロ</option>
+                        <option value="横山典弘" ${mappedJockey === '横山典弘' ? 'selected' : ''}>横山典弘</option>
+                        <option value="岩田康誠" ${mappedJockey === '岩田康誠' ? 'selected' : ''}>岩田康誠</option>
+                        <option value="池添謙一" ${mappedJockey === '池添謙一' ? 'selected' : ''}>池添謙一</option>
+                        <option value="横山和生" ${mappedJockey === '横山和生' ? 'selected' : ''}>横山和生</option>
+                        <option value="D.レーン" ${mappedJockey === 'D.レーン' ? 'selected' : ''}>D.レーン</option>
+                        <option value="浜中俊" ${mappedJockey === '浜中俊' ? 'selected' : ''}>浜中俊</option>
+                        <option value="丹内祐次" ${mappedJockey === '丹内祐次' ? 'selected' : ''}>丹内祐次</option>
+                        <option value="北村宏司" ${mappedJockey === '北村宏司' ? 'selected' : ''}>北村宏司</option>
+                        <option value="松山弘平" ${mappedJockey === '松山弘平' ? 'selected' : ''}>松山弘平</option>
+                        <option value="岩田望来" ${mappedJockey === '岩田望来' ? 'selected' : ''}>岩田望来</option>
+                        <option value="津村明秀" ${mappedJockey === '津村明秀' ? 'selected' : ''}>津村明秀</option>
+                        <option value="北村友一" ${mappedJockey === '北村友一' ? 'selected' : ''}>北村友一</option>
+                        <option value="田辺裕信" ${mappedJockey === '田辺裕信' ? 'selected' : ''}>田辺裕信</option>
+                        <option value="佐々木大輔" ${mappedJockey === '佐々木大輔' ? 'selected' : ''}>佐々木大輔</option>
+                        <option value="坂井瑠星" ${mappedJockey === '坂井瑠星' ? 'selected' : ''}>坂井瑠星</option>
+                        <option value="内田博幸" ${mappedJockey === '内田博幸' ? 'selected' : ''}>内田博幸</option>
+                        <option value="菅原明良" ${mappedJockey === '菅原明良' ? 'selected' : ''}>菅原明良</option>
+                        <option value="シュタルケ" ${mappedJockey === 'シュタルケ' ? 'selected' : ''}>シュタルケ</option>
+                        <option value="木幡巧也" ${mappedJockey === '木幡巧也' ? 'selected' : ''}>木幡巧也</option>
+                        <option value="菊沢一樹" ${mappedJockey === '菊沢一樹' ? 'selected' : ''}>菊沢一樹</option>
+                        <option value="吉田豊" ${mappedJockey === '吉田豊' ? 'selected' : ''}>吉田豊</option>
+                        <option value="custom" ${!isKnownJockey && mappedJockey ? 'selected' : ''}>その他（入力）</option>
+                    </select>
+                    <input type="text" name="jockeyCustom" placeholder="騎手名を入力" value="${!isKnownJockey && mappedJockey ? mappedJockey : ''}" style="display: ${!isKnownJockey && mappedJockey ? 'block' : 'none'}; margin-top: 5px;">
+                </div>
+                <div class="form-group">
+                    <label>年齢</label>
+                    <select name="age">
+                        <option value="3" ${horseData.age === 3 ? 'selected' : ''}>3歳</option>
+                        <option value="4" ${horseData.age === 4 ? 'selected' : ''}>4歳</option>
+                        <option value="5" ${horseData.age === 5 || !horseData.age ? 'selected' : ''}>5歳</option>
+                        <option value="6" ${horseData.age === 6 ? 'selected' : ''}>6歳</option>
+                        <option value="7" ${horseData.age === 7 ? 'selected' : ''}>7歳</option>
+                        <option value="8" ${horseData.age === 8 ? 'selected' : ''}>8歳以上</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>馬体重変化</label>
+                    <select name="weightChange">
+                        <option value="0" ${weightChangeValue === 0 ? 'selected' : ''}>変化なし</option>
+                        <option value="1" ${weightChangeValue === 1 ? 'selected' : ''}>増加</option>
+                        <option value="-1" ${weightChangeValue === -1 ? 'selected' : ''}>減少</option>
+                    </select>
                 </div>
             </div>
             <div class="horse-section">
@@ -517,7 +607,7 @@ class HorseManager {
                             <option value="1000" ${horseData.distance === 1000 ? 'selected' : ''}>1000m</option>
                             <option value="1200" ${horseData.distance === 1200 ? 'selected' : ''}>1200m</option>
                             <option value="1400" ${horseData.distance === 1400 ? 'selected' : ''}>1400m</option>
-                            <option value="1600" ${horseData.distance === 1600 ? 'selected' : ''}>1600m</option>
+                            <option value="1600" ${horseData.distance === 1600 || !horseData.distance ? 'selected' : ''}>1600m</option>
                             <option value="1800" ${horseData.distance === 1800 ? 'selected' : ''}>1800m</option>
                             <option value="2000" ${horseData.distance === 2000 ? 'selected' : ''}>2000m</option>
                             <option value="2200" ${horseData.distance === 2200 ? 'selected' : ''}>2200m</option>
@@ -530,14 +620,14 @@ class HorseManager {
                     <div class="form-group">
                         <label>馬場種別</label>
                         <select name="trackType">
-                            <option value="芝" ${horseData.trackType === '芝' ? 'selected' : ''}>芝</option>
+                            <option value="芝" ${horseData.trackType === '芝' || !horseData.trackType ? 'selected' : ''}>芝</option>
                             <option value="ダート" ${horseData.trackType === 'ダート' ? 'selected' : ''}>ダート</option>
                         </select>
                     </div>
                     <div class="form-group">
                         <label>天気</label>
                         <select name="weather">
-                            <option value="晴" ${horseData.weather === '晴' ? 'selected' : ''}>晴</option>
+                            <option value="晴" ${horseData.weather === '晴' || !horseData.weather ? 'selected' : ''}>晴</option>
                             <option value="曇" ${horseData.weather === '曇' ? 'selected' : ''}>曇</option>
                             <option value="雨" ${horseData.weather === '雨' ? 'selected' : ''}>雨</option>
                             <option value="雪" ${horseData.weather === '雪' ? 'selected' : ''}>雪</option>
@@ -546,7 +636,7 @@ class HorseManager {
                     <div class="form-group">
                         <label>馬場状態</label>
                         <select name="trackCondition">
-                            <option value="良" ${horseData.trackCondition === '良' ? 'selected' : ''}>良</option>
+                            <option value="良" ${horseData.trackCondition === '良' || !horseData.trackCondition ? 'selected' : ''}>良</option>
                             <option value="稍重" ${horseData.trackCondition === '稍重' ? 'selected' : ''}>稍重</option>
                             <option value="重" ${horseData.trackCondition === '重' ? 'selected' : ''}>重</option>
                             <option value="不良" ${horseData.trackCondition === '不良' ? 'selected' : ''}>不良</option>
@@ -612,9 +702,15 @@ class HorseManager {
                         <label>前走人気</label>
                         <input type="number" name="lastRacePopularity" placeholder="例: 1" value="${horseData.lastRacePopularity || ''}">
                     </div>
+                    <!--
                     <div class="form-group">
                         <label>前走着順</label>
                         <input type="number" name="lastRaceOrder" placeholder="例: 1" value="${horseData.lastRaceOrder || ''}">
+                    </div>
+                    -->
+                    <div class="form-group">
+                        <label>前走上がり3F</label>
+                        <input type="text" name="lastRaceAgari" placeholder="例: 34.1" value="${horseData.lastRaceAgari || ''}">
                     </div>
                 </div>
             </div>
@@ -639,4 +735,4 @@ window.removeHorse = HorseManager.removeHorse.bind(HorseManager);
 window.clearAllHorses = HorseManager.clearAllHorses.bind(HorseManager);
 window.addSampleHorses = HorseManager.addSampleHorses.bind(HorseManager);
 window.toggleCustomJockey = HorseManager.toggleCustomJockey.bind(HorseManager);
-window.addHorseFromData = HorseManager.addHorseFromData.bind(HorseManager); 
+window.addHorseFromData = HorseManager.addHorseFromData.bind(HorseManager);
