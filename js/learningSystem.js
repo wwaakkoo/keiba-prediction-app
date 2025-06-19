@@ -93,9 +93,19 @@ class LearningSystem {
                 adj.oddsWeight = Math.min(1.5, adj.oddsWeight + learningRate * 0.5);
                 result.adjustments.oddsWeight = 'オッズ信頼度を微強化';
             }
-            if (predictedWinner.lastRace <= 3) {
-                adj.lastRaceWeight = Math.min(1.5, adj.lastRaceWeight + learningRate * 0.5);
-                result.adjustments.lastRaceWeight = '前走重視度を微強化';
+            if (predictedWinner.lastRace3F && firstHorse.lastRace3F) {
+                const predAgari = parseFloat(predictedWinner.lastRace3F);
+                const actualAgari = parseFloat(firstHorse.lastRace3F);
+                if (!isNaN(predAgari) && !isNaN(actualAgari)) {
+                    const agariDiff = actualAgari - predAgari;
+                    if (agariDiff > 1.0) {
+                        adj.lastRaceWeight = Math.max(0.3, adj.lastRaceWeight - learningRate);
+                        result.adjustments.lastRaceWeight = '上がり3F過信を軽減';
+                    } else if (agariDiff < -0.5) {
+                        adj.lastRaceWeight = Math.min(1.7, adj.lastRaceWeight + learningRate);
+                        result.adjustments.lastRaceWeight = '上がり3F重視度を向上';
+                    }
+                }
             }
             
             // 新しい特徴量の成功パターン強化

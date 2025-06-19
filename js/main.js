@@ -118,11 +118,11 @@ function showSimpleInputFields() {
                 </div>
                 <div>
                     <label style="font-size: 0.9em;">オッズ</label>
-                    <input type="number" name="simpleOdds" placeholder="例: 4.5" style="width: 100%; padding: 8px; font-size: 14px;">
+                    <input type="number" name="simpleOdds" placeholder="例: 4.5" step="0.1" style="width: 100%; padding: 8px; font-size: 14px;">
                 </div>
                 <div>
                     <label style="font-size: 0.9em;">前走着順</label>
-                    <input type="number" name="simpleLastRaceOrder" placeholder="例: 1" style="width: 100%; padding: 8px; font-size: 14px;">
+                    <input type="number" name="simpleLastRaceOrder" placeholder="例: 1" min="1" max="18" style="width: 100%; padding: 8px; font-size: 14px;">
                 </div>
                 <div>
                     <label style="font-size: 0.9em;">騎手</label>
@@ -148,10 +148,159 @@ function showSimpleInputFields() {
                     </select>
                 </div>
             </div>
+            <div style="margin-top: 10px; text-align: center;">
+                <button onclick="syncSimpleDataToMain(this)" style="background: linear-gradient(45deg, #28a745, #20c997); color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 14px;">📝 データ反映</button>
+            </div>
         `;
         
         horseContent.appendChild(simpleField);
+        
+        // 既存のメインデータから簡易フィールドに値を読み込む
+        loadMainDataToSimple(card);
+        
+        // リアルタイム同期のイベントリスナーを追加
+        setupRealTimeSync(simpleField, card);
     });
+}
+
+// メインデータから簡易フィールドに値を読み込む
+function loadMainDataToSimple(horseCard) {
+    const simpleField = horseCard.querySelector('.simple-input-field');
+    if (!simpleField) return;
+    
+    // メインフィールドから値を取得
+    const horseName = horseCard.querySelector('input[name="horseName"]')?.value || '';
+    const odds = horseCard.querySelector('input[name="odds"]')?.value || '';
+    const lastRaceOrder = horseCard.querySelector('input[name="lastRaceOrder"]')?.value || '';
+    const jockey = horseCard.querySelector('input[name="jockey"]')?.value || '';
+    const age = horseCard.querySelector('select[name="age"]')?.value || '5';
+    
+    // 簡易フィールドに値を設定
+    const simpleHorseName = simpleField.querySelector('input[name="simpleHorseName"]');
+    const simpleOdds = simpleField.querySelector('input[name="simpleOdds"]');
+    const simpleLastRaceOrder = simpleField.querySelector('input[name="simpleLastRaceOrder"]');
+    const simpleJockey = simpleField.querySelector('input[name="simpleJockey"]');
+    const simpleAge = simpleField.querySelector('select[name="simpleAge"]');
+    
+    if (simpleHorseName) simpleHorseName.value = horseName;
+    if (simpleOdds) simpleOdds.value = odds;
+    if (simpleLastRaceOrder) simpleLastRaceOrder.value = lastRaceOrder;
+    if (simpleJockey) simpleJockey.value = jockey;
+    if (simpleAge) simpleAge.value = age;
+}
+
+// リアルタイム同期の設定
+function setupRealTimeSync(simpleField, horseCard) {
+    const inputs = simpleField.querySelectorAll('input, select');
+    
+    inputs.forEach(input => {
+        input.addEventListener('input', function() {
+            syncSimpleDataToMainAuto(horseCard);
+        });
+        
+        input.addEventListener('change', function() {
+            syncSimpleDataToMainAuto(horseCard);
+        });
+    });
+}
+
+// 簡易データを自動的にメインに同期（リアルタイム）
+function syncSimpleDataToMainAuto(horseCard) {
+    const simpleField = horseCard.querySelector('.simple-input-field');
+    if (!simpleField) return;
+    
+    // 簡易フィールドから値を取得
+    const simpleHorseName = simpleField.querySelector('input[name="simpleHorseName"]')?.value || '';
+    const simpleOdds = simpleField.querySelector('input[name="simpleOdds"]')?.value || '';
+    const simpleLastRaceOrder = simpleField.querySelector('input[name="simpleLastRaceOrder"]')?.value || '';
+    const simpleJockey = simpleField.querySelector('input[name="simpleJockey"]')?.value || '';
+    const simpleAge = simpleField.querySelector('select[name="simpleAge"]')?.value || '5';
+    const simpleWeightChange = simpleField.querySelector('select[name="simpleWeightChange"]')?.value || '0';
+    
+    // メインフィールドに値を設定
+    const horseName = horseCard.querySelector('input[name="horseName"]');
+    const odds = horseCard.querySelector('input[name="odds"]');
+    const lastRaceOrder = horseCard.querySelector('input[name="lastRaceOrder"]');
+    const jockey = horseCard.querySelector('input[name="jockey"]');
+    const age = horseCard.querySelector('select[name="age"]');
+    
+    if (horseName) horseName.value = simpleHorseName;
+    if (odds) odds.value = simpleOdds;
+    if (lastRaceOrder) lastRaceOrder.value = simpleLastRaceOrder;
+    if (jockey) jockey.value = simpleJockey;
+    if (age) age.value = simpleAge;
+    
+    // 体重変化に基づいて体重関連フィールドを設定
+    const weightChange = horseCard.querySelector('input[name="weightChange"]');
+    if (weightChange) {
+        if (simpleWeightChange === '1') {
+            weightChange.value = '+2'; // 増加の場合
+        } else if (simpleWeightChange === '-1') {
+            weightChange.value = '-2'; // 減少の場合
+        } else {
+            weightChange.value = '0'; // 変化なし
+        }
+    }
+    
+    // デフォルト値を他のフィールドに設定（予測計算で必要）
+    setDefaultValuesForPrediction(horseCard);
+}
+
+// 予測計算に必要なデフォルト値を設定
+function setDefaultValuesForPrediction(horseCard) {
+    // レース基本情報から値を取得
+    const raceDistance = document.getElementById('raceDistance')?.value || '1600';
+    const raceTrackType = document.getElementById('raceTrackType')?.value || '芝';
+    const raceTrackCondition = document.getElementById('raceTrackCondition')?.value || '良';
+    
+    // 未入力の重要フィールドにデフォルト値を設定
+    const fieldsWithDefaults = [
+        { name: 'weight', defaultValue: '500' },
+        { name: 'jockeyWinRate', defaultValue: '0.15' },
+        { name: 'recentForm', defaultValue: '3' },
+        { name: 'restDays', defaultValue: '14' },
+        { name: 'distanceExperience', defaultValue: raceDistance },
+        { name: 'trackTypeExperience', defaultValue: raceTrackType },
+        { name: 'trackConditionExperience', defaultValue: raceTrackCondition },
+        { name: 'lastRaceTime', defaultValue: '1:35.0' },
+        { name: 'lastRaceWeight', defaultValue: '500' },
+        { name: 'lastRaceOdds', defaultValue: '5.0' },
+        { name: 'lastRacePopularity', defaultValue: '5' },
+        { name: 'lastRaceHorseCount', defaultValue: '16' }
+    ];
+    
+    fieldsWithDefaults.forEach(field => {
+        const input = horseCard.querySelector(`input[name="${field.name}"], select[name="${field.name}"]`);
+        if (input && (!input.value || input.value.trim() === '')) {
+            input.value = field.defaultValue;
+        }
+    });
+}
+
+// 手動同期ボタンの処理
+function syncSimpleDataToMain(button) {
+    const simpleField = button.closest('.simple-input-field');
+    const horseCard = button.closest('.horse-card');
+    
+    if (!simpleField || !horseCard) return;
+    
+    // 自動同期と同じ処理を実行
+    syncSimpleDataToMainAuto(horseCard);
+    
+    // 成功メッセージを表示
+    if (typeof showMessage === 'function') {
+        showMessage('📝 データを反映しました', 'success');
+    }
+    
+    // ボタンに一時的なフィードバック
+    const originalText = button.textContent;
+    button.textContent = '✓ 反映済み';
+    button.style.background = 'linear-gradient(45deg, #28a745, #1e7e34)';
+    
+    setTimeout(() => {
+        button.textContent = originalText;
+        button.style.background = 'linear-gradient(45deg, #28a745, #20c997)';
+    }, 1500);
 }
 
 function hideSimpleInputFields() {
@@ -164,6 +313,7 @@ window.scrollToTop = scrollToTop;
 window.scrollToBottom = scrollToBottom;
 window.initializeMobileMode = initializeMobileMode;
 window.updateMobileMode = updateMobileMode;
+window.syncSimpleDataToMain = syncSimpleDataToMain;
 
 // メッセージ表示機能
 function showMessage(message, type = 'info') {
@@ -271,4 +421,4 @@ style.textContent = `
 document.head.appendChild(style);
 
 // グローバル関数として公開
-window.showMessage = showMessage; 
+window.showMessage = showMessage;
