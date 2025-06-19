@@ -289,6 +289,7 @@ class HorseManager {
             
             const lastRaceSelect = card.querySelector('select[name="lastRace"]');
             const lastRaceOrderInput = card.querySelector('input[name="lastRaceOrder"]');
+            const lastRaceOrder = lastRaceOrderInput ? parseInt(lastRaceOrderInput.value) : '';
             let lastRace;
             if (lastRaceOrderInput && lastRaceOrderInput.value) {
                 lastRace = parseInt(lastRaceOrderInput.value);

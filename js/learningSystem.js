@@ -93,9 +93,9 @@ class LearningSystem {
                 adj.oddsWeight = Math.min(1.5, adj.oddsWeight + learningRate * 0.5);
                 result.adjustments.oddsWeight = 'オッズ信頼度を微強化';
             }
-            if (predictedWinner.lastRace3F && firstHorse.lastRace3F) {
-                const predAgari = parseFloat(predictedWinner.lastRace3F);
-                const actualAgari = parseFloat(firstHorse.lastRace3F);
+            if (predictedWinner.lastRaceAgari && firstHorse.lastRaceAgari) {
+                const predAgari = parseFloat(predictedWinner.lastRaceAgari);
+                const actualAgari = parseFloat(firstHorse.lastRaceAgari);
                 if (!isNaN(predAgari) && !isNaN(actualAgari)) {
                     const agariDiff = actualAgari - predAgari;
                     if (agariDiff > 1.0) {

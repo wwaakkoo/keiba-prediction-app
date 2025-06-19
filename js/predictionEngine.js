@@ -38,28 +38,28 @@ class PredictionEngine {
             score += oddsScore * adj.oddsWeight;
 
             // 前走上がり3F評価（学習調整済み）
-            let lastRace3FScore = 0;
-            if (horse.lastRace3F) {
-                const agari = parseFloat(horse.lastRace3F);
+            let lastRaceAgariScore = 0;
+            if (horse.lastRaceAgari) {
+                const agari = parseFloat(horse.lastRaceAgari);
                 if (!isNaN(agari)) {
                     if (agari <= 33.5) {
-                        lastRace3FScore = 25;
+                        lastRaceAgariScore = 25;
                     } else if (agari <= 34.0) {
-                        lastRace3FScore = 20;
+                        lastRaceAgariScore = 20;
                     } else if (agari <= 34.5) {
-                        lastRace3FScore = 10;
+                        lastRaceAgariScore = 10;
                     } else if (agari <= 35.0) {
-                        lastRace3FScore = 0;
+                        lastRaceAgariScore = 0;
                     } else if (agari <= 36.0) {
-                        lastRace3FScore = -5;
+                        lastRaceAgariScore = -5;
                     } else {
-                        lastRace3FScore = -10;
+                        lastRaceAgariScore = -10;
                     }
                 }
             } else {
-                lastRace3FScore = -10;
+                lastRaceAgariScore = -10;
             }
-            score += lastRace3FScore * adj.lastRaceWeight;
+            score += lastRaceAgariScore * adj.lastRaceWeight;
 
             // 騎手評価（学習調整済み）
             let jockeyScore = 0;
