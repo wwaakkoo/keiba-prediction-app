@@ -1,907 +1,800 @@
+// 画面上にメッセージを表示する共通関数
+function showMessage(msg, type = 'info', duration = 2500) {
+    const el = document.getElementById('appMessage');
+    if (!el) return;
+    el.textContent = msg;
+    el.style.display = 'block';
+    el.style.background = type === 'error' ? '#fdd' : '#ffc';
+    el.style.color = type === 'error' ? '#900' : '#333';
+    setTimeout(() => { el.style.display = 'none'; }, duration);
+}
+
 // データ変換機能
 class DataConverter {
     static loadSampleRawData() {
-        const sampleData = `枠1白	1	
-ベラジオオペラ	
-4.0
-(1番人気)
+        const sampleData = `1	1	
+消
+ロードカナロア
+ベラジオオペラ
+エアルーティーン
+(ハービンジャー)
+栗東・上村  
+先中9週
 510kg(+2)
-林田 祥来
+4.0 (1人気)
+牡5鹿
 
-上村 洋行(栗東)
+横山和
+58.0	
+2025.04.06 阪神1
+大阪杯 GI
+芝2000 1:56.2 良
+15頭 5番 2人 横山和生 58.0
+4-4-3-3 (34.1) 508(-4)
+ロードデルレイ(-0.2)
 
-父：ロードカナロア
-母：エアルーティーン
-(母の父：ハービンジャー)
-勝負服の画像
+1	2	
+消
+ドゥラメンテ
+ドゥレッツァ
+モアザンセイクリッド
+(More Than Ready)
+美浦・尾関  
+先中9週
+468kg(前計不)
+6.7 (4人気)
+牡5青鹿
 
-牡5/鹿
-
-58.0kg
-
-横山 和生
-
-118
-I,L
-
-2025年4月6日	阪神
-大阪杯	GⅠ
-1着	15頭5番
-2番人気
-横山 和生	58.0kg
-2000芝	
-1:56.2
-
-良
-118	
-508kg
-
-4	4	3	3
-3F 34.1
-ロードデルレイ(0.2)`;
+横山武
+58.0	
+2025.04.05 メイダン3
+ドバイシー GI
+芝2410 良
+9頭 2番 5人 スミヨン 57.5
+(0.0) 
+(0.0)`;
         
         document.getElementById('rawDataInput').value = sampleData;
     }
 
-    static convertRawData() {
-        const rawData = document.getElementById('rawDataInput').value;
-        if (!rawData.trim()) {
-            alert('生データを入力してください');
-            return;
-        }
-
-        try {
-            const { raceInfo, horses } = DataConverter.tRawData(rawData);
-            const csvData = DataConverter.convertHorsesToCSV(horses);
-            
-            if (csvData && horses.length > 0) {
-                document.getElementById('bulkInput').value = csvData;
-                alert(`${horses.length}頭のデータをCSV形式に変換しました！`);
-                document.getElementById('rawDataInput').value = '';
-            } else {
-                alert('データの変換に失敗しました。形式を確認してください。');
-            }
-        } catch (error) {
-            console.error('変換エラー:', error);
-            alert('データの変換中にエラーが発生しました。');
-        }
-    }
-
-    static convertRawData(rawData) {
-        // null/undefinedチェック
-        if (!rawData || typeof rawData !== 'string') {
-            throw new Error('有効なデータが入力されていません');
-        }
-        
+    // netkeiba形式のデータを解析
+    static parseNetkeibaData(rawData) {
         const lines = rawData.split('\n').filter(line => line.trim());
         const horses = [];
         let currentHorse = null;
         let raceInfo = null;
         
-        // レース基本情報を最初に抽出
-        raceInfo = DataConverter.extractRaceInfo(lines);
-        
-        // レース基本情報をUIに反映
-        DataConverter.updateRaceInfoUI(raceInfo);
-        
-        // ヘッダー行をスキップ
-        let startIndex = 0;
-        for (let i = 0; i < lines.length; i++) {
-            if (lines[i].includes('枠') && lines[i].includes('馬番') && lines[i].includes('馬名')) {
-                startIndex = i + 1;
-                break;
-            }
-        }
+        // レース基本情報を抽出
+        raceInfo = DataConverter.extractNetkeibaRaceInfo(lines);
         
         // 各馬のデータを解析
-        for (let i = startIndex; i < lines.length; i++) {
+        for (let i = 0; i < lines.length; i++) {
             const line = lines[i].trim();
             
-            // 新しい馬の開始を検出（枠番で始まる行）
-            if (DataConverter.isNewHorseStart(line)) {
-                if (currentHorse) {
+            // 新しい馬の開始を検出（枠番・馬番で始まる行）
+            if (DataConverter.isNetkeibaHorseStart(line)) {
+                if (currentHorse && currentHorse.name) {  // 名前が設定されている場合のみ追加
+                    ////console.log(`馬を追加: ${currentHorse.name}`);
                     horses.push(currentHorse);
                 }
-                currentHorse = DataConverter.parseHorseData(lines, i);
-                i = currentHorse.nextIndex || i;
+                currentHorse = DataConverter.parseNetkeibaHorseData(lines, i);
+                i = currentHorse.nextIndex - 1;  // -1を追加（forループのi++で次の行に進むため）
+                ////console.log(`新しい馬の解析開始 - インデックス: ${i}`);
             }
         }
         
-        if (currentHorse) {
+        // 最後の馬を追加
+        if (currentHorse && currentHorse.name) {
+            ////console.log(`最後の馬を追加: ${currentHorse.name}`);
             horses.push(currentHorse);
         }
         
-        // レース基本情報を全馬に適用
-        horses.forEach(horse => {
-            if (raceInfo.distance) horse.distance = parseInt(raceInfo.distance);
-            if (raceInfo.trackType) horse.trackType = raceInfo.trackType;
-            if (raceInfo.trackCondition) horse.trackCondition = raceInfo.trackCondition;
-        });
-        
-        return {
-            raceInfo: raceInfo,
-            horses: horses
-        };
+        ////console.log(`合計${horses.length}頭のデータを解析しました`);
+        return { raceInfo, horses };
     }
     
-    static extractRaceInfo(lines) {
-        // レース名、開催日、コース、距離、馬場種別、馬場状態を抽出
-        let raceName = '';
-        let raceDate = '';
-        let course = '';
-        let distance = '';
-        let trackType = '';
-        let trackCondition = '';
+    // netkeiba形式の馬データ開始を検出
+    static isNetkeibaHorseStart(line) {
+        // 枠番・馬番のパターン（例: "1	1	"）
+        return /^\d+\s+\d+\s*$/.test(line);
+    }
+    
+    // netkeiba形式の馬データを解析
+    static parseNetkeibaHorseData(lines, startIndex) {
+        const horse = {
+            name: '',
+            odds: 0,
+            popularity: 0,
+            jockey: '',
+            lastRace: 0,
+            age: 0,
+            weightChange: 0,
+            restDays: 0,
+            lastRaceTime: '',
+            lastRaceWeight: 0,
+            lastRaceOdds: 0,
+            lastRacePopularity: 0,
+            lastRaceHorseCount: 0,
+            lastRaceTrackCondition: '',
+            lastRaceWeather: '',
+            lastRaceWeightChange: 0,
+            lastRaceJockey: '',
+            lastRaceDistance: 0,
+            lastRaceDate: '',
+            lastRaceOrder: 0
+        };
         
-        console.log('レース基本情報抽出開始');
+        let i = startIndex;
+        let foundName = false;
+        let foundJockey = false;
+        let foundWeight = false;
+        let foundOdds = false;
+        let foundAge = false;
+        let foundLastRace = false;
+        
+        while (i < lines.length) {
+            const line = lines[i].trim();
+            
+            // 次の馬のデータの開始を検出したら終了
+            if (i > startIndex && DataConverter.isNetkeibaHorseStart(line)) {
+                ////console.log('次の馬のデータを検出、現在の馬の解析を終了');
+                break;
+            }
+            
+            // 馬名の抽出
+            if (!foundName) {
+                // 印の種類を定義
+                const marks = ['--', '◎', '◯', '▲', '△', '☆', '✓', '消'];
+                
+                // 枠番・馬番の行の場合
+                if (i === startIndex && DataConverter.isNetkeibaHorseStart(line)) {
+                    // 印の行をチェック
+                    const nextLine = lines[i+1]?.trim() || '';
+                    const isMarkLine = marks.some(mark => nextLine.startsWith(mark));
+                    if (isMarkLine) {
+                        // 血統行をスキップし、その次の行を馬名とする
+                        const candidateName = lines[i+3]?.trim() || '';
+                        if (candidateName.length > 0) {
+                            // 末尾のBや半角英字（ブリンカー記号）を除去
+                            const cleanedName = candidateName.replace(/[BＡ-ＺA-Z]+$/, '').trim();
+                            if (/^[ァ-ヶー\u3040-\u309F\u4E00-\u9FAF\sA-Za-z]+$/.test(cleanedName) && cleanedName.length >= 2) {
+                                horse.name = cleanedName;
+                                foundName = true;
+                                i += 3;
+                                continue;
+                            }
+                        }
+                    }
+                }
+                
+                // 通常の馬名抽出ロジック
+                const startsWithMark = marks.some(mark => line.startsWith(mark));
+                const bloodlineNames = ['ロードカナロア', 'エアルーティーン', 'ハービンジャー', 'ドゥラメンテ', 'モアザンセイクリッド', 'More Than Ready', 'レネットグルーヴ', 'キングカメハメハ'];
+                const isBloodline = bloodlineNames.some(bloodline => line.includes(bloodline));
+                const isTrainer = line.includes('栗東') || line.includes('美浦');
+                const isRestInfo = line.includes('先中') || line.includes('差中') || line.includes('週');
+                const isWeightInfo = line.includes('kg');
+                const isOddsInfo = line.includes('人気');
+                const isAgeInfo = line.includes('牡') || line.includes('牝') || line.includes('セ');
+                const isFrameNumber = /^\d+\s+\d+\s*$/.test(line);
+                const isCancelMark = line.includes('消');
+                const isParentheses = /^\(.*\)$/.test(line);
+                const isDate = /\d{4}\.\d{2}\.\d{2}/.test(line);
+                const isLastRaceInfo = line.includes('芝') && line.match(/\d+:\d+\.\d+/);
+                
+                if (!startsWithMark && !isBloodline && !isTrainer && !isRestInfo && !isWeightInfo && !isOddsInfo && !isAgeInfo && !isFrameNumber && !isCancelMark && !isParentheses && !isDate && !isLastRaceInfo) {
+                    // 末尾のBや半角英字（ブリンカー記号）を除去
+                    const cleanedLine = line.replace(/[BＡ-ＺA-Z]+$/, '').trim();
+                    if (/^[ァ-ヶー\u3040-\u309F\u4E00-\u9FAF\sA-Za-z]+$/.test(cleanedLine) && cleanedLine.length >= 2) {
+                        horse.name = cleanedLine;
+                        foundName = true;
+                    }
+                }
+            }
+            
+            // オッズと人気の抽出
+            if (!foundOdds && line.includes('人気')) {
+                const oddsMatch = line.match(/(\d+\.?\d*)\s*\((\d+)人気\)/);
+                if (oddsMatch) {
+                    horse.odds = parseFloat(oddsMatch[1]);
+                    horse.popularity = parseInt(oddsMatch[2]);
+                    foundOdds = true;
+                    ////console.log('オッズ抽出:', horse.odds, '人気:', horse.popularity);
+                }
+            }
+            
+            // 馬体重変化の抽出
+            if (!foundWeight && line.includes('kg') && line.includes('(') && line.includes(')')) {
+                const weightMatch = line.match(/(\d+)kg\(([+-]?\d+)\)/);
+                if (weightMatch) {
+                    horse.weightChange = parseInt(weightMatch[2]);
+                    foundWeight = true;
+                    ////console.log('体重変化抽出:', horse.weightChange);
+                }
+            }
+            
+            // 年齢の抽出
+            if (!foundAge && (line.includes('牡') || line.includes('牝') || line.includes('セ'))) {
+                const ageMatch = line.match(/(牡|牝|セ)(\d+)/);
+                if (ageMatch) {
+                    horse.age = parseInt(ageMatch[2]);
+                    foundAge = true;
+                    ////console.log('年齢抽出:', horse.age);
+                    // 年齢行の直後の空行＋1行目が現騎手名
+                    let j = i + 1;
+                    // 空行をスキップ
+                    while (j < lines.length && lines[j].trim() === '') j++;
+                    if (j < lines.length) {
+                        const candidateJockey = lines[j].trim();
+                        // ひらがな・カタカナ・漢字・英字を含む2文字以上
+                        if (/^[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF\w\.・]+$/.test(candidateJockey) && candidateJockey.length >= 2) {
+                            horse.jockey = candidateJockey;
+                            foundJockey = true;
+                            console.log('現騎手（年齢行直後）抽出:', candidateJockey);
+                        } else {
+                            console.log('現騎手（年齢行直後）抽出失敗:', candidateJockey);
+                        }
+                    }
+                }
+            }
+            
+            // 騎手名の抽出（補助: knownJockeysリスト）
+            if (!foundJockey && line.length > 0) {
+                const knownJockeys = ['横山和', '横山武', '菱田裕', '武豊', '川田将雅', 'C.ルメール', '戸崎圭太', '福永祐一', '横山和生'];
+                for (const jockey of knownJockeys) {
+                    if (line.includes(jockey)) {
+                        horse.jockey = jockey;
+                        foundJockey = true;
+                        console.log('現騎手（knownJockeys補助）抽出:', jockey);
+                        break;
+                    }
+                }
+            }
+            
+            // 前走情報の抽出（最初の前走のみ）
+            if (!foundLastRace && line.match(/\d{4}\.\d{2}\.\d{2}/)) {
+                const lastRaceData = DataConverter.parseNetkeibaLastRace(lines, i);
+                if (lastRaceData) {
+                    Object.assign(horse, lastRaceData);
+                    // 着順をlastRaceOrderからlastRaceにもコピー（予測エンジン互換のため）
+                    if (lastRaceData.lastRaceOrder !== undefined) {
+                        horse.lastRaceOrder = lastRaceData.lastRaceOrder;
+                        horse.lastRace = lastRaceData.lastRaceOrder;
+                        console.log('馬データに着順セット:', horse.name, horse.lastRaceOrder);
+                    } else {
+                        console.log('馬データに着順セット失敗:', horse.name, lastRaceData);
+                    }
+                    foundLastRace = true;
+                    i = lastRaceData.nextIndex - 1;  // -1を追加（whileループのi++で次の行に進むため）
+                    //console.log('前走情報を抽出完了:', horse.lastRaceDate);
+                    continue;
+                }
+            }
+            
+            i++;
+        }
+        
+        horse.nextIndex = i;
+        return horse;
+    }
+    
+    // netkeiba形式の前走情報を解析
+    static parseNetkeibaLastRace(lines, startIndex) {
+        const lastRace = {};
+        let i = startIndex;
+        let raceCompleted = false;
+        
+        while (i < lines.length && i < startIndex + 20 && !raceCompleted) {
+            const line = lines[i].trim();
+            
+            // 前走日付とコースの抽出（例: "2025.04.06 阪神1"）
+            if (!lastRace.lastRaceDate) {
+                const dateMatch = line.match(/(\d{4})\.(\d{2})\.(\d{2})/);
+                if (dateMatch) {
+                    lastRace.lastRaceDate = `${dateMatch[1]}-${dateMatch[2]}-${dateMatch[3]}`;
+                    // コース名＋着順の抽出（例: "阪神7" → 7着）
+                    const placeMatch = line.match(/([阪神京都中山東京大井新潟福島中京小倉札幌函館メイダン]+)(\d{1,2})$/);
+                    if (placeMatch) {
+                        lastRace.lastRaceOrder = parseInt(placeMatch[2]);
+                        console.log('前走着順抽出:', line, '→', lastRace.lastRaceOrder);
+                    } else {
+                        console.log('前走着順抽出失敗:', line);
+                    }
+
+                    // コースの抽出
+                    const courses = ['中山', '東京', '京都', '阪神', '新潟', '福島', '中京', '小倉', '札幌', 'メイダン'];
+                    for (const course of courses) {
+                        if (line.includes(course)) {
+                            lastRace.lastRaceCourse = course;
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            // 前走タイム、距離、馬場種別、馬場状態の抽出（例: "芝2000 1:56.2 良"）
+            if (!lastRace.lastRaceTime && line.includes('芝') && line.match(/\d+:\d+\.\d+/)) {
+                const timeMatch = line.match(/(\d+):(\d+\.\d+)/);
+                if (timeMatch) {
+                    lastRace.lastRaceTime = `${timeMatch[1]}:${timeMatch[2]}`;
+                    //console.log('前走タイム抽出:', lastRace.lastRaceTime);
+                }
+                
+                // 距離と馬場種別の抽出
+                const trackTypeMatch = line.match(/(芝|ダ)(\d+)/);
+                if (trackTypeMatch) {
+                    lastRace.lastRaceTrackType = trackTypeMatch[1];
+                    lastRace.lastRaceDistance = parseInt(trackTypeMatch[2]);
+                    //console.log('前走馬場種別抽出:', lastRace.lastRaceTrackType);
+                    //console.log('前走距離抽出:', lastRace.lastRaceDistance);
+                }
+                
+                // 馬場状態の抽出
+                if (line.includes('良')) lastRace.lastRaceTrackCondition = '良';
+                else if (line.includes('稍')) lastRace.lastRaceTrackCondition = '稍重';
+                else if (line.includes('重')) lastRace.lastRaceTrackCondition = '重';
+                else if (line.includes('不')) lastRace.lastRaceTrackCondition = '不良';
+                
+                if (lastRace.lastRaceTrackCondition) {
+                    //console.log('前走馬場状態抽出:', lastRace.lastRaceTrackCondition);
+                }
+            }
+            
+            // 前走馬数・馬番・人気・騎手・斤量の抽出（例: "15頭 5番 2人 横山和生 58.0"）
+            if (!lastRace.lastRaceHorseCount && line.includes('頭') && line.includes('番') && line.includes('人')) {
+                const orderMatch = line.match(/(\d+)頭\s+(\d+)番\s+(\d+)人/);
+                if (orderMatch) {
+                    lastRace.lastRaceHorseCount = parseInt(orderMatch[1]);
+                    lastRace.lastRacePopularity = parseInt(orderMatch[3]);
+                    //console.log('前走馬数抽出:', lastRace.lastRaceHorseCount, '頭');
+                    //console.log('前走人気抽出:', lastRace.lastRacePopularity, '番人気');
+                }
+                
+                // 前走騎手と斤量の抽出
+                if (!lastRace.lastRaceJockey && line.includes('頭') && line.includes('番') && line.includes('人')) {
+                    const jockeyWeightMatch = line.match(/(\d+)頭\s+(\d+)番\s+(\d+)人\s+([^\s]+)\s+(\d+\.?\d*)/);
+                    if (jockeyWeightMatch) {
+                        lastRace.lastRaceJockey = jockeyWeightMatch[4];
+                        lastRace.lastRaceWeight = parseFloat(jockeyWeightMatch[5]);
+                        console.log('前走騎手抽出:', line, '→', lastRace.lastRaceJockey);
+                    } else {
+                        console.log('前走騎手抽出失敗:', line);
+                    }
+                }
+            }
+            
+            // 前走情報が揃ったら完了フラグを立てる
+            if (lastRace.lastRaceTime && lastRace.lastRaceDistance && lastRace.lastRaceTrackCondition && lastRace.lastRaceJockey) {
+                raceCompleted = true;
+                ////console.log('前走情報抽出完了');
+                break;
+            }
+            
+            // 次の馬の開始を検出したら即座に終了
+            if (DataConverter.isNetkeibaHorseStart(line)) {
+                ////console.log('次の馬の開始を検出、前走解析終了');
+                break;
+            }
+            
+            // 休養情報で終了
+            if (line.includes('休養') || line.includes('以下') || line.includes('鉄砲') || line.includes('走目')) {
+                ////console.log('休養情報検出、前走解析終了');
+                break;
+            }
+            
+            i++;
+        }
+        
+        lastRace.nextIndex = i;
+        
+        // 最終的な前走情報をデバッグ出力
+        ////console.log('=== 最終的な前走情報 ===');
+        ////console.log('前走日付:', lastRace.lastRaceDate);
+        ////console.log('前走コース:', lastRace.lastRaceCourse);
+        ////console.log('前走タイム:', lastRace.lastRaceTime);
+        ////console.log('前走距離:', lastRace.lastRaceDistance);
+        ////console.log('前走馬場種別:', lastRace.lastRaceTrackType);
+        ////console.log('前走馬場状態:', lastRace.lastRaceTrackCondition);
+        ////console.log('前走騎手:', lastRace.lastRaceJockey);
+        ////console.log('前走人気:', lastRace.lastRacePopularity);
+        ////console.log('前走馬数:', lastRace.lastRaceHorseCount);
+        ////console.log('前走斤量:', lastRace.lastRaceWeight);
+        ////console.log('=======================');
+        
+        return lastRace;
+    }
+    
+    // netkeiba形式のレース基本情報を抽出
+    static extractNetkeibaRaceInfo(lines) {
+        const raceInfo = {
+            name: '',
+            date: '',
+            course: '',
+            distance: '',
+            trackType: '',
+            trackCondition: ''
+        };
         
         for (let i = 0; i < Math.min(100, lines.length); i++) {
             const line = lines[i].trim();
             
-            // レース名の抽出（GⅠ、GⅡ、GⅢ、OP、1600m等のパターン）
-            if (!raceName && (line.includes('GⅠ') || line.includes('GⅡ') || line.includes('GⅢ') || 
-                             line.includes('OP') || line.includes('1600') || line.includes('2000') || 
-                             line.includes('2400') || line.includes('3200'))) {
-                raceName = line;
-                console.log(`レース名設定: ${raceName}`);
-            }
-            
-            // 開催日の抽出（YYYY年MM月DD日のパターン）
-            if (!raceDate && /\d{4}年\d{1,2}月\d{1,2}日/.test(line)) {
-                const dateMatch = line.match(/(\d{4})年(\d{1,2})月(\d{1,2})日/);
-                if (dateMatch) {
-                    const year = dateMatch[1];
-                    const month = dateMatch[2].padStart(2, '0');
-                    const day = dateMatch[3].padStart(2, '0');
-                    raceDate = `${year}-${month}-${day}`;
-                    console.log(`開催日設定: ${raceDate}`);
+            // レース名の抽出（例: "大阪杯 GI"）
+            if (!raceInfo.name && (line.includes('GI') || line.includes('GII') || line.includes('GIII'))) {
+                // 前走情報のレース名を除外するため、日付の前にあるレース名を探す
+                const nextLines = lines.slice(i, i + 5);
+                const hasDate = nextLines.some(nextLine => nextLine.match(/\d{4}\.\d{2}\.\d{2}/));
+                if (!hasDate) {
+                    raceInfo.name = line;
+                    ////console.log('レース名抽出:', raceInfo.name);
                 }
             }
             
-            // コースの抽出
-            if (!course) {
+            // 開催日の抽出（例: "2025.04.06 阪神1"）
+            if (!raceInfo.date && line.match(/\d{4}\.\d{2}\.\d{2}/)) {
+                const dateMatch = line.match(/(\d{4})\.(\d{2})\.(\d{2})/);
+                if (dateMatch) {
+                    raceInfo.date = `${dateMatch[1]}-${dateMatch[2]}-${dateMatch[3]}`;
+                    ////console.log('開催日抽出:', raceInfo.date);
+                }
+            }
+            
+            // コースの抽出（例: "2025.04.06 阪神1"）
+            if (!raceInfo.course && line.match(/\d{4}\.\d{2}\.\d{2}/)) {
                 const courses = ['中山', '東京', '京都', '阪神', '新潟', '福島', '中京', '小倉'];
-                for (const courseName of courses) {
-                    if (line.includes(courseName)) {
-                        course = courseName;
-                        console.log(`コース設定: ${course}`);
+                for (const course of courses) {
+                    if (line.includes(course)) {
+                        raceInfo.course = course;
+                        ////console.log('コース抽出:', raceInfo.course);
                         break;
                     }
                 }
             }
             
-            // 距離の抽出（より詳細なパターン）
-            if (!distance) {
-                // 芝の距離パターン
-                const distanceMatch = line.match(/(\d{3,4})芝/);
+            // 距離と馬場種別の抽出（例: "芝2000 1:56.2 良"）
+            if (!raceInfo.distance && line.includes('芝')) {
+                const distanceMatch = line.match(/芝(\d+)/);
                 if (distanceMatch) {
-                    distance = distanceMatch[1];
-                    trackType = '芝';
-                    console.log(`距離設定: ${distance}m (芝)`);
-                } else {
-                    // ダートの距離パターン
-                    const dirtMatch = line.match(/(\d{3,4})ダート/);
-                    if (dirtMatch) {
-                        distance = dirtMatch[1];
-                        trackType = 'ダート';
-                        console.log(`距離設定: ${distance}m (ダート)`);
-                    } else {
-                        // 単純な距離パターン
-                        const simpleMatch = line.match(/(\d{3,4})m/);
-                        if (simpleMatch) {
-                            distance = simpleMatch[1];
-                            console.log(`距離設定: ${distance}m`);
-                        }
-                    }
+                    raceInfo.distance = distanceMatch[1];
+                    raceInfo.trackType = '芝';
+                    ////console.log('距離抽出:', raceInfo.distance, '馬場種別:', raceInfo.trackType);
                 }
             }
             
-            // 馬場種別の抽出（距離と一緒に抽出されていない場合）
-            if (!trackType && (line.includes('芝') || line.includes('ダート'))) {
-                if (line.includes('芝')) {
-                    trackType = '芝';
-                    console.log(`馬場種別設定: 芝`);
-                } else if (line.includes('ダート')) {
-                    trackType = 'ダート';
-                    console.log(`馬場種別設定: ダート`);
-                }
-            }
-            
-            // 馬場状態の抽出
-            if (!trackCondition && (line.includes('良') || line.includes('稍重') || 
-                                   line.includes('重') || line.includes('不良'))) {
-                if (line.includes('良')) {
-                    trackCondition = '良';
-                    console.log(`馬場状態設定: 良`);
-                } else if (line.includes('稍重')) {
-                    trackCondition = '稍重';
-                    console.log(`馬場状態設定: 稍重`);
-                } else if (line.includes('重')) {
-                    trackCondition = '重';
-                    console.log(`馬場状態設定: 重`);
-                } else if (line.includes('不良')) {
-                    trackCondition = '不良';
-                    console.log(`馬場状態設定: 不良`);
-                }
+            // 馬場状態の抽出（例: "芝2000 1:56.2 良"）
+            if (!raceInfo.trackCondition && (line.includes('良') || line.includes('稍重') || line.includes('重') || line.includes('不良'))) {
+                if (line.includes('良')) raceInfo.trackCondition = '良';
+                else if (line.includes('稍重')) raceInfo.trackCondition = '稍重';
+                else if (line.includes('重')) raceInfo.trackCondition = '重';
+                else if (line.includes('不良')) raceInfo.trackCondition = '不良';
+                ////console.log('馬場状態抽出:', raceInfo.trackCondition);
             }
         }
         
-        const raceInfo = {
-            raceName: raceName,
-            raceDate: raceDate,
-            course: course,
-            distance: distance,
-            trackType: trackType,
-            trackCondition: trackCondition
-        };
-        
-        console.log('レース基本情報抽出結果:', raceInfo);
         return raceInfo;
     }
-    
-    static isNewHorseStart(line) {
-        // 枠番で始まる行を新しい馬の開始として検出
-        return /^枠\d+/.test(line);
-    }
-    
-    static parseHorseData(lines, startIndex) {
-        const horse = {
-            name: '',
-            odds: 10,
-            lastRace: 6,
-            jockey: '',
-            age: 5,
-            weightChange: 0,
-            course: '中山', // 今回のレースのコース（デフォルト）
-            distance: 1600, // 今回のレースの距離（デフォルト）
-            trackType: '芝', // 今回のレースの馬場種別（デフォルト）
-            weather: '晴', // 今回のレースの天気（デフォルト）
-            trackCondition: '良', // 今回のレースの馬場状態（デフォルト）
-            restDays: 14,
-            lastRaceCourse: '', // 前走のコース
-            lastRaceDistance: '', // 前走の距離
-            lastRaceTrackType: '', // 前走の馬場種別
-            lastRaceDate: '' // 前走日
-        };
-        
-        let currentIndex = startIndex;
-        
-        // デバッグ用：現在の行をログ出力
-        console.log(`解析開始: ${lines[currentIndex]}`);
-        
-        // 枠番と馬番をスキップ
-        currentIndex++;
-        
-        // 馬名の抽出（枠番の次の行）
-        if (currentIndex < lines.length) {
-            const nameLine = lines[currentIndex].trim();
-            console.log(`馬名候補: "${nameLine}"`);
-            
-            if (nameLine && !nameLine.includes('kg') && !nameLine.includes('番人気') && 
-                !nameLine.includes('父：') && !nameLine.includes('母：') && 
-                !nameLine.includes('牡') && !nameLine.includes('牝') && 
-                !nameLine.includes('せん') && !nameLine.includes('枠') &&
-                !/^\d+\.\d+$/.test(nameLine) && !/^\d+$/.test(nameLine) &&
-                nameLine.length > 1 && nameLine.length < 30 &&
-                !nameLine.includes('ブリンカー着用')) {
-                
-                // ブリンカー着用を含む場合は除去
-                let horseName = nameLine;
-                if (horseName.includes('ブリンカー着用')) {
-                    horseName = horseName.replace('ブリンカー着用', '').trim();
-                    console.log(`ブリンカー着用を除去: "${horseName}"`);
-                }
-                
-                if (horseName.length > 0) {
-                    horse.name = horseName;
-                    console.log(`馬名設定: ${horse.name}`);
-                }
-            }
-        }
-        currentIndex++;
-        
-        // ブリンカー着用が改行されている場合の対応
-        if (currentIndex < lines.length) {
-            const nextLine = lines[currentIndex].trim();
-            console.log(`次の行候補: "${nextLine}"`);
-            
-            // ブリンカー着用の行の次の行が馬名の可能性
-            if (nextLine && 
-                !nextLine.includes('kg') && 
-                !nextLine.includes('番人気') && 
-                !nextLine.includes('父：') && 
-                !nextLine.includes('母：') && 
-                !nextLine.includes('牡') && 
-                !nextLine.includes('牝') && 
-                !nextLine.includes('せん') && 
-                !nextLine.includes('枠') &&
-                !/^\d+\.\d+$/.test(nextLine) && 
-                !/^\d+$/.test(nextLine) &&
-                nextLine.length > 1 && 
-                nextLine.length < 30 &&
-                !nextLine.includes('ブリンカー着用') &&
-                !nextLine.includes('年') &&
-                !nextLine.includes('月') &&
-                !nextLine.includes('日') &&
-                !nextLine.includes('GⅠ') &&
-                !nextLine.includes('GⅡ') &&
-                !nextLine.includes('GⅢ') &&
-                !nextLine.includes('OP')) {
-                
-                // 前の行がブリンカー着用だった場合
-                const prevLine = lines[currentIndex - 1]?.trim();
-                if (prevLine && prevLine.includes('ブリンカー着用')) {
-                    horse.name = nextLine;
-                    console.log(`✅ 改行された馬名設定: ${horse.name} (ブリンカー着用の次の行)`);
-                    currentIndex++;
-                }
-            }
-        }
-        
-        // オッズの抽出
-        for (let i = currentIndex; i < Math.min(currentIndex + 10, lines.length); i++) {
-            const currentLine = lines[i].trim();
-            console.log(`オッズ候補: "${currentLine}"`);
-            
-            if (/^\d+\.\d+$/.test(currentLine)) {
-                horse.odds = parseFloat(currentLine);
-                console.log(`オッズ設定: ${horse.odds}`);
-                currentIndex = i + 1;
-                break;
-            }
-        }
-        
-        // 馬体重変化の抽出
-        for (let i = currentIndex; i < Math.min(currentIndex + 15, lines.length); i++) {
-            const currentLine = lines[i].trim();
-            console.log(`馬体重候補: "${currentLine}"`);
-            
-            if (currentLine.includes('kg') && (currentLine.includes('+') || currentLine.includes('-'))) {
-                if (currentLine.includes('+')) {
-                    horse.weightChange = 1; // 増加
-                    console.log(`馬体重変化: 増加`);
-                } else if (currentLine.includes('-')) {
-                    horse.weightChange = -1; // 減少
-                    console.log(`馬体重変化: 減少`);
-                }
-                currentIndex = i + 1;
-                break;
-            }
-        }
-        
-        // 年齢の抽出
-        for (let i = currentIndex; i < Math.min(currentIndex + 20, lines.length); i++) {
-            const currentLine = lines[i].trim();
-            console.log(`年齢候補: "${currentLine}"`);
-            
-            if (currentLine.includes('牡') || currentLine.includes('牝') || currentLine.includes('せん')) {
-                const ageMatch = currentLine.match(/(\d+)/);
-                if (ageMatch) {
-                    const age = parseInt(ageMatch[1]);
-                    if (age >= 3 && age <= 8) {
-                        horse.age = age;
-                        console.log(`年齢設定: ${horse.age}`);
-                    }
-                }
-                currentIndex = i + 1;
-                break;
-            }
-        }
-        
-        // 現在の騎手名の抽出（より詳細な条件）
-        for (let i = currentIndex; i < Math.min(currentIndex + 25, lines.length); i++) {
-            const currentLine = lines[i].trim();
-            console.log(`現在の騎手候補: "${currentLine}"`);
-            
-            // 騎手名の条件をより厳密に
-            if (currentLine && 
-                !currentLine.includes('kg') && 
-                !currentLine.includes('年') && 
-                !currentLine.includes('着') && 
-                !currentLine.includes('頭') &&
-                !currentLine.includes('父：') && 
-                !currentLine.includes('母：') &&
-                !currentLine.includes('勝負服') &&
-                !currentLine.includes('(有)') &&
-                !currentLine.includes('(株)') &&
-                !currentLine.includes('(栗東)') &&
-                !currentLine.includes('(美浦)') &&
-                currentLine.length >= 3 && 
-                currentLine.length <= 15 &&
-                !/^\d+$/.test(currentLine) && 
-                !currentLine.includes('(') && 
-                !currentLine.includes(')') &&
-                !currentLine.includes('枠') &&
-                !currentLine.includes('ブリンカー着用')) {
-                
-                // 既知の騎手名かチェック
-                const knownJockeys = ['武豊', '川田将雅', 'C.ルメール', '横山武史', '戸崎圭太', '福永祐一', 
-                                    'M.デムーロ', '横山典弘', '岩田康誠', '池添謙一', '横山和生', 'D.レーン',
-                                    'C.スミヨン', 'W.ビュイック', 'T.マーカンド', 'C.デムーロ', 'J.モレイラ', 
-                                    'R.キング', '松山弘平', '池添学', '高杉吏麒', '菱田裕二'];
-                
-                if (knownJockeys.some(jockey => currentLine.includes(jockey.replace(/[・\.]/g, ''))) ||
-                    currentLine.match(/^[一-龯ぁ-ゖァ-ヶーA-Za-z\.\s]+$/)) {
-                    horse.jockey = currentLine;
-                    console.log(`✅ 現在の騎手設定: ${horse.jockey}`);
-                    currentIndex = i + 1;
-                    break;
-                }
-            }
-        }
-        
-        // 前走着順と前走日の抽出
-        let lastRaceDate = null;
-        let foundJockey = false;
-        let foundWeight = false;
-        let jockeyIndex = -1;
-        let lastRaceIndex = -1;
-        
-        for (let i = currentIndex; i < Math.min(currentIndex + 50, lines.length); i++) {
-            const currentLine = lines[i].trim();
-            console.log(`着順候補: "${currentLine}"`);
-            
-            // 前走日の抽出（日付の後に空白があって馬場種別が続く場合）
-            if (!lastRaceDate && /\d{4}年\d{1,2}月\d{1,2}日/.test(currentLine)) {
-                console.log(`前走日候補: "${currentLine}"`);
-                const dateMatch = currentLine.match(/(\d{4})年(\d{1,2})月(\d{1,2})日/);
-                if (dateMatch) {
-                    const year = dateMatch[1];
-                    const month = dateMatch[2].padStart(2, '0');
-                    const day = dateMatch[3].padStart(2, '0');
-                    lastRaceDate = `${year}-${month}-${day}`;
-                    horse.lastRaceDate = lastRaceDate;
-                    console.log(`✅ 前走日設定: ${lastRaceDate}`);
-                    
-                    // 同じ行に馬場種別がある場合
-                    const afterDate = currentLine.substring(currentLine.indexOf('日') + 1).trim();
-                    console.log(`前走日後の文字列: "${afterDate}"`);
-                    if (afterDate.includes('芝') || afterDate.includes('ダート')) {
-                        if (afterDate.includes('芝')) {
-                            horse.lastRaceTrackType = '芝';
-                            console.log(`✅ 前走馬場設定: 芝 (日付行から)`);
-                        } else if (afterDate.includes('ダート')) {
-                            horse.lastRaceTrackType = 'ダート';
-                            console.log(`✅ 前走馬場設定: ダート (日付行から)`);
-                        }
-                    }
-                }
-            }
-            
-            // 前走のコース抽出
-            if (!horse.lastRaceCourse) {
-                const courses = ['中山', '東京', '京都', '阪神', '新潟', '福島', '中京', '小倉'];
-                for (const courseName of courses) {
-                    if (currentLine.includes(courseName)) {
-                        horse.lastRaceCourse = courseName;
-                        console.log(`✅ 前走コース設定: ${courseName}`);
-                        break;
-                    }
-                }
-            }
-            
-            // 前走着順の抽出
-            if (currentLine.includes('着') && /^\d+着/.test(currentLine)) {
-                const match = currentLine.match(/^(\d+)着/);
-                if (match) {
-                    const finish = parseInt(match[1]);
-                    if (finish <= 10) {
-                        horse.lastRace = finish;
-                    } else {
-                        horse.lastRace = 10; // 10着以下
-                    }
-                    lastRaceIndex = i;
-                    console.log(`✅ 前走着順設定: ${horse.lastRace} (インデックス: ${i})`);
-                }
-            }
-        }
-        
-        // 前走着順が見つかった場合、その後の行から前走騎手を探す
-        if (lastRaceIndex >= 0) {
-            console.log(`=== 前走騎手・距離・馬場検索開始 (着順インデックス: ${lastRaceIndex}) ===`);
-            
-            // 着順の次の行（人気・オッズ）
-            const popularityLine = lines[lastRaceIndex + 1]?.trim();
-            console.log(`人気・オッズ行: "${popularityLine}"`);
-            
-            // 着順の次の次の行（前走騎手 + 斤量）
-            const jockeyWeightLine = lines[lastRaceIndex + 2]?.trim();
-            console.log(`前走騎手・斤量候補行: "${jockeyWeightLine}"`);
-            
-            if (jockeyWeightLine) {
-                // 前走騎手の抽出（斤量の前の部分）
-                const weightMatch = jockeyWeightLine.match(/(.+?)\s+(\d+\.?\d*kg)/);
-                if (weightMatch) {
-                    const jockeyName = weightMatch[1].trim();
-                    const weight = weightMatch[2];
-                    console.log(`前走騎手候補: "${jockeyName}"`);
-                    console.log(`前走斤量候補: "${weight}"`);
-                    
-                    // 騎手名の条件チェック
-                    if (jockeyName && 
-                        !jockeyName.includes('kg') && 
-                        !jockeyName.includes('年') && 
-                        !jockeyName.includes('着') && 
-                        !jockeyName.includes('頭') &&
-                        !jockeyName.includes('父：') && 
-                        !jockeyName.includes('母：') &&
-                        !jockeyName.includes('勝負服') &&
-                        !jockeyName.includes('(有)') &&
-                        !jockeyName.includes('(株)') &&
-                        !jockeyName.includes('(栗東)') &&
-                        !jockeyName.includes('(美浦)') &&
-                        jockeyName.length >= 3 && 
-                        jockeyName.length <= 15 &&
-                        !/^\d+$/.test(jockeyName) && 
-                        !jockeyName.includes('(') && 
-                        !jockeyName.includes(')') &&
-                        !jockeyName.includes('枠') &&
-                        !jockeyName.includes('ブリンカー着用') &&
-                        !jockeyName.includes('年') &&
-                        !jockeyName.includes('月') &&
-                        !jockeyName.includes('日') &&
-                        !jockeyName.includes('GⅠ') &&
-                        !jockeyName.includes('GⅡ') &&
-                        !jockeyName.includes('GⅢ') &&
-                        !jockeyName.includes('OP')) {
-                        
-                        // 既知の騎手名かチェック
-                        const knownJockeys = ['武豊', '川田将雅', 'C.ルメール', '横山武史', '戸崎圭太', '福永祐一', 
-                                            'M.デムーロ', '横山典弘', '岩田康誠', '池添謙一', '横山和生', 'D.レーン',
-                                            'C.スミヨン', 'W.ビュイック', 'T.マーカンド', 'C.デムーロ', 'J.モレイラ', 
-                                            'R.キング', '松山弘平', '池添学', '高杉吏麒', '菱田裕二'];
-                        
-                        if (knownJockeys.some(jockey => jockeyName.includes(jockey.replace(/[・\.]/g, ''))) ||
-                            jockeyName.match(/^[一-龯ぁ-ゖァ-ヶーA-Za-z\.\s]+$/)) {
-                            foundJockey = true;
-                            jockeyIndex = lastRaceIndex + 2;
-                            console.log(`✅ 前走騎手検出: ${jockeyName} (インデックス: ${jockeyIndex})`);
-                        } else {
-                            console.log(`❌ 前走騎手候補を除外: "${jockeyName}"`);
-                        }
-                    }
-                    
-                    // 斤量の設定
-                    if (weight) {
-                        foundWeight = true;
-                        console.log(`✅ 前走斤量検出: ${weight}`);
-                    }
-                } else {
-                    // 斤量が見つからない場合、行全体を騎手候補として扱う
-                    console.log(`前走騎手候補（斤量なし）: "${jockeyWeightLine}"`);
-                    // 既知の騎手名かチェック
-                    const knownJockeys = ['武豊', '川田将雅', 'C.ルメール', '横山武史', '戸崎圭太', '福永祐一', 
-                                        'M.デムーロ', '横山典弘', '岩田康誠', '池添謙一', '横山和生', 'D.レーン',
-                                        'C.スミヨン', 'W.ビュイック', 'T.マーカンド', 'C.デムーロ', 'J.モレイラ', 
-                                        'R.キング', '松山弘平', '池添学', '高杉吏麒', '菱田裕二'];
-                    
-                    if (knownJockeys.some(jockey => jockeyWeightLine.includes(jockey.replace(/[・\.]/g, ''))) ||
-                        jockeyWeightLine.match(/^[一-龯ぁ-ゖァ-ヶーA-Za-z\.\s]+$/)) {
-                        foundJockey = true;
-                        jockeyIndex = lastRaceIndex + 2;
-                        console.log(`✅ 前走騎手検出: ${jockeyWeightLine} (インデックス: ${jockeyIndex})`);
-                    } else {
-                        console.log(`❌ 前走騎手候補を除外: "${jockeyWeightLine}"`);
-                    }
-                }
-            }
-            
-            // 着順の次の次の次の行（距離＋馬場）
-            const distanceLine = lines[lastRaceIndex + 3]?.trim();
-            console.log(`前走距離・馬場候補行: "${distanceLine}"`);
-            
-            if (distanceLine) {
-                console.log(`前走距離候補: "${distanceLine}"`);
-                // 距離のパターンを探す（例：2000芝、1600ダート等）
-                const distanceMatch = distanceLine.match(/(\d{3,4})(芝|ダート)/);
-                if (distanceMatch) {
-                    horse.lastRaceDistance = distanceMatch[1];
-                    horse.lastRaceTrackType = distanceMatch[2];
-                    console.log(`✅ 前走距離設定: ${horse.lastRaceDistance}m (${horse.lastRaceTrackType})`);
-                } else {
-                    // 単純な距離パターン（例：1600m）
-                    const simpleDistanceMatch = distanceLine.match(/(\d{3,4})m/);
-                    if (simpleDistanceMatch) {
-                        horse.lastRaceDistance = simpleDistanceMatch[1];
-                        console.log(`✅ 前走距離設定: ${horse.lastRaceDistance}m`);
-                    }
-                }
-                
-                // 馬場種別がまだ設定されていない場合
-                if (!horse.lastRaceTrackType && (distanceLine.includes('芝') || distanceLine.includes('ダート'))) {
-                    console.log(`前走馬場候補: "${distanceLine}"`);
-                    if (distanceLine.includes('芝')) {
-                        horse.lastRaceTrackType = '芝';
-                        console.log(`✅ 前走馬場設定: 芝`);
-                    } else if (distanceLine.includes('ダート')) {
-                        horse.lastRaceTrackType = 'ダート';
-                        console.log(`✅ 前走馬場設定: ダート`);
-                    }
-                }
-            }
-            
-            console.log(`=== 前走騎手・距離・馬場検索終了 ===`);
-        } else {
-            console.log(`❌ 前走着順が見つからないため、騎手・距離・馬場検索をスキップ`);
-        }
-        
-        // 休養期間の計算
-        if (lastRaceDate) {
-            const raceDateElement = document.getElementById('raceDate');
-            if (raceDateElement && raceDateElement.value) {
-                const raceDate = new Date(raceDateElement.value);
-                const lastDate = new Date(lastRaceDate);
-                const diffTime = Math.abs(raceDate - lastDate);
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                horse.restDays = diffDays;
-                console.log(`休養期間計算: ${diffDays}日`);
-                
-                // 休養期間をカテゴリに分類
-                let restCategory = 14; // デフォルト
-                if (diffDays <= 7) {
-                    restCategory = 7;
-                } else if (diffDays <= 14) {
-                    restCategory = 14;
-                } else if (diffDays <= 21) {
-                    restCategory = 21;
-                } else if (diffDays <= 28) {
-                    restCategory = 28;
-                } else if (diffDays <= 35) {
-                    restCategory = 35;
-                } else if (diffDays <= 42) {
-                    restCategory = 42;
-                } else if (diffDays <= 49) {
-                    restCategory = 49;
-                } else {
-                    restCategory = 56;
-                }
-                horse.restDays = restCategory;
-                console.log(`休養期間カテゴリ: ${restCategory}`);
-            }
-        }
-        
-        console.log(`解析結果:`, horse);
-        horse.nextIndex = currentIndex;
-        return horse;
-    }
-    
-    static parseStructuredHorseData(csvData) {
-        const lines = csvData.split('\n').filter(line => line.trim());
-        const horses = [];
-        
-        for (const line of lines) {
-            const parts = line.split(',').map(part => part.trim());
-            if (parts.length >= 4) {
-                const horse = {
-                    name: parts[0] || '名前未入力',
-                    odds: parseFloat(parts[1]) || 10,
-                    lastRace: parseInt(parts[2]) || 6,
-                    jockey: parts[3] || '騎手未入力',
-                    age: parseInt(parts[4]) || 5,
-                    weightChange: parseInt(parts[5]) || 0,
-                    course: parts[6] || '中山',
-                    distance: parseInt(parts[7]) || 1600,
-                    trackType: parts[8] || '芝',
-                    weather: parts[9] || '晴',
-                    trackCondition: parts[10] || '良',
-                    restDays: parseInt(parts[11]) || 14
-                };
-                horses.push(horse);
-            }
-        }
-        
-        return horses;
-    }
-    
-    static convertToCSV(horses) {
-        return horses.map(horse => 
-            `${horse.name},${horse.odds},${horse.lastRace},${horse.jockey},${horse.age},${horse.weightChange},${horse.course},${horse.distance},${horse.trackType},${horse.weather},${horse.trackCondition},${horse.restDays}`
-        ).join('\n');
-    }
 
-    static updateRaceInfoUI(raceInfo) {
-        if (!raceInfo) return;
+    // 既存のメソッドは保持（後方互換性のため）
+    static convertRawData() {
+        ////console.log('=== convertRawDataメソッド開始 ===');
         
-        const raceNameElement = document.getElementById('raceName');
-        const raceDateElement = document.getElementById('raceDate');
-        const raceCourseElement = document.getElementById('raceCourse');
-        const raceDistanceElement = document.getElementById('raceDistance');
-        const raceTrackTypeElement = document.getElementById('raceTrackType');
-        const raceTrackConditionElement = document.getElementById('raceTrackCondition');
-        
-        if (raceInfo.raceName && raceNameElement) {
-            raceNameElement.value = raceInfo.raceName;
-        }
-        if (raceInfo.raceDate && raceDateElement) {
-            raceDateElement.value = raceInfo.raceDate;
-        }
-        if (raceInfo.course && raceCourseElement) {
-            raceCourseElement.value = raceInfo.course;
-        }
-        if (raceInfo.distance && raceDistanceElement) {
-            raceDistanceElement.value = raceInfo.distance;
-        }
-        if (raceInfo.trackType && raceTrackTypeElement) {
-            raceTrackTypeElement.value = raceInfo.trackType;
-        }
-        if (raceInfo.trackCondition && raceTrackConditionElement) {
-            raceTrackConditionElement.value = raceInfo.trackCondition;
-        }
-    }
-    
-    static applyRaceInfoToAllHorses() {
-        const raceDateElement = document.getElementById('raceDate');
-        const raceCourseElement = document.getElementById('raceCourse');
-        const raceDistanceElement = document.getElementById('raceDistance');
-        const raceTrackTypeElement = document.getElementById('raceTrackType');
-        const raceTrackConditionElement = document.getElementById('raceTrackCondition');
-        
-        if (!raceDateElement || !raceCourseElement || !raceDistanceElement || !raceTrackTypeElement || !raceTrackConditionElement) {
-            showMessage('レース基本情報の入力フィールドが見つかりません', 'error');
-            return;
-        }
-        
-        const raceDate = raceDateElement.value;
-        const raceCourse = raceCourseElement.value;
-        const raceDistance = raceDistanceElement.value;
-        const raceTrackType = raceTrackTypeElement.value;
-        const raceTrackCondition = raceTrackConditionElement.value;
-        
-        const horseCards = document.querySelectorAll('.horse-card');
-        if (horseCards.length === 0) {
-            showMessage('馬データが入力されていません', 'warning');
-            return;
-        }
-        
-        horseCards.forEach(card => {
-            const courseSelect = card.querySelector('select[name="course"]');
-            const distanceSelect = card.querySelector('select[name="distance"]');
-            const trackTypeSelect = card.querySelector('select[name="trackType"]');
-            const trackConditionSelect = card.querySelector('select[name="trackCondition"]');
-            
-            if (courseSelect) courseSelect.value = raceCourse;
-            if (distanceSelect) distanceSelect.value = raceDistance;
-            if (trackTypeSelect) trackTypeSelect.value = raceTrackType;
-            if (trackConditionSelect) trackConditionSelect.value = raceTrackCondition;
-        });
-        
-        // 開催日が設定されている場合、休養期間を再計算
-        if (raceDate) {
-            // 前走日が設定されている馬のみ休養期間を再計算
-            const horseCards = document.querySelectorAll('.horse-card');
-            let recalculatedCount = 0;
-            
-            horseCards.forEach(card => {
-                const lastRaceDateInput = card.querySelector('input[name="lastRaceDate"]');
-                if (lastRaceDateInput && lastRaceDateInput.value) {
-                    recalculatedCount++;
-                }
-            });
-            
-            if (recalculatedCount > 0) {
-                DataConverter.recalculateRestDays(raceDate);
-                console.log(`${recalculatedCount}頭の馬の休養期間を再計算しました`);
-            }
-        }
-        
-        // 成功メッセージを表示
-        const message = `レース基本情報を${horseCards.length}頭の馬に適用しました`;
-        showMessage(message, 'success');
-    }
-    
-    static recalculateRestDays(raceDateParam) {
-        const horseCards = document.querySelectorAll('.horse-card');
-        horseCards.forEach(card => {
-            const lastRaceDateInput = card.querySelector('input[name="lastRaceDate"]');
-            const restDaysSelect = card.querySelector('select[name="restDays"]');
-            
-            if (lastRaceDateInput && lastRaceDateInput.value && restDaysSelect) {
-                const lastRaceDate = lastRaceDateInput.value;
-                const raceDate = new Date(raceDateParam);
-                const lastDate = new Date(lastRaceDate);
-                const diffTime = Math.abs(raceDate - lastDate);
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                
-                // 休養期間をカテゴリに分類
-                let restCategory = 14; // デフォルト
-                if (diffDays <= 7) {
-                    restCategory = 7;
-                } else if (diffDays <= 14) {
-                    restCategory = 14;
-                } else if (diffDays <= 21) {
-                    restCategory = 21;
-                } else if (diffDays <= 28) {
-                    restCategory = 28;
-                } else if (diffDays <= 35) {
-                    restCategory = 35;
-                } else if (diffDays <= 42) {
-                    restCategory = 42;
-                } else if (diffDays <= 49) {
-                    restCategory = 49;
-                } else {
-                    restCategory = 56;
-                }
-                
-                restDaysSelect.value = restCategory;
-                console.log(`休養期間再計算: ${diffDays}日 → カテゴリ${restCategory}`);
-            }
-        });
-    }
-
-    static bulkInput() {
-        const rawDataInput = document.getElementById('rawDataInput');
-        if (!rawDataInput) {
-            showMessage('データ入力エリアが見つかりません', 'error');
-            return;
-        }
-        
-        const rawData = rawDataInput.value.trim();
-        if (!rawData) {
-            showMessage('データを入力してください', 'error');
-            return;
-        }
-
         try {
-            // 生データかCSVデータかを判定
-            const isRawData = rawData.includes('枠') || rawData.includes('番人気') || 
-                             rawData.includes('kg') || rawData.includes('着');
+            ////console.log('convertRawDataメソッドが呼び出されました');
             
-            let horses = [];
-            let raceInfo = null;
+            const rawData = document.getElementById('rawDataInput').value;
+            ////console.log('convertRawData - 入力データ:', rawData);
             
-            if (isRawData) {
-                // 生データの場合
-                const result = DataConverter.convertRawData(rawData);
-                horses = result.horses;
-                raceInfo = result.raceInfo;
-            } else {
-                // CSVデータの場合
-                horses = DataConverter.parseStructuredHorseData(rawData);
-                // CSVデータの場合は現在のレース基本情報を使用
-                raceInfo = {
-                    raceName: document.getElementById('raceName')?.value || '',
-                    distance: document.getElementById('raceDistance')?.value || '1600',
-                    trackType: document.getElementById('raceTrackType')?.value || '芝',
-                    trackCondition: document.getElementById('raceTrackCondition')?.value || '良'
-                };
-            }
-
-            if (horses.length === 0) {
-                showMessage('有効な馬データが見つかりませんでした。データ形式を確認してください。', 'error');
+            if (!rawData.trim()) {
+                ////console.log('convertRawData - データが空です');
+                showMessage('生データを入力してください', 'error');
                 return;
             }
 
-            // 既存の馬データをクリア
-            const container = document.getElementById('horsesContainer');
-            if (container) {
-                container.innerHTML = '';
+            ////console.log('convertRawData - netkeiba形式判定開始');
+            // netkeiba形式かどうかを判定
+            let isNetkeiba = false;
+            try {
+                isNetkeiba = DataConverter.isNetkeibaFormat(rawData);
+                ////console.log('convertRawData - 形式判定結果:', isNetkeiba);
+            } catch (formatError) {
+                console.error('形式判定エラー:', formatError);
+                isNetkeiba = false;
             }
-
-            // 新しい馬データを追加
+            
+            if (isNetkeiba) {
+                ////console.log('convertRawData - netkeiba形式として処理');
+                try {
+                    const { raceInfo, horses } = DataConverter.parseNetkeibaData(rawData);
+                    ////console.log('convertRawData - 解析結果:', { raceInfo, horses });
+                    DataConverter.processConvertedData(raceInfo, horses);
+                } catch (parseError) {
+                    console.error('netkeiba解析エラー:', parseError);
+                    showMessage('netkeibaデータの解析中にエラーが発生しました: ' + parseError.message, 'error');
+                }
+            } else {
+                ////console.log('convertRawData - 既存形式として処理');
+                // 既存の形式で処理（簡略化）
+                const raceInfo = { name: '', date: '', course: '', distance: '', trackType: '', trackCondition: '' };
+                const horses = [];
+                DataConverter.processConvertedData(raceInfo, horses);
+            }
+        } catch (error) {
+            console.error('convertRawDataメソッド内エラー:', error);
+            console.error('エラースタック:', error.stack);
+            showMessage('データ変換中にエラーが発生しました: ' + error.message, 'error');
+        }
+        
+        ////console.log('=== convertRawDataメソッド終了 ===');
+    }
+    
+    // netkeiba形式かどうかを判定
+    static isNetkeibaFormat(rawData) {
+        const lines = rawData.split('\n');
+        // netkeiba形式の特徴: 枠番・馬番で始まる行がある
+        return lines.some(line => /^\d+\s+\d+\s*$/.test(line.trim()));
+    }
+    
+    // 変換されたデータを処理
+    static processConvertedData(raceInfo, horses) {
+        if (horses.length > 0) {
+            // レース基本情報をUIに反映
+            DataConverter.updateRaceInfoUI(raceInfo);
+            
+            // 馬データを追加
             horses.forEach(horse => {
                 HorseManager.addHorseFromData(horse);
             });
+            
+            showMessage(`${horses.length}頭のデータを変換しました！`, 'info');
+            document.getElementById('rawDataInput').value = '';
+        } else {
+            showMessage('データの変換に失敗しました。形式を確認してください。', 'error');
+        }
+    }
 
-            // レース基本情報を全馬に適用
-            if (raceInfo) {
-                DataConverter.updateRaceInfoUI(raceInfo);
-                // レース基本情報の適用は少し遅延させて、馬カードが完全に生成されてから実行
-                setTimeout(() => {
-                    DataConverter.applyRaceInfoToAllHorses();
-                }, 100);
+    static extractRaceInfo(lines) {
+        return { name: '', date: '', course: '', distance: '', trackType: '', trackCondition: '' };
+    }
+    
+    static isNewHorseStart(line) {
+        return false;
+    }
+    
+    static parseHorseData(lines, startIndex) {
+        return { nextIndex: startIndex };
+    }
+    
+    static parseStructuredHorseData(csvData) {
+        return [];
+    }
+    
+    static convertToCSV(horses) {
+        return '';
+    }
+    
+    static updateRaceInfoUI(raceInfo) {
+        if (raceInfo.name) document.getElementById('raceName').value = raceInfo.name;
+        if (raceInfo.date) document.getElementById('raceDate').value = raceInfo.date;
+        if (raceInfo.course) document.getElementById('raceCourse').value = raceInfo.course;
+        if (raceInfo.distance) document.getElementById('raceDistance').value = raceInfo.distance;
+        if (raceInfo.trackType) document.getElementById('raceTrackType').value = raceInfo.trackType;
+        if (raceInfo.trackCondition) document.getElementById('raceTrackCondition').value = raceInfo.trackCondition;
+    }
+    
+    static applyRaceInfoToAllHorses() {
+        const raceName = document.getElementById('raceName').value;
+        const raceDate = document.getElementById('raceDate').value;
+        const raceCourse = document.getElementById('raceCourse').value;
+        const raceDistance = document.getElementById('raceDistance').value;
+        const raceTrackType = document.getElementById('raceTrackType').value;
+        const raceTrackCondition = document.getElementById('raceTrackCondition').value;
+        
+        ////console.log('=== レース基本情報を全馬に適用 ===');
+        ////console.log('レース名:', raceName);
+        ////console.log('レース日:', raceDate);
+        ////console.log('コース:', raceCourse);
+        ////console.log('距離:', raceDistance);
+        ////console.log('馬場種別:', raceTrackType);
+        ////console.log('馬場状態:', raceTrackCondition);
+        
+        // 全馬のUIを更新
+        const horseCards = document.querySelectorAll('.horse-card');
+        horseCards.forEach((card, index) => {
+            ////console.log(`馬${index + 1}のUIを更新中...`);
+            
+            // コースの更新
+            if (raceCourse) {
+                const courseSelect = card.querySelector('select[name="course"]');
+                if (courseSelect) {
+                    courseSelect.value = raceCourse;
+                    ////console.log(`馬${index + 1}のコースを${raceCourse}に更新`);
+                }
             }
-
-            const message = `${horses.length}頭の馬データを追加しました`;
-            showMessage(message, 'success');
-            rawDataInput.value = '';
-
+            
+            // 距離の更新
+            if (raceDistance) {
+                const distanceSelect = card.querySelector('select[name="distance"]');
+                if (distanceSelect) {
+                    distanceSelect.value = raceDistance;
+                    ////console.log(`馬${index + 1}の距離を${raceDistance}mに更新`);
+                }
+            }
+            
+            // 馬場種別の更新
+            if (raceTrackType) {
+                const trackTypeSelect = card.querySelector('select[name="trackType"]');
+                if (trackTypeSelect) {
+                    trackTypeSelect.value = raceTrackType;
+                    ////console.log(`馬${index + 1}の馬場種別を${raceTrackType}に更新`);
+                }
+            }
+            
+            // 馬場状態の更新
+            if (raceTrackCondition) {
+                const trackConditionSelect = card.querySelector('select[name="trackCondition"]');
+                if (trackConditionSelect) {
+                    trackConditionSelect.value = raceTrackCondition;
+                    ////console.log(`馬${index + 1}の馬場状態を${raceTrackCondition}に更新`);
+                }
+            }
+        });
+        
+        ////console.log('=== レース基本情報の適用完了 ===');
+        showMessage('レース基本情報を全馬に適用しました', 'info');
+    }
+    
+    static recalculateRestDays(raceDateParam) {
+        const raceDate = raceDateParam || document.getElementById('raceDate').value;
+        if (!raceDate) {
+            ////console.log('レース日が設定されていません');
+            return;
+        }
+        
+        ////console.log('=== 休養日数の再計算開始 ===');
+        ////console.log('レース日:', raceDate);
+        ////console.log('レース日タイプ:', typeof raceDate);
+        
+        // 全馬のUIを更新
+        const horseCards = document.querySelectorAll('.horse-card');
+        ////console.log('検出された馬の数:', horseCards.length);
+        
+        horseCards.forEach((card, index) => {
+            ////console.log(`\n--- 馬${index + 1}の休養日数を計算中 ---`);
+            
+            // 前走日を取得
+            const lastRaceDateInput = card.querySelector('input[name="lastRaceDate"]');
+            ////console.log('前走日入力要素:', lastRaceDateInput);
+            
+            if (!lastRaceDateInput) {
+                ////console.log(`馬${index + 1}: 前走日入力要素が見つかりません`);
+                return;
+            }
+            
+            if (!lastRaceDateInput.value) {
+                ////console.log(`馬${index + 1}: 前走日が設定されていません`);
+                return;
+            }
+            
+            const lastRaceDate = lastRaceDateInput.value;
+            ////console.log(`馬${index + 1}の前走日:`, lastRaceDate);
+            ////console.log('前走日タイプ:', typeof lastRaceDate);
+            
+            // 休養日数を計算
+            const lastDate = new Date(lastRaceDate);
+            const raceDateObj = new Date(raceDate);
+            
+            ////console.log('前走日オブジェクト:', lastDate);
+            ////console.log('レース日オブジェクト:', raceDateObj);
+            ////console.log('前走日が有効か:', !isNaN(lastDate.getTime()));
+            ////console.log('レース日が有効か:', !isNaN(raceDateObj.getTime()));
+            
+            if (isNaN(lastDate.getTime()) || isNaN(raceDateObj.getTime())) {
+                ////console.log(`馬${index + 1}: 日付の解析に失敗しました`);
+                return;
+            }
+            
+            const diffTime = Math.abs(raceDateObj - lastDate);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            ////console.log(`馬${index + 1}の休養日数:`, diffDays, '日');
+            ////console.log('差分時間（ミリ秒）:', diffTime);
+            
+            // 休養期間カテゴリを決定
+            let restDaysCategory;
+            if (diffDays <= 7) {
+                restDaysCategory = 7;
+            } else if (diffDays <= 14) {
+                restDaysCategory = 14;
+            } else if (diffDays <= 21) {
+                restDaysCategory = 21;
+            } else if (diffDays <= 28) {
+                restDaysCategory = 28;
+            } else if (diffDays <= 35) {
+                restDaysCategory = 35;
+            } else if (diffDays <= 42) {
+                restDaysCategory = 42;
+            } else if (diffDays <= 49) {
+                restDaysCategory = 49;
+            } else {
+                restDaysCategory = 56;
+            }
+            
+            ////console.log(`馬${index + 1}の休養期間カテゴリ:`, restDaysCategory);
+            
+            // UIの休養期間セレクトボックスを更新
+            const restDaysSelect = card.querySelector('select[name="restDays"]');
+            ////console.log('休養期間セレクトボックス:', restDaysSelect);
+            
+            if (restDaysSelect) {
+                ////console.log('更新前の値:', restDaysSelect.value);
+                ////console.log('更新前の選択されたオプション:', restDaysSelect.options[restDaysSelect.selectedIndex]?.text);
+                
+                // 値を設定
+                restDaysSelect.value = restDaysCategory;
+                
+                // 値が正しく設定されたか確認
+                ////console.log('更新後の値:', restDaysSelect.value);
+                ////console.log('更新後の選択されたオプション:', restDaysSelect.options[restDaysSelect.selectedIndex]?.text);
+                
+                // 利用可能なオプションを確認
+                ////console.log('利用可能なオプション:');
+                for (let i = 0; i < restDaysSelect.options.length; i++) {
+                    const option = restDaysSelect.options[i];
+                    ////console.log(`  ${option.value}: ${option.text} ${option.selected ? '(選択中)' : ''}`);
+                }
+                
+                // 値が期待通りに設定されているか確認
+                if (restDaysSelect.value == restDaysCategory) {
+                    ////console.log(`✅ 馬${index + 1}の休養期間を${restDaysCategory}に更新成功 (実際の日数: ${diffDays}日)`);
+                } else {
+                    ////console.log(`❌ 馬${index + 1}の休養期間の更新に失敗: 期待値=${restDaysCategory}, 実際の値=${restDaysSelect.value}`);
+                }
+            } else {
+                ////console.log(`馬${index + 1}: 休養期間セレクトボックスが見つかりません`);
+            }
+        });
+        
+        ////console.log('=== 休養日数の再計算完了 ===');
+        showMessage('休養日数を再計算しました', 'info');
+    }
+    
+    static bulkInput() {
+        ////console.log('bulkInputメソッドが呼び出されました');
+        
+        const rawDataInput = document.getElementById('rawDataInput');
+        ////console.log('rawDataInput要素:', rawDataInput);
+        
+        if (!rawDataInput) {
+            console.error('生データ入力エリアが見つかりません');
+            alert('生データ入力エリアが見つかりません');
+            return;
+        }
+        
+        const rawData = rawDataInput.value;
+        ////console.log('入力されたデータ:', rawData);
+        
+        if (!rawData.trim()) {
+            ////console.log('データが空です');
+            showMessage('生データを入力してください', 'error');
+            return;
+        }
+        
+        try {
+            ////console.log('データ変換機能を呼び出します');
+            // データ変換機能を呼び出し
+            try {
+                DataConverter.convertRawData();
+                ////console.log('データ変換機能の呼び出し完了');
+            } catch (convertError) {
+                console.error('convertRawData呼び出しエラー:', convertError);
+                showMessage('データ変換中にエラーが発生しました: ' + convertError.message, 'error');
+            }
         } catch (error) {
             console.error('一括入力エラー:', error);
-            showMessage(`データの解析中にエラーが発生しました: ${error.message}`, 'error');
+            showMessage('一括入力中にエラーが発生しました。', 'error');
         }
     }
 }
 
 // グローバル関数として公開
 window.loadSampleRawData = DataConverter.loadSampleRawData;
-window.bulkInput = DataConverter.bulkInput; 
+window.DataConverter = DataConverter;

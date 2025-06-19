@@ -6,7 +6,7 @@ class LearningSystem {
     static saveLearningData() {
         try {
             localStorage.setItem('keibaLearningData', JSON.stringify(this.learningData));
-            console.log('学習データを保存しました');
+            //console.log('学習データを保存しました');
         } catch (error) {
             console.error('学習データの保存に失敗しました:', error);
         }
@@ -17,7 +17,7 @@ class LearningSystem {
             const savedData = localStorage.getItem('keibaLearningData');
             if (savedData) {
                 this.learningData = JSON.parse(savedData);
-                console.log('学習データを読み込みました');
+                //console.log('学習データを読み込みました');
             }
         } catch (error) {
             console.error('学習データの読み込みに失敗しました:', error);
