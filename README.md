@@ -1,7 +1,7 @@
 # 🏇 競馬予測アプリ（機械学習対応）
 
 ## 📱 オンライン版（推奨）
-**GitHub Pagesで公開中**: https://[あなたのユーザー名].github.io/[リポジトリ名]/
+**GitHub Pagesで公開中**: https://wwaakkoo.github.io/keiba-prediction-app/
 
 携帯からでもすぐに使えます！
 
