@@ -106,6 +106,7 @@ class HorseManager {
                             <option value="福島">福島</option>
                             <option value="中京">中京</option>
                             <option value="小倉">小倉</option>
+                            <option value="函館">函館</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -115,11 +116,13 @@ class HorseManager {
                             <option value="1200">1200m</option>
                             <option value="1400">1400m</option>
                             <option value="1600" selected>1600m</option>
+                            <option value="1700">1700m</option>
                             <option value="1800">1800m</option>
                             <option value="2000">2000m</option>
                             <option value="2200">2200m</option>
                             <option value="2400">2400m</option>
                             <option value="2500">2500m</option>
+                            <option value="2600">2600m</option>
                             <option value="3000">3000m</option>
                             <option value="3200">3200m</option>
                         </select>
@@ -600,6 +603,7 @@ class HorseManager {
                             <option value="福島" ${horseData.course === '福島' ? 'selected' : ''}>福島</option>
                             <option value="中京" ${horseData.course === '中京' ? 'selected' : ''}>中京</option>
                             <option value="小倉" ${horseData.course === '小倉' ? 'selected' : ''}>小倉</option>
+                            <option value="函館" ${horseData.course === '函館' ? 'selected' : ''}>函館</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -609,11 +613,13 @@ class HorseManager {
                             <option value="1200" ${horseData.distance === 1200 ? 'selected' : ''}>1200m</option>
                             <option value="1400" ${horseData.distance === 1400 ? 'selected' : ''}>1400m</option>
                             <option value="1600" ${horseData.distance === 1600 || !horseData.distance ? 'selected' : ''}>1600m</option>
+                            <option value="1700" ${horseData.distance === 1700 ? 'selected' : ''}>1700m</option>
                             <option value="1800" ${horseData.distance === 1800 ? 'selected' : ''}>1800m</option>
                             <option value="2000" ${horseData.distance === 2000 ? 'selected' : ''}>2000m</option>
                             <option value="2200" ${horseData.distance === 2200 ? 'selected' : ''}>2200m</option>
                             <option value="2400" ${horseData.distance === 2400 ? 'selected' : ''}>2400m</option>
                             <option value="2500" ${horseData.distance === 2500 ? 'selected' : ''}>2500m</option>
+                            <option value="2600" ${horseData.distance === 2600 ? 'selected' : ''}>2600m</option>
                             <option value="3000" ${horseData.distance === 3000 ? 'selected' : ''}>3000m</option>
                             <option value="3200" ${horseData.distance === 3200 ? 'selected' : ''}>3200m</option>
                         </select>
