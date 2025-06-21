@@ -208,7 +208,7 @@ class BettingRecommender {
                 mark: '◎○',
                 type: '本命-対抗',
                 horse: `${wideHorses[0].name}（${getHorseNumber(wideHorses[0].name)}番）- ${wideHorses[1].name}（${getHorseNumber(wideHorses[1].name)}番）`,
-                odds: `推定2-4倍`,
+                odds: this.calculateWideOdds(wideHorses[0], wideHorses[1]),
                 probability: `${Math.round(combinedPlaceProb)}%`,
                 confidence: combinedPlaceProb > 60 ? 'high' : 'medium',
                 amount: '300-600円'
@@ -388,6 +388,40 @@ class BettingRecommender {
             renpukuHitRate: renpukuHits / recent.length,
             currentThresholds: { ...this.learningThresholds }
         };
+    }
+
+    // ワイド倍率計算メソッド
+    static calculateWideOdds(horse1, horse2) {
+        // 各馬の複勝率を取得（パーセンテージから小数に変換）
+        const place1 = Math.min(horse1.placeProbability / 100, 0.9); // 最大90%に制限
+        const place2 = Math.min(horse2.placeProbability / 100, 0.9);
+        
+        // ワイド的中確率 = 1 - (両方とも3着以内に入らない確率)
+        const wideHitProb = 1 - (1 - place1) * (1 - place2);
+        
+        // 控除率25%を考慮した理論倍率
+        const theoreticalOdds = 1 / wideHitProb;
+        const adjustedOdds = theoreticalOdds * 1.25;
+        
+        // 人気度による補正（単勝オッズから人気薄度を判定）
+        const avgOdds = (horse1.odds + horse2.odds) / 2;
+        let popularityFactor = 1.0;
+        
+        if (avgOdds <= 3) {
+            popularityFactor = 0.7; // 人気馬同士は倍率が下がる
+        } else if (avgOdds <= 10) {
+            popularityFactor = 1.0; // 標準
+        } else {
+            popularityFactor = Math.min(2.0, avgOdds / 10); // 人気薄は倍率が上がる
+        }
+        
+        const finalOdds = adjustedOdds * popularityFactor;
+        
+        // 範囲表示（最低1.1倍から）
+        const min = Math.max(1.1, finalOdds * 0.8);
+        const max = finalOdds * 1.2;
+        
+        return `推定${min.toFixed(1)}-${max.toFixed(1)}倍`;
     }
 
     // 初期化時に履歴を読み込み
