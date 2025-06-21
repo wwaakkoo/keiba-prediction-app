@@ -267,7 +267,7 @@ class PredictionEngine {
             // スコアを10-90の範囲に調整
             score = Math.max(10, Math.min(90, score));
 
-            // 勝率計算
+            // 勝率計算（オッズベース + スコア調整）
             let baseWinRate = 0;
             if (horse.odds <= 2) {
                 baseWinRate = 35;
@@ -277,12 +277,21 @@ class PredictionEngine {
                 baseWinRate = 12;
             } else if (horse.odds <= 20) {
                 baseWinRate = 6;
+            } else if (horse.odds <= 50) {
+                baseWinRate = 2;
+            } else if (horse.odds <= 100) {
+                baseWinRate = 1;
             } else {
-                baseWinRate = 3;
+                // 超高オッズ馬：理論値に近づける
+                baseWinRate = Math.max(0.2, 100 / horse.odds);
             }
 
             const scoreAdjustment = (score - 50) * 0.3;
-            const winProbability = Math.max(1, Math.min(40, baseWinRate + scoreAdjustment));
+            let winProbability = baseWinRate + scoreAdjustment;
+            
+            // 最低勝率を理論値に合わせて調整
+            const theoreticalMinRate = Math.max(0.1, 100 / horse.odds * 0.8);
+            winProbability = Math.max(theoreticalMinRate, Math.min(40, winProbability));
 
             // 複勝率計算
             let basePlaceRate = 0;

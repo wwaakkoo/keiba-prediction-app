@@ -1,9 +1,20 @@
 // 買い目推奨機能
 class BettingRecommender {
+    static bettingHistory = [];
+    static learningThresholds = {
+        winProbabilityMin: 8,
+        expectedValueMin: 0.1,
+        mediumOddsMin: 5,
+        mediumOddsMax: 20,
+        placeProbabilityMin: 30
+    };
+
     static generateBettingRecommendations(predictions) {
         const container = document.getElementById('bettingContainer');
-        const recommendations = [];
-
+        
+        // 学習データを取得して閾値を調整
+        this.adjustThresholdsFromLearning();
+        
         // 各種ソート
         const sortedByWinExpected = [...predictions].sort((a, b) => b.winExpectedValue - a.winExpectedValue);
         const sortedByPlaceExpected = [...predictions].sort((a, b) => b.placeExpectedValue - a.placeExpectedValue);
@@ -15,262 +26,200 @@ class BettingRecommender {
             return index !== -1 ? index + 1 : '?';
         }
 
-        // 1. 単勝おすすめ（期待値重視）
-        let selectedWinHorse = null;
-        for (let i = 0; i < sortedByWinExpected.length; i++) {
-            const horse = sortedByWinExpected[i];
-            if (horse.winExpectedValue <= CONFIG.EXPECTED_VALUE_THRESHOLDS.WIN_MIN) break;
-            
-            const isVeryHighRisk = horse.winProbability < 3 && horse.odds > 100;
-            
-            if (!isVeryHighRisk) {
-                selectedWinHorse = horse;
-                break;
-            }
-        }
+        // 印による馬の分類（学習調整済み）
+        const horseMarks = this.classifyHorses(predictions, sortedByWinProbability, sortedByWinExpected);
         
-        if (selectedWinHorse) {
-            const isHighRisk = selectedWinHorse.winProbability < 5 && selectedWinHorse.odds > 50;
-            
-            let confidence = 'medium';
-            let riskLevel = '';
-            
-            if (isHighRisk) {
-                confidence = 'medium';
-                riskLevel = ' ⚠️ハイリスク';
-            } else if (selectedWinHorse.winExpectedValue > 0.5 && selectedWinHorse.winProbability > 10) {
-                confidence = 'high';
-            } else if (selectedWinHorse.winExpectedValue > 0.3 && selectedWinHorse.winProbability > 8) {
-                confidence = 'high';
-            } else {
-                confidence = 'medium';
-            }
-            
-            let recommendedAmount = '';
-            if (isHighRisk) {
-                recommendedAmount = '200-400円（リスク考慮）';
-            } else if (confidence === 'high') {
-                recommendedAmount = '500-1000円';
-            } else {
-                recommendedAmount = '300-500円';
-            }
-            
-            let reason = `勝率${selectedWinHorse.winProbability}%、期待値+${selectedWinHorse.winExpectedValue}`;
-            if (isHighRisk) {
-                reason += '。勝率5%未満のハイリスク大穴狙い';
-            } else if (selectedWinHorse.winProbability > 15) {
-                reason += 'の好条件';
-            } else {
-                reason += '。期待値は良好';
-            }
-            
-            const rank = sortedByWinExpected.indexOf(selectedWinHorse) + 1;
-            if (rank > 1) {
-                reason += `（期待値${rank}位）`;
-            }
-            
-            recommendations.push({
-                type: `🏆 単勝【期待値重視】${riskLevel}`,
-                confidence: confidence,
-                horses: `${selectedWinHorse.name}（${getHorseNumber(selectedWinHorse.name)}番）`,
-                expectedReturn: Math.round(selectedWinHorse.winExpectedValue * 100),
-                probability: selectedWinHorse.winProbability,
-                recommendedAmount: recommendedAmount,
-                reason: reason
-            });
-        }
+        // 買い目推奨の生成
+        const recommendations = this.generateRecommendationsFromMarks(horseMarks, getHorseNumber);
 
-        // 2. 単勝おすすめ（的中率重視）
-        const topWinProbabilityHorse = sortedByWinProbability[0];
-        if (topWinProbabilityHorse && topWinProbabilityHorse.winProbability > 8) {
-            // 期待値重視と同じ馬でない場合のみ追加
-            if (!selectedWinHorse || selectedWinHorse.name !== topWinProbabilityHorse.name) {
-                let confidence = 'medium';
-                if (topWinProbabilityHorse.winProbability > 20) {
-                    confidence = 'high';
-                } else if (topWinProbabilityHorse.winProbability > 12) {
-                    confidence = 'medium';
-                } else {
-                    confidence = 'low';
-                }
+        // グローバル変数に保存（学習時に使用）
+        window.lastBettingRecommendations = recommendations;
 
-                let recommendedAmount = '';
-                if (confidence === 'high') {
-                    recommendedAmount = '400-800円';
-                } else if (confidence === 'medium') {
-                    recommendedAmount = '300-600円';
-                } else {
-                    recommendedAmount = '200-400円';
-                }
-
-                const probRank = sortedByWinProbability.indexOf(topWinProbabilityHorse) + 1;
-                let reason = `勝率${topWinProbabilityHorse.winProbability}%で最も的中しやすい`;
-                if (topWinProbabilityHorse.winExpectedValue > 0) {
-                    reason += `、期待値も+${topWinProbabilityHorse.winExpectedValue}`;
-                } else {
-                    reason += `、期待値は${topWinProbabilityHorse.winExpectedValue}と低め`;
-                }
-
-                recommendations.push({
-                    type: '🎯 単勝【的中率重視】',
-                    confidence: confidence,
-                    horses: `${topWinProbabilityHorse.name}（${getHorseNumber(topWinProbabilityHorse.name)}番）`,
-                    expectedReturn: Math.round(topWinProbabilityHorse.winExpectedValue * 100),
-                    probability: topWinProbabilityHorse.winProbability,
-                    recommendedAmount: recommendedAmount,
-                    reason: reason
-                });
-            }
-        }
-
-        // 3. 複勝おすすめ
-        const topPlaceHorse = sortedByPlaceExpected[0];
-        if (topPlaceHorse && topPlaceHorse.placeExpectedValue > CONFIG.EXPECTED_VALUE_THRESHOLDS.PLACE_MIN) {
-            let confidence = 'low';
-            if (topPlaceHorse.placeExpectedValue > 0.2 && topPlaceHorse.placeProbability > 40) {
-                confidence = 'high';
-            } else if (topPlaceHorse.placeExpectedValue > 0.1 && topPlaceHorse.placeProbability > 25) {
-                confidence = 'medium';
-            }
-
-            recommendations.push({
-                type: '🥉 複勝',
-                confidence: confidence,
-                horses: `${topPlaceHorse.name}（${getHorseNumber(topPlaceHorse.name)}番）`,
-                expectedReturn: Math.round(topPlaceHorse.placeExpectedValue * 100),
-                probability: topPlaceHorse.placeProbability,
-                recommendedAmount: confidence === 'high' ? '300-600円' : confidence === 'medium' ? '200-400円' : '100-300円',
-                reason: `複勝率${topPlaceHorse.placeProbability}%、期待値+${topPlaceHorse.placeExpectedValue}`
-            });
-        }
-
-        // 4. 改良版ワイド推奨（スコア緑から選択）
-        const highConfidenceHorses = predictions.filter(h => h.score >= CONFIG.SCORE_RANGES.HIGH);
-        
-        if (highConfidenceHorses.length >= 2) {
-            const wideCombinations = [];
-            
-            // 高信頼度馬同士の全組み合わせを生成
-            for (let i = 0; i < highConfidenceHorses.length; i++) {
-                for (let j = i + 1; j < highConfidenceHorses.length; j++) {
-                    const horseA = highConfidenceHorses[i];
-                    const horseB = highConfidenceHorses[j];
-                    
-                    // ワイドオッズを推定
-                    const avgOdds = Math.sqrt(horseA.odds * horseB.odds);
-                    const estimatedWideOdds = avgOdds * 0.25; // ワイドオッズ係数
-                    
-                    // 組み合わせの的中確率を推定
-                    const combinedPlaceProb = Math.min(80, 
-                        (horseA.placeProbability + horseB.placeProbability) / 1.8);
-                    
-                    // 期待値計算
-                    const expectedValue = (combinedPlaceProb / 100 * estimatedWideOdds - 1);
-                    
-                    // オッズ条件（1.8倍以上）と期待値条件をクリア
-                    if (estimatedWideOdds >= 1.8 && expectedValue > CONFIG.EXPECTED_VALUE_THRESHOLDS.WIDE_MIN) {
-                        wideCombinations.push({
-                            horseA: horseA,
-                            horseB: horseB,
-                            estimatedOdds: estimatedWideOdds,
-                            probability: combinedPlaceProb,
-                            expectedValue: expectedValue,
-                            scoreSum: horseA.score + horseB.score
-                        });
-                    }
-                }
-            }
-            
-            // 期待値順でソート
-            wideCombinations.sort((a, b) => b.expectedValue - a.expectedValue);
-            
-            // 上位3つまでを推奨
-            const topWideRecommendations = wideCombinations.slice(0, 3);
-            
-            topWideRecommendations.forEach((combo, index) => {
-                let confidence = 'medium';
-                if (combo.expectedValue > 0.15 && combo.probability > 60) {
-                    confidence = 'high';
-                } else if (combo.expectedValue > 0.08 && combo.probability > 45) {
-                    confidence = 'medium';
-                } else {
-                    confidence = 'low';
-                }
-                
-                let recommendedAmount = '';
-                if (confidence === 'high') {
-                    recommendedAmount = '400-800円';
-                } else if (confidence === 'medium') {
-                    recommendedAmount = '200-500円';
-                } else {
-                    recommendedAmount = '100-300円';
-                }
-                
-                const priority = index === 0 ? '【最推奨】' : index === 1 ? '【次点】' : '【参考】';
-                
-                recommendations.push({
-                    type: `🎯 ワイド${priority}`,
-                    confidence: confidence,
-                    horses: `${combo.horseA.name}（${getHorseNumber(combo.horseA.name)}番）- ${combo.horseB.name}（${getHorseNumber(combo.horseB.name)}番）`,
-                    expectedReturn: Math.round(combo.expectedValue * 100),
-                    probability: Math.round(combo.probability),
-                    recommendedAmount: recommendedAmount,
-                    reason: `スコア合計${Math.round(combo.scoreSum)}、推定オッズ${combo.estimatedOdds.toFixed(1)}倍、的中率${Math.round(combo.probability)}%`
-                });
-            });
-        }
-
-        // 5. 従来のワイド（フォールバック用）
-        if (highConfidenceHorses.length < 2) {
-            const sortedByScore = [...predictions].sort((a, b) => b.score - a.score);
-            if (sortedByScore.length >= 2) {
-                const first = sortedByScore[0];
-                const second = sortedByScore[1];
-                
-                if (first.score >= 55 && second.score >= 50) {
-                    const combinedProb = (first.placeProbability + second.placeProbability) / 2;
-                    const avgOdds = Math.sqrt(first.odds * second.odds);
-                    const wideOdds = avgOdds * 0.2;
-                    const wideExpected = (combinedProb / 100 * wideOdds - 1);
-
-                    if (wideExpected > 0) {
-                        recommendations.push({
-                            type: '🎯 ワイド【標準】',
-                            confidence: combinedProb > 70 ? 'high' : combinedProb > 50 ? 'medium' : 'low',
-                            horses: `${first.name}（${getHorseNumber(first.name)}番）- ${second.name}（${getHorseNumber(second.name)}番）`,
-                            expectedReturn: Math.round(wideExpected * 100),
-                            probability: Math.round(combinedProb),
-                            recommendedAmount: '200-500円',
-                            reason: `上位2頭の標準的な組み合わせ`
-                        });
-                    }
-                }
-            }
-        }
-
-        // 6. 穴狙い単勝
-        const bigOddsHorses = predictions.filter(h => h.odds > 20 && h.winExpectedValue > 0);
-        if (bigOddsHorses.length > 0) {
-            const bigOddsHorse = bigOddsHorses.sort((a, b) => b.winExpectedValue - a.winExpectedValue)[0];
-            const isVeryHighRisk = bigOddsHorse.winProbability < 3;
-
-            recommendations.push({
-                type: isVeryHighRisk ? '💥 穴狙い単勝（超ハイリスク）' : '💥 穴狙い単勝',
-                confidence: 'low',
-                horses: `${bigOddsHorse.name}（${getHorseNumber(bigOddsHorse.name)}番）`,
-                expectedReturn: Math.round(bigOddsHorse.winExpectedValue * 100),
-                probability: bigOddsHorse.winProbability,
-                recommendedAmount: isVeryHighRisk ? '50-100円（超少額）' : '100-200円（少額）',
-                reason: isVeryHighRisk ? 
-                    `勝率${bigOddsHorse.winProbability}%の超ハイリスク。97%負けるギャンブル性の高い馬券` :
-                    `大穴狙い。勝率${bigOddsHorse.winProbability}%だが高配当の可能性`
-            });
-        }
-
-        this.displayBettingRecommendations(recommendations);
+        this.displayBettingRecommendations(recommendations, horseMarks);
     }
 
-    static displayBettingRecommendations(recommendations) {
+    static adjustThresholdsFromLearning() {
+        const learningData = LearningSystem.getLearningData();
+        const history = learningData.history || [];
+        
+        if (history.length < 3) return; // 学習データが少ない場合は調整しない
+
+        // 最近の成績を分析
+        const recentResults = history.slice(-10);
+        const winRate = recentResults.filter(r => r.winCorrect).length / recentResults.length;
+        const placeRate = recentResults.filter(r => r.placeCorrect).length / recentResults.length;
+
+        // 成績に応じて閾値を動的調整
+        if (winRate < 0.2) {
+            // 勝率が低い場合：より保守的に
+            this.learningThresholds.winProbabilityMin = Math.min(15, this.learningThresholds.winProbabilityMin + 1);
+            this.learningThresholds.expectedValueMin = Math.min(0.15, this.learningThresholds.expectedValueMin + 0.01);
+        } else if (winRate > 0.4) {
+            // 勝率が高い場合：より積極的に
+            this.learningThresholds.winProbabilityMin = Math.max(5, this.learningThresholds.winProbabilityMin - 1);
+            this.learningThresholds.expectedValueMin = Math.max(0.05, this.learningThresholds.expectedValueMin - 0.01);
+        }
+
+        if (placeRate < 0.3) {
+            // 複勝率が低い場合：より厳しく
+            this.learningThresholds.placeProbabilityMin = Math.min(40, this.learningThresholds.placeProbabilityMin + 2);
+        } else if (placeRate > 0.6) {
+            // 複勝率が高い場合：より緩く
+            this.learningThresholds.placeProbabilityMin = Math.max(20, this.learningThresholds.placeProbabilityMin - 2);
+        }
+
+        // オッズ範囲の調整
+        const avgWinnerOdds = recentResults.filter(r => r.winCorrect)
+            .map(r => this.getHorseOddsFromHistory(r.actual))
+            .filter(odds => odds > 0)
+            .reduce((sum, odds, _, arr) => sum + odds / arr.length, 0);
+
+        if (avgWinnerOdds > 0) {
+            if (avgWinnerOdds < 8) {
+                // 低オッズで的中が多い：人気馬重視
+                this.learningThresholds.mediumOddsMax = Math.max(15, this.learningThresholds.mediumOddsMax - 1);
+            } else if (avgWinnerOdds > 15) {
+                // 高オッズで的中が多い：穴馬重視
+                this.learningThresholds.mediumOddsMax = Math.min(30, this.learningThresholds.mediumOddsMax + 1);
+            }
+        }
+    }
+
+    static getHorseOddsFromHistory(horseName) {
+        // 現在の予測データから該当馬のオッズを取得（簡易実装）
+        const currentPredictions = PredictionEngine.getCurrentPredictions();
+        const horse = currentPredictions.find(h => h.name === horseName);
+        return horse ? horse.odds : 0;
+    }
+
+    static classifyHorses(predictions, sortedByWinProbability, sortedByWinExpected) {
+        const marks = {
+            honmei: null,      // ◎ 本命
+            taikou: null,      // ○ 対抗
+            tanana: null,      // ▲ 単穴
+            renpuku: null      // △ 連複
+        };
+
+        // ◎ 本命: 最も勝率が高い馬（学習調整済み閾値使用）
+        const topWinProbabilityHorse = sortedByWinProbability[0];
+        if (topWinProbabilityHorse && topWinProbabilityHorse.winProbability > this.learningThresholds.winProbabilityMin) {
+            marks.honmei = topWinProbabilityHorse;
+        }
+
+        // ○ 対抗: 期待値重視で本命以外（学習調整済み閾値使用 + 最低勝率チェック）
+        const topExpectedHorse = sortedByWinExpected[0];
+        if (topExpectedHorse && 
+            topExpectedHorse.winExpectedValue > this.learningThresholds.expectedValueMin &&
+            topExpectedHorse.winProbability >= 2.0 && // 最低勝率2%以上
+            (!marks.honmei || topExpectedHorse.name !== marks.honmei.name)) {
+            marks.taikou = topExpectedHorse;
+        }
+
+        // ▲ 単穴: 中オッズで期待値が良い馬（学習調整済みオッズ範囲使用）
+        const mediumOddsHorses = predictions.filter(h => 
+            h.odds >= this.learningThresholds.mediumOddsMin && 
+            h.odds <= this.learningThresholds.mediumOddsMax && 
+            h.winExpectedValue > 0.05 &&
+            (!marks.honmei || h.name !== marks.honmei.name) &&
+            (!marks.taikou || h.name !== marks.taikou.name)
+        );
+        if (mediumOddsHorses.length > 0) {
+            marks.tanana = mediumOddsHorses.sort((a, b) => b.winExpectedValue - a.winExpectedValue)[0];
+        }
+
+        // △ 連複: 複勝率が高い馬（学習調整済み閾値使用）
+        const highPlaceHorses = predictions.filter(h => 
+            h.placeProbability > this.learningThresholds.placeProbabilityMin &&
+            (!marks.honmei || h.name !== marks.honmei.name) &&
+            (!marks.taikou || h.name !== marks.taikou.name) &&
+            (!marks.tanana || h.name !== marks.tanana.name)
+        );
+        if (highPlaceHorses.length > 0) {
+            marks.renpuku = highPlaceHorses.sort((a, b) => b.placeProbability - a.placeProbability)[0];
+        }
+
+        return marks;
+    }
+
+    static generateRecommendationsFromMarks(marks, getHorseNumber) {
+        const recommendations = [];
+
+        // 単勝推奨
+        if (marks.honmei) {
+            recommendations.push({
+                category: '単勝',
+                mark: '◎',
+                type: '本命',
+                horse: `${marks.honmei.name}（${getHorseNumber(marks.honmei.name)}番）`,
+                odds: `${marks.honmei.odds}倍`,
+                probability: `${marks.honmei.winProbability}%`,
+                confidence: marks.honmei.winProbability > 15 ? 'high' : 'medium',
+                amount: marks.honmei.winProbability > 15 ? '500-1000円' : '300-600円'
+            });
+        }
+
+        if (marks.taikou) {
+            const isHighRisk = marks.taikou.winProbability < 5 && marks.taikou.odds > 50;
+            recommendations.push({
+                category: '単勝',
+                mark: '○',
+                type: '対抗',
+                horse: `${marks.taikou.name}（${getHorseNumber(marks.taikou.name)}番）`,
+                odds: `${marks.taikou.odds}倍`,
+                probability: `${marks.taikou.winProbability}%`,
+                confidence: isHighRisk ? 'low' : 'medium',
+                amount: isHighRisk ? '200-400円' : '400-700円'
+            });
+        }
+
+        if (marks.tanana) {
+            recommendations.push({
+                category: '単勝',
+                mark: '▲',
+                type: '単穴',
+                horse: `${marks.tanana.name}（${getHorseNumber(marks.tanana.name)}番）`,
+                odds: `${marks.tanana.odds}倍`,
+                probability: `${marks.tanana.winProbability}%`,
+                confidence: 'medium',
+                amount: '200-500円'
+            });
+        }
+
+        // 複勝推奨
+        if (marks.renpuku) {
+            recommendations.push({
+                category: '複勝',
+                mark: '△',
+                type: '連複',
+                horse: `${marks.renpuku.name}（${getHorseNumber(marks.renpuku.name)}番）`,
+                odds: `複勝${(marks.renpuku.odds * 0.3).toFixed(1)}倍`,
+                probability: `${marks.renpuku.placeProbability}%`,
+                confidence: marks.renpuku.placeProbability > 50 ? 'high' : 'medium',
+                amount: '200-400円'
+            });
+        }
+
+        // ワイド推奨（上位2頭）
+        const wideHorses = [marks.honmei, marks.taikou].filter(h => h);
+        if (wideHorses.length === 2) {
+            const combinedPlaceProb = (wideHorses[0].placeProbability + wideHorses[1].placeProbability) / 2;
+            recommendations.push({
+                category: 'ワイド',
+                mark: '◎○',
+                type: '本命-対抗',
+                horse: `${wideHorses[0].name}（${getHorseNumber(wideHorses[0].name)}番）- ${wideHorses[1].name}（${getHorseNumber(wideHorses[1].name)}番）`,
+                odds: `推定2-4倍`,
+                probability: `${Math.round(combinedPlaceProb)}%`,
+                confidence: combinedPlaceProb > 60 ? 'high' : 'medium',
+                amount: '300-600円'
+            });
+        }
+
+        return recommendations;
+    }
+
+
+    static displayBettingRecommendations(recommendations, horseMarks) {
         const container = document.getElementById('bettingContainer');
         
         if (recommendations.length === 0) {
@@ -278,31 +227,179 @@ class BettingRecommender {
             return;
         }
 
-        let html = '';
-        
-        recommendations.forEach(rec => {
-            const confidenceColor = rec.confidence === 'high' ? '#28a745' : 
-                                  rec.confidence === 'medium' ? '#ffc107' : '#dc3545';
-            const confidenceText = rec.confidence === 'high' ? '高' : 
-                                 rec.confidence === 'medium' ? '中' : '低';
+        // 印による馬の分類表示
+        let marksHtml = `
+            <div style="background: white; border-radius: 10px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                <h4 style="margin: 0 0 10px 0; color: #333;">🏇 今回の印</h4>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+        `;
 
-            html += `
-                <div style="background: white; padding: 15px; border-radius: 10px; margin-bottom: 15px; border-left: 5px solid ${confidenceColor};">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                        <h4 style="color: #333; margin: 0;">${rec.type}</h4>
-                        <span style="background: ${confidenceColor}; color: white; padding: 4px 8px; border-radius: 15px; font-size: 0.8em;">
-                            推奨度: ${confidenceText}
-                        </span>
-                    </div>
-                    <div style="margin-bottom: 8px;"><strong>馬番・馬名:</strong> ${rec.horses}</div>
-                    <div style="margin-bottom: 8px;"><strong>的中確率:</strong> ${rec.probability}%</div>
-                    <div style="margin-bottom: 8px;"><strong>期待リターン:</strong> +${rec.expectedReturn}%</div>
-                    <div style="margin-bottom: 8px;"><strong>推奨金額:</strong> ${rec.recommendedAmount}</div>
-                    <div style="color: #666; font-size: 0.9em;"><strong>理由:</strong> ${rec.reason}</div>
+        if (horseMarks.honmei) {
+            marksHtml += `
+                <div style="padding: 8px; background: #fff3cd; border-radius: 6px; border-left: 3px solid #ffc107;">
+                    <strong>◎ 本命:</strong> ${horseMarks.honmei.name}
                 </div>
+            `;
+        }
+
+        if (horseMarks.taikou) {
+            marksHtml += `
+                <div style="padding: 8px; background: #d4edda; border-radius: 6px; border-left: 3px solid #28a745;">
+                    <strong>○ 対抗:</strong> ${horseMarks.taikou.name}
+                </div>
+            `;
+        }
+
+        if (horseMarks.tanana) {
+            marksHtml += `
+                <div style="padding: 8px; background: #d1ecf1; border-radius: 6px; border-left: 3px solid #17a2b8;">
+                    <strong>▲ 単穴:</strong> ${horseMarks.tanana.name}
+                </div>
+            `;
+        }
+
+        if (horseMarks.renpuku) {
+            marksHtml += `
+                <div style="padding: 8px; background: #f8d7da; border-radius: 6px; border-left: 3px solid #dc3545;">
+                    <strong>△ 連複:</strong> ${horseMarks.renpuku.name}
+                </div>
+            `;
+        }
+
+        marksHtml += `
+                </div>
+            </div>
+        `;
+
+        // 買い目推奨テーブル
+        let html = `
+            <div style="background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background: #f8f9fa; border-bottom: 2px solid #dee2e6;">
+                            <th style="padding: 12px 8px; text-align: center; font-weight: 600; color: #495057;">印</th>
+                            <th style="padding: 12px 8px; text-align: left; font-weight: 600; color: #495057;">券種</th>
+                            <th style="padding: 12px 8px; text-align: left; font-weight: 600; color: #495057;">馬名・馬番</th>
+                            <th style="padding: 12px 8px; text-align: center; font-weight: 600; color: #495057;">オッズ</th>
+                            <th style="padding: 12px 8px; text-align: center; font-weight: 600; color: #495057;">確率</th>
+                            <th style="padding: 12px 8px; text-align: center; font-weight: 600; color: #495057;">推奨金額</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+        
+        recommendations.forEach((rec, index) => {
+            const bgColor = index % 2 === 0 ? '#ffffff' : '#f8f9fa';
+            
+            html += `
+                <tr style="background: ${bgColor}; border-bottom: 1px solid #dee2e6;">
+                    <td style="padding: 12px 8px; text-align: center; vertical-align: middle; font-size: 1.2em; font-weight: bold;">
+                        ${rec.mark}
+                    </td>
+                    <td style="padding: 12px 8px; vertical-align: middle;">
+                        <div style="font-weight: 600; color: #333;">${rec.category}</div>
+                        <div style="font-size: 0.85em; color: #666;">${rec.type}</div>
+                    </td>
+                    <td style="padding: 12px 8px; vertical-align: middle; font-weight: 500;">
+                        ${rec.horse}
+                    </td>
+                    <td style="padding: 12px 8px; text-align: center; vertical-align: middle; font-weight: 500;">
+                        ${rec.odds}
+                    </td>
+                    <td style="padding: 12px 8px; text-align: center; vertical-align: middle; font-weight: 500;">
+                        ${rec.probability}
+                    </td>
+                    <td style="padding: 12px 8px; text-align: center; vertical-align: middle; color: #007bff; font-weight: 500;">
+                        ${rec.amount}
+                    </td>
+                </tr>
             `;
         });
 
-        container.innerHTML = html;
+        html += `
+                    </tbody>
+                </table>
+            </div>
+            <div style="margin-top: 15px; padding: 12px; background: #e3f2fd; border-radius: 8px; border-left: 4px solid #2196f3;">
+                <p style="margin: 0; font-size: 0.9em; color: #1976d2;">
+                    💡 <strong>印の意味:</strong> ◎本命（安全重視）、○対抗（期待値重視）、▲単穴（中オッズ狙い）、△連複（3着以内狙い）
+                </p>
+            </div>
+        `;
+
+        container.innerHTML = marksHtml + html;
+    }
+
+    // 買い目推奨の結果を学習システムに送信
+    static recordBettingRecommendation(recommendations, actualResult) {
+        if (!actualResult) return;
+
+        const bettingResult = {
+            date: new Date().toLocaleDateString(),
+            recommendations: recommendations.map(rec => ({
+                mark: rec.mark,
+                category: rec.category,
+                horse: rec.horse.split('（')[0], // 馬名のみ
+                confidence: rec.confidence
+            })),
+            actualWinner: actualResult.winner,
+            actualPlace: actualResult.place || [],
+            thresholds: { ...this.learningThresholds }
+        };
+
+        this.bettingHistory.push(bettingResult);
+        
+        // 履歴制限
+        if (this.bettingHistory.length > 50) {
+            this.bettingHistory = this.bettingHistory.slice(-50);
+        }
+
+        // ローカルストレージに保存
+        localStorage.setItem('keibaAppBettingHistory', JSON.stringify(this.bettingHistory));
+    }
+
+    // 買い目推奨の成績を分析
+    static analyzeBettingPerformance() {
+        if (this.bettingHistory.length === 0) return null;
+
+        const recent = this.bettingHistory.slice(-20);
+        let honmeiHits = 0;
+        let taikouHits = 0;
+        let tananaHits = 0;
+        let renpukuHits = 0;
+
+        recent.forEach(result => {
+            const honmeiRec = result.recommendations.find(r => r.mark === '◎');
+            const taikouRec = result.recommendations.find(r => r.mark === '○');
+            const tananaRec = result.recommendations.find(r => r.mark === '▲');
+            const renpukuRec = result.recommendations.find(r => r.mark === '△');
+
+            if (honmeiRec && honmeiRec.horse === result.actualWinner) honmeiHits++;
+            if (taikouRec && taikouRec.horse === result.actualWinner) taikouHits++;
+            if (tananaRec && tananaRec.horse === result.actualWinner) tananaHits++;
+            if (renpukuRec && result.actualPlace.includes(renpukuRec.horse)) renpukuHits++;
+        });
+
+        return {
+            totalRaces: recent.length,
+            honmeiHitRate: honmeiHits / recent.length,
+            taikouHitRate: taikouHits / recent.length,
+            tananaHitRate: tananaHits / recent.length,
+            renpukuHitRate: renpukuHits / recent.length,
+            currentThresholds: { ...this.learningThresholds }
+        };
+    }
+
+    // 初期化時に履歴を読み込み
+    static initialize() {
+        try {
+            const saved = localStorage.getItem('keibaAppBettingHistory');
+            if (saved) {
+                this.bettingHistory = JSON.parse(saved);
+            }
+        } catch (error) {
+            console.error('買い目履歴の読み込みに失敗:', error);
+            this.bettingHistory = [];
+        }
     }
 } 

@@ -46,10 +46,21 @@ class LearningSystem {
             return;
         }
 
-        const findHorse = (inputName) => {
-            if (!inputName) return null;
+        const findHorse = (input) => {
+            if (!input) return null;
+            
+            // 馬番での検索（数字のみの場合）
+            if (/^\d+$/.test(input.trim())) {
+                const horseNumber = parseInt(input.trim());
+                if (horseNumber >= 1 && horseNumber <= currentPredictions.length) {
+                    return currentPredictions[horseNumber - 1]; // 馬番は1から始まるので-1
+                }
+                return null;
+            }
+            
+            // 馬名での検索（従来通り）
             return currentPredictions.find(horse => 
-                horse.name.includes(inputName) || inputName.includes(horse.name)
+                horse.name.includes(input) || input.includes(horse.name)
             );
         };
 
@@ -58,12 +69,27 @@ class LearningSystem {
         const thirdHorse = findHorse(actualThird);
 
         if (!firstHorse) {
-            alert(`1着の馬「${actualFirst}」が見つかりません。馬名を確認してください。`);
+            const isNumber = /^\d+$/.test(actualFirst.trim());
+            const errorMsg = isNumber 
+                ? `1着の馬番「${actualFirst}」が見つかりません。馬番は1～${currentPredictions.length}の範囲で入力してください。`
+                : `1着の馬「${actualFirst}」が見つかりません。馬名または馬番を確認してください。`;
+            alert(errorMsg);
             return;
         }
 
         const learningResult = this.updateLearningData(firstHorse, secondHorse, thirdHorse);
         this.displayLearningFeedback(learningResult, firstHorse, secondHorse, thirdHorse);
+
+        // 買い目推奨の結果も記録
+        const actualResult = {
+            winner: firstHorse.name,
+            place: [firstHorse, secondHorse, thirdHorse].filter(h => h).map(h => h.name)
+        };
+        
+        // 最後に生成された推奨があれば記録
+        if (window.lastBettingRecommendations) {
+            BettingRecommender.recordBettingRecommendation(window.lastBettingRecommendations, actualResult);
+        }
 
         document.getElementById('actualFirst').value = '';
         document.getElementById('actualSecond').value = '';
@@ -337,6 +363,19 @@ class LearningSystem {
         html += `・複勝予測的中率: ${placeAccuracy}% (${this.learningData.accuracy.placePredictions}/${this.learningData.accuracy.totalPredictions})`;
         html += '</div>';
 
+        // 買い目推奨の成績も表示
+        const bettingPerformance = BettingRecommender.analyzeBettingPerformance();
+        if (bettingPerformance) {
+            html += '<div style="margin-top: 15px; padding: 12px; background: #fff3cd; border-radius: 8px; border-left: 4px solid #ffc107;">';
+            html += '<strong>🎯 買い目推奨成績:</strong><br>';
+            html += `・◎本命的中率: ${(bettingPerformance.honmeiHitRate * 100).toFixed(1)}%<br>`;
+            html += `・○対抗的中率: ${(bettingPerformance.taikouHitRate * 100).toFixed(1)}%<br>`;
+            html += `・▲単穴的中率: ${(bettingPerformance.tananaHitRate * 100).toFixed(1)}%<br>`;
+            html += `・△連複的中率: ${(bettingPerformance.renpukuHitRate * 100).toFixed(1)}%<br>`;
+            html += `<small>（最近${bettingPerformance.totalRaces}レース）</small>`;
+            html += '</div>';
+        }
+
         html += '</div>';
         feedbackContainer.innerHTML = html;
     }
@@ -368,6 +407,36 @@ class LearningSystem {
         html += `<p>騎手評価重み: ${adj.jockeyWeight.toFixed(2)} (初期値: 1.0)</p>`;
         html += `<p>人気度バイアス: ${adj.popularityBias.toFixed(2)} (初期値: 0.0)</p>`;
         html += '</div>';
+
+        // 買い目推奨成績を学習状況詳細にも追加
+        const bettingPerformance = BettingRecommender.analyzeBettingPerformance();
+        if (bettingPerformance) {
+            html += '<div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 15px;">';
+            html += '<h5 style="color: #4caf50; margin-bottom: 10px;">🎯 買い目推奨成績</h5>';
+            html += `<p>◎本命的中率: ${(bettingPerformance.honmeiHitRate * 100).toFixed(1)}%</p>`;
+            html += `<p>○対抗的中率: ${(bettingPerformance.taikouHitRate * 100).toFixed(1)}%</p>`;
+            html += `<p>▲単穴的中率: ${(bettingPerformance.tananaHitRate * 100).toFixed(1)}%</p>`;
+            html += `<p>△連複的中率: ${(bettingPerformance.renpukuHitRate * 100).toFixed(1)}%</p>`;
+            html += `<p><small>（最近${bettingPerformance.totalRaces}レースの成績）</small></p>`;
+            
+            // 現在の調整済み閾値も表示
+            const thresholds = bettingPerformance.currentThresholds;
+            html += '<div style="margin-top: 10px; padding: 10px; background: #f8f9fa; border-radius: 5px;">';
+            html += '<strong>現在の調整済み閾値:</strong><br>';
+            html += `<small>`;
+            html += `本命勝率: ${thresholds.winProbabilityMin}%以上<br>`;
+            html += `対抗期待値: ${thresholds.expectedValueMin}以上<br>`;
+            html += `単穴オッズ: ${thresholds.mediumOddsMin}-${thresholds.mediumOddsMax}倍<br>`;
+            html += `連複率: ${thresholds.placeProbabilityMin}%以上`;
+            html += `</small>`;
+            html += '</div>';
+            html += '</div>';
+        } else {
+            html += '<div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 15px;">';
+            html += '<h5 style="color: #666; margin-bottom: 10px;">🎯 買い目推奨成績</h5>';
+            html += '<p style="color: #666;">まだ買い目推奨の履歴がありません。<br>予測実行後にレース結果を入力すると記録されます。</p>';
+            html += '</div>';
+        }
 
         if (this.learningData.history.length > 0) {
             html += '<div style="background: white; padding: 15px; border-radius: 8px;">';

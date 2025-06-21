@@ -31,6 +31,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // 学習システムの初期化（保存データの読み込み）
     LearningSystem.initialize();
     
+    // 買い目推奨システムの初期化
+    BettingRecommender.initialize();
+    
     // 携帯簡易モードの初期化
     initializeMobileMode();
     
