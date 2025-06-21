@@ -147,14 +147,16 @@
             <div id="learningSection" class="section" style="background: #f0f8ff; border-left: 4px solid #2196f3; margin-top: 20px;">
                 <h3 style="color: #1976d2;">📝 レース結果を入力して学習</h3>
                 <div class="form-group">
-                    <label>実際の着順結果（1着, 2着, 3着の馬名を入力）</label>
+                    <label>実際の着順結果（1着, 2着, 3着の馬名または馬番を入力）</label>
                     <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 10px;">
-                        <input type="text" id="actualFirst" placeholder="1着の馬名">
-                        <input type="text" id="actualSecond" placeholder="2着の馬名">
-                        <input type="text" id="actualThird" placeholder="3着の馬名">
+                        <input type="text" id="actualFirst" placeholder="1着（馬名 または 馬番）">
+                        <input type="text" id="actualSecond" placeholder="2着（馬名 または 馬番）">
+                        <input type="text" id="actualThird" placeholder="3着（馬名 または 馬番）">
                     </div>
                     <p style="color: #1976d2; font-size: 0.85em; margin-bottom: 15px;">
-                        💡 馬名の一部でも認識します（例: ベラジオ → ベラジオオペラ）
+                        💡 <strong>入力方法:</strong><br>
+                        ・馬名: ベラジオ（一部でもOK）<br>
+                        ・馬番: 5（数字のみ）
                     </p>
                 </div>
                 <div class="btn-grid">
