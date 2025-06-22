@@ -39,15 +39,36 @@
                 <div class="form-group">
                     <label>コース</label>
                     <select id="raceCourse">
-                        <option value="中山">中山</option>
-                        <option value="東京">東京</option>
-                        <option value="京都">京都</option>
-                        <option value="阪神">阪神</option>
-                        <option value="新潟">新潟</option>
-                        <option value="福島">福島</option>
-                        <option value="中京">中京</option>
-                        <option value="小倉">小倉</option>
-                        <option value="函館">函館</option>
+                        <optgroup label="中央競馬場">
+                            <option value="中山">中山</option>
+                            <option value="東京">東京</option>
+                            <option value="京都">京都</option>
+                            <option value="阪神">阪神</option>
+                            <option value="新潟">新潟</option>
+                            <option value="福島">福島</option>
+                            <option value="中京">中京</option>
+                            <option value="小倉">小倉</option>
+                            <option value="札幌">札幌</option>
+                            <option value="函館">函館</option>
+                        </optgroup>
+                        <optgroup label="南関東地方競馬">
+                            <option value="大井">大井</option>
+                            <option value="船橋">船橋</option>
+                            <option value="川崎">川崎</option>
+                            <option value="浦和">浦和</option>
+                        </optgroup>
+                        <optgroup label="その他地方競馬">
+                            <option value="門別">門別</option>
+                            <option value="名古屋">名古屋</option>
+                            <option value="笠松">笠松</option>
+                            <option value="園田">園田</option>
+                            <option value="姫路">姫路</option>
+                            <option value="高知">高知</option>
+                            <option value="佐賀">佐賀</option>
+                            <option value="金沢">金沢</option>
+                            <option value="盛岡">盛岡</option>
+                            <option value="水沢">水沢</option>
+                        </optgroup>
                     </select>
                 </div>
                 <div class="form-group">
@@ -141,6 +162,15 @@
         <!-- 予測結果 -->
         <div id="results" class="results hidden">
             <h3>📊 予測結果</h3>
+            <div id="sortControls" class="section" style="margin-bottom: 15px; display: none;">
+                <label for="sortSelect" style="font-weight: bold; margin-right: 10px;">並び順:</label>
+                <select id="sortSelect" onchange="PredictionEngine.changeSortOrder(this.value)">
+                    <option value="score">スコア順</option>
+                    <option value="place">複勝率順</option>
+                    <option value="win">勝率順</option>
+                    <option value="odds">オッズ順</option>
+                </select>
+            </div>
             <div id="resultsContainer"></div>
             
             <!-- 学習セクション -->
@@ -164,6 +194,19 @@
                     <button class="btn" style="background: linear-gradient(45deg, #4caf50, #2e7d32);" onclick="showLearningStats()">📈 学習状況を確認</button>
                     <button class="btn" style="background: linear-gradient(45deg, #f44336, #d32f2f); font-size: 0.9em;" onclick="resetLearningData()">🔄 学習データリセット</button>
                 </div>
+                
+                <!-- 学習データ移行セクション -->
+                <div class="section" style="background: #f3e5f5; border-left: 4px solid #9c27b0; margin-top: 15px;">
+                    <h4 style="color: #7b1fa2; margin-bottom: 10px;">📦 学習データの移行</h4>
+                    <div class="btn-grid" style="grid-template-columns: 1fr 1fr;">
+                        <button class="btn" style="background: linear-gradient(45deg, #9c27b0, #7b1fa2);" onclick="exportLearningData()">📤 データをエクスポート</button>
+                        <button class="btn" style="background: linear-gradient(45deg, #673ab7, #512da8);" onclick="document.getElementById('importFile').click()">📥 データをインポート</button>
+                    </div>
+                    <input type="file" id="importFile" accept=".json" style="display: none;" onchange="importLearningData(event)">
+                    <p style="font-size: 0.85em; color: #7b1fa2; margin-top: 8px; margin-bottom: 0;">
+                        💡 端末間で学習データを移行できます（JSONファイル形式）
+                    </p>
+                </div>
                 <div id="learningFeedback" style="margin-top: 15px;"></div>
             </div>
             
@@ -178,6 +221,7 @@
     <script src="js/config.js"></script>
     <script src="js/dataConverter.js"></script>
     <script src="js/horseManager.js"></script>
+    <script src="js/dataManager.js"></script>
     <script src="js/predictionEngine.js"></script>
     <script src="js/bettingRecommender.js"></script>
     <script src="js/learningSystem.js"></script>

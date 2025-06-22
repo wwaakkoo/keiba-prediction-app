@@ -98,15 +98,36 @@ class HorseManager {
                     <div class="form-group">
                         <label>コース</label>
                         <select name="course">
-                            <option value="中山">中山</option>
-                            <option value="東京">東京</option>
-                            <option value="京都">京都</option>
-                            <option value="阪神">阪神</option>
-                            <option value="新潟">新潟</option>
-                            <option value="福島">福島</option>
-                            <option value="中京">中京</option>
-                            <option value="小倉">小倉</option>
-                            <option value="函館">函館</option>
+                            <optgroup label="中央競馬場">
+                                <option value="中山">中山</option>
+                                <option value="東京">東京</option>
+                                <option value="京都">京都</option>
+                                <option value="阪神">阪神</option>
+                                <option value="新潟">新潟</option>
+                                <option value="福島">福島</option>
+                                <option value="中京">中京</option>
+                                <option value="小倉">小倉</option>
+                                <option value="札幌">札幌</option>
+                                <option value="函館">函館</option>
+                            </optgroup>
+                            <optgroup label="南関東地方競馬">
+                                <option value="大井">大井</option>
+                                <option value="船橋">船橋</option>
+                                <option value="川崎">川崎</option>
+                                <option value="浦和">浦和</option>
+                            </optgroup>
+                            <optgroup label="その他地方競馬">
+                                <option value="門別">門別</option>
+                                <option value="名古屋">名古屋</option>
+                                <option value="笠松">笠松</option>
+                                <option value="園田">園田</option>
+                                <option value="姫路">姫路</option>
+                                <option value="高知">高知</option>
+                                <option value="佐賀">佐賀</option>
+                                <option value="金沢">金沢</option>
+                                <option value="盛岡">盛岡</option>
+                                <option value="水沢">水沢</option>
+                            </optgroup>
                         </select>
                     </div>
                     <div class="form-group">
@@ -294,6 +315,13 @@ class HorseManager {
             const oddsInput = card.querySelector('input[name="odds"]');
             const odds = oddsInput ? parseFloat(oddsInput.value) : 10;
             
+            // 馬番・枠番の取得
+            const horseNumberInput = card.querySelector('input[name="horseNumber"]');
+            const horseNumber = horseNumberInput ? parseInt(horseNumberInput.value) : 0;
+            
+            const frameNumberInput = card.querySelector('input[name="frameNumber"]');
+            const frameNumber = frameNumberInput ? parseInt(frameNumberInput.value) : 0;
+            
             const lastRaceSelect = card.querySelector('select[name="lastRace"]');
             const lastRaceOrderInput = card.querySelector('input[name="lastRaceOrder"]');
             const lastRaceOrder = lastRaceOrderInput ? parseInt(lastRaceOrderInput.value) : '';
@@ -387,7 +415,10 @@ class HorseManager {
                 lastRaceJockey: lastRaceJockey,
                 lastRacePopularity: lastRacePopularity,
                 lastRaceOrder: lastRaceOrder,
-                lastRaceAgari: lastRaceAgari
+                lastRaceAgari: lastRaceAgari,
+                // 馬番・枠番情報
+                horseNumber: horseNumber,
+                frameNumber: frameNumber
             });
         });
 
@@ -520,6 +551,9 @@ class HorseManager {
                 <button type="button" onclick="HorseManager.removeHorse(this)" class="btn-remove">削除</button>
             </div>
             <div class="horse-content">
+                <!-- 馬番・枠番のhidden input -->
+                <input type="hidden" name="horseNumber" value="${horseData.horseNumber || ''}">
+                <input type="hidden" name="frameNumber" value="${horseData.frameNumber || ''}">
                 <div class="form-group">
                     <label>馬名</label>
                     <input type="text" name="horseName" value="${horseData.name || ''}" required>
@@ -599,15 +633,36 @@ class HorseManager {
                     <div class="form-group">
                         <label>コース</label>
                         <select name="course">
-                            <option value="中山" ${horseData.course === '中山' ? 'selected' : ''}>中山</option>
-                            <option value="東京" ${horseData.course === '東京' ? 'selected' : ''}>東京</option>
-                            <option value="京都" ${horseData.course === '京都' ? 'selected' : ''}>京都</option>
-                            <option value="阪神" ${horseData.course === '阪神' ? 'selected' : ''}>阪神</option>
-                            <option value="新潟" ${horseData.course === '新潟' ? 'selected' : ''}>新潟</option>
-                            <option value="福島" ${horseData.course === '福島' ? 'selected' : ''}>福島</option>
-                            <option value="中京" ${horseData.course === '中京' ? 'selected' : ''}>中京</option>
-                            <option value="小倉" ${horseData.course === '小倉' ? 'selected' : ''}>小倉</option>
-                            <option value="函館" ${horseData.course === '函館' ? 'selected' : ''}>函館</option>
+                            <optgroup label="中央競馬場">
+                                <option value="中山" ${horseData.course === '中山' ? 'selected' : ''}>中山</option>
+                                <option value="東京" ${horseData.course === '東京' ? 'selected' : ''}>東京</option>
+                                <option value="京都" ${horseData.course === '京都' ? 'selected' : ''}>京都</option>
+                                <option value="阪神" ${horseData.course === '阪神' ? 'selected' : ''}>阪神</option>
+                                <option value="新潟" ${horseData.course === '新潟' ? 'selected' : ''}>新潟</option>
+                                <option value="福島" ${horseData.course === '福島' ? 'selected' : ''}>福島</option>
+                                <option value="中京" ${horseData.course === '中京' ? 'selected' : ''}>中京</option>
+                                <option value="小倉" ${horseData.course === '小倉' ? 'selected' : ''}>小倉</option>
+                                <option value="札幌" ${horseData.course === '札幌' ? 'selected' : ''}>札幌</option>
+                                <option value="函館" ${horseData.course === '函館' ? 'selected' : ''}>函館</option>
+                            </optgroup>
+                            <optgroup label="南関東地方競馬">
+                                <option value="大井" ${horseData.course === '大井' ? 'selected' : ''}>大井</option>
+                                <option value="船橋" ${horseData.course === '船橋' ? 'selected' : ''}>船橋</option>
+                                <option value="川崎" ${horseData.course === '川崎' ? 'selected' : ''}>川崎</option>
+                                <option value="浦和" ${horseData.course === '浦和' ? 'selected' : ''}>浦和</option>
+                            </optgroup>
+                            <optgroup label="その他地方競馬">
+                                <option value="門別" ${horseData.course === '門別' ? 'selected' : ''}>門別</option>
+                                <option value="名古屋" ${horseData.course === '名古屋' ? 'selected' : ''}>名古屋</option>
+                                <option value="笠松" ${horseData.course === '笠松' ? 'selected' : ''}>笠松</option>
+                                <option value="園田" ${horseData.course === '園田' ? 'selected' : ''}>園田</option>
+                                <option value="姫路" ${horseData.course === '姫路' ? 'selected' : ''}>姫路</option>
+                                <option value="高知" ${horseData.course === '高知' ? 'selected' : ''}>高知</option>
+                                <option value="佐賀" ${horseData.course === '佐賀' ? 'selected' : ''}>佐賀</option>
+                                <option value="金沢" ${horseData.course === '金沢' ? 'selected' : ''}>金沢</option>
+                                <option value="盛岡" ${horseData.course === '盛岡' ? 'selected' : ''}>盛岡</option>
+                                <option value="水沢" ${horseData.course === '水沢' ? 'selected' : ''}>水沢</option>
+                            </optgroup>
                         </select>
                     </div>
                     <div class="form-group">
