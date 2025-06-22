@@ -123,6 +123,8 @@ class DataConverter {
             lastRaceDate: '',
             lastRaceOrder: 0,
             lastRaceAgari: 0,
+            frameNumber: 0,
+            horseNumber: 0,
         };
         
         let i = startIndex;
@@ -149,6 +151,14 @@ class DataConverter {
                 
                 // 枠番・馬番の行の場合
                 if (i === startIndex && DataConverter.isNetkeibaHorseStart(line)) {
+                    // 枠番・馬番を抽出
+                    const numbers = line.trim().split(/\s+/);
+                    
+                    if (numbers.length >= 2) {
+                        horse.frameNumber = parseInt(numbers[0]) || 0;
+                        horse.horseNumber = parseInt(numbers[1]) || 0;
+                    }
+                    
                     // 印の行をチェック
                     const nextLine = lines[i+1]?.trim() || '';
                     const isMarkLine = marks.some(mark => nextLine.startsWith(mark));
@@ -362,7 +372,7 @@ class DataConverter {
                     foundValidRace = true;
                     
                     // コース名＋着順の抽出（例: "阪神7" → 7着）
-                    const placeMatch = line.match(/([阪神京都中山東京大井新潟福島中京小倉札幌函館メイダン]+)(\d{1,2})$/);
+                    const placeMatch = line.match(/([阪神京都中山東京大井船橋川崎浦和新潟福島中京小倉札幌函館メイダン門別名古屋笠松園田姫路高知佐賀金沢盛岡水沢]+)(\d{1,2})$/);
                     if (placeMatch) {
                         lastRace.lastRaceOrder = parseInt(placeMatch[2]);
                         console.log('前走着順抽出:', line, '→', lastRace.lastRaceOrder);
@@ -370,8 +380,15 @@ class DataConverter {
                         console.log('前走着順抽出失敗:', line);
                     }
 
-                    // コースの抽出
-                    const courses = ['中山', '東京', '京都', '阪神', '新潟', '福島', '中京', '小倉', '札幌', 'メイダン', '大井'];
+                    // コースの抽出（中央競馬場 + 主要地方競馬場）
+                    const courses = [
+                        // 中央競馬場
+                        '中山', '東京', '京都', '阪神', '新潟', '福島', '中京', '小倉', '札幌', '函館', 'メイダン',
+                        // 南関東地方競馬
+                        '大井', '船橋', '川崎', '浦和',
+                        // その他主要地方競馬場
+                        '門別', '名古屋', '笠松', '園田', '姫路', '高知', '佐賀', '金沢', '盛岡', '水沢'
+                    ];
                     for (const course of courses) {
                         if (line.includes(course)) {
                             lastRace.lastRaceCourse = course;
@@ -525,7 +542,14 @@ class DataConverter {
             
             // コースの抽出（例: "2025.04.06 阪神1"）
             if (!raceInfo.course && line.match(/\d{4}\.\d{2}\.\d{2}/)) {
-                const courses = ['中山', '東京', '京都', '阪神', '新潟', '福島', '中京', '小倉'];
+                const courses = [
+                    // 中央競馬場
+                    '中山', '東京', '京都', '阪神', '新潟', '福島', '中京', '小倉', '札幌', '函館',
+                    // 南関東地方競馬
+                    '大井', '船橋', '川崎', '浦和',
+                    // その他主要地方競馬場
+                    '門別', '名古屋', '笠松', '園田', '姫路', '高知', '佐賀', '金沢', '盛岡', '水沢'
+                ];
                 for (const course of courses) {
                     if (line.includes(course)) {
                         raceInfo.course = course;

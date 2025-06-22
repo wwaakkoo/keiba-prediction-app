@@ -107,6 +107,11 @@ class PredictionEngine {
             let courseScore = 0;
             if (CONFIG.COURSE_PREFERENCES[horse.course] && CONFIG.COURSE_PREFERENCES[horse.course][horse.trackType]) {
                 courseScore = (CONFIG.COURSE_PREFERENCES[horse.course][horse.trackType] - 1) * 20;
+            } else {
+                // 未対応コースの場合はデフォルト値を使用（地方競馬場など）
+                const defaultPreference = horse.trackType === 'ダート' ? 1.0 : 0.9;
+                courseScore = (defaultPreference - 1) * 20;
+                console.log(`未対応コース (${horse.course}) でデフォルト適性値を使用:`, defaultPreference);
             }
             score += courseScore * (adj.courseWeight || 1.0);
 
@@ -335,23 +340,66 @@ class PredictionEngine {
     }
 
     static displayResults(predictions) {
-        const container = document.getElementById('resultsContainer');
+        // 結果を保存（ソート機能で使用）
+        this.currentPredictions = predictions;
+        
         const resultsDiv = document.getElementById('results');
+        const sortControls = document.getElementById('sortControls');
         
         resultsDiv.classList.remove('hidden');
+        sortControls.style.display = 'block';
         
-        const sortedPredictions = [...predictions].sort((a, b) => b.score - a.score);
+        // デフォルトはスコア順で表示
+        this.renderSortedResults('score');
+    }
+
+    static renderSortedResults(sortBy) {
+        const container = document.getElementById('resultsContainer');
+        
+        if (!this.currentPredictions) return;
+        
+        let sortedPredictions;
+        let sortTitle;
+        
+        switch(sortBy) {
+            case 'place':
+                sortedPredictions = [...this.currentPredictions].sort((a, b) => b.placeProbability - a.placeProbability);
+                sortTitle = '🎯 複勝率順（上位3頭が複勝予測）';
+                break;
+            case 'win':
+                sortedPredictions = [...this.currentPredictions].sort((a, b) => b.winProbability - a.winProbability);
+                sortTitle = '🏆 勝率順';
+                break;
+            case 'odds':
+                sortedPredictions = [...this.currentPredictions].sort((a, b) => a.odds - b.odds);
+                sortTitle = '💰 オッズ順（人気順）';
+                break;
+            default:
+                sortedPredictions = [...this.currentPredictions].sort((a, b) => b.score - a.score);
+                sortTitle = '🏆 スコア順';
+        }
         
         let html = '<div style="margin-bottom: 20px;">';
-        html += '<h4>🏆 順位予想（スコア順）</h4>';
+        html += `<h4>${sortTitle}</h4>`;
+        
+        // 複勝率順の場合は上位3頭を強調表示
+        if (sortBy === 'place') {
+            html += '<p style="color: #f57c00; font-weight: bold; margin-bottom: 15px;">📊 複勝予測上位3頭</p>';
+        }
         
         sortedPredictions.forEach((horse, index) => {
             const confidence = horse.score >= CONFIG.SCORE_RANGES.HIGH ? 'high' : 
                              horse.score >= CONFIG.SCORE_RANGES.MEDIUM ? 'medium' : 'low';
             
+            // 複勝率順で上位3頭の場合は特別な背景色
+            const isTopThreePlace = sortBy === 'place' && index < 3;
+            const extraStyle = isTopThreePlace ? 'background: linear-gradient(135deg, #fff3e0, #ffe0b2); border: 2px solid #ff9800;' : '';
+            
+            const horseNumberDisplay = horse.horseNumber ? `${horse.horseNumber}番 ` : '';
+            
             html += `
-                <div class="result-item confidence-${confidence}">
-                    <div><strong>${index + 1}位: ${horse.name}</strong></div>
+                <div class="result-item confidence-${confidence}" style="${extraStyle}">
+                    <div><strong>${index + 1}位: ${horseNumberDisplay}${horse.name}${isTopThreePlace ? ' ⭐' : ''}</strong></div>
                     <div>スコア: ${horse.score}</div>
                     <div>勝率: ${horse.winProbability}%</div>
                     <div>複勝率: ${horse.placeProbability}%</div>
@@ -362,6 +410,10 @@ class PredictionEngine {
         
         html += '</div>';
         container.innerHTML = html;
+    }
+
+    static changeSortOrder(sortBy) {
+        this.renderSortedResults(sortBy);
     }
 
     static getCurrentPredictions() {
