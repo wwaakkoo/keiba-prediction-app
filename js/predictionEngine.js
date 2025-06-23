@@ -351,6 +351,9 @@ class PredictionEngine {
         
         // デフォルトはスコア順で表示
         this.renderSortedResults('score');
+        
+        // AI推奨ボタンを有効化
+        this.enableAIRecommendationButton();
     }
 
     static renderSortedResults(sortBy) {
@@ -468,7 +471,39 @@ class PredictionEngine {
 
         return horses;
     }
+
+    // AI推奨ボタンを有効化
+    static enableAIRecommendationButton() {
+        const aiButton = document.querySelector('button[onclick="getAIRecommendation()"]');
+        if (aiButton) {
+            aiButton.disabled = false;
+            aiButton.style.opacity = '1';
+            aiButton.style.cursor = 'pointer';
+        }
+    }
+
+    // AI推奨を取得（グローバル関数からも呼び出し可能）
+    static async requestAIRecommendation() {
+        if (!this.currentPredictions || this.currentPredictions.length === 0) {
+            if (typeof showMessage === 'function') {
+                showMessage('先に「🚀 予測開始」を実行してください', 'warning');
+            } else {
+                alert('先に「🚀 予測開始」を実行してください');
+            }
+            return;
+        }
+
+        try {
+            await AIRecommendationService.getAIRecommendation(this.currentPredictions);
+        } catch (error) {
+            console.error('AI推奨の取得でエラー:', error);
+            if (typeof showMessage === 'function') {
+                showMessage('AI推奨の取得に失敗しました', 'error');
+            }
+        }
+    }
 }
 
 // グローバル関数として公開
-window.calculatePredictions = PredictionEngine.calculatePredictions.bind(PredictionEngine); 
+window.calculatePredictions = PredictionEngine.calculatePredictions.bind(PredictionEngine);
+window.getAIRecommendation = PredictionEngine.requestAIRecommendation.bind(PredictionEngine); 
