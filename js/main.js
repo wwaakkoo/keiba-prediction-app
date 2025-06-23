@@ -24,6 +24,105 @@ function scrollToBottom() {
     });
 }
 
+// 統合レース結果処理（統計学習とAI学習の両方に反映）
+function processUnifiedRaceResult() {
+    const currentPredictions = PredictionEngine.getCurrentPredictions();
+    if (currentPredictions.length === 0) {
+        alert('まず予測を実行してください。');
+        return;
+    }
+
+    const actualFirst = document.getElementById('unifiedFirst').value.trim();
+    const actualSecond = document.getElementById('unifiedSecond').value.trim();
+    const actualThird = document.getElementById('unifiedThird').value.trim();
+
+    if (!actualFirst) {
+        alert('最低でも1着の馬名を入力してください。');
+        return;
+    }
+
+    const findHorse = (input) => {
+        if (!input) return null;
+        
+        // 馬番での検索（数字のみの場合）
+        if (/^\d+$/.test(input.trim())) {
+            const horseNumber = parseInt(input.trim());
+            if (horseNumber >= 1 && horseNumber <= currentPredictions.length) {
+                return currentPredictions[horseNumber - 1]; // 馬番は1から始まるので-1
+            }
+            return null;
+        }
+        
+        // 馬名での検索
+        return currentPredictions.find(horse => 
+            horse.name.includes(input) || input.includes(horse.name)
+        );
+    };
+
+    const firstHorse = findHorse(actualFirst);
+    const secondHorse = findHorse(actualSecond);
+    const thirdHorse = findHorse(actualThird);
+
+    if (!firstHorse) {
+        const isNumber = /^\d+$/.test(actualFirst.trim());
+        const errorMsg = isNumber 
+            ? `1着の馬番「${actualFirst}」が見つかりません。馬番は1～${currentPredictions.length}の範囲で入力してください。`
+            : `1着の馬「${actualFirst}」が見つかりません。馬名または馬番を確認してください。`;
+        alert(errorMsg);
+        return;
+    }
+
+    // 1. 統計学習システムに反映
+    const learningResult = LearningSystem.updateLearningData(firstHorse, secondHorse, thirdHorse);
+    LearningSystem.displayLearningFeedback(learningResult, firstHorse, secondHorse, thirdHorse);
+
+    // 買い目推奨の結果も記録
+    const actualResult = {
+        winner: firstHorse.name,
+        place: [firstHorse, secondHorse, thirdHorse].filter(h => h).map(h => h.name)
+    };
+    
+    if (window.lastBettingRecommendations) {
+        BettingRecommender.recordBettingRecommendation(window.lastBettingRecommendations, actualResult);
+    }
+
+    // 2. AI学習システムに反映
+    if (AIRecommendationService.lastRecommendation) {
+        const actualPlace = [firstHorse, secondHorse, thirdHorse].filter(h => h).map(h => h.name);
+        AIRecommendationService.recordRaceResult(firstHorse.name, actualPlace, AIRecommendationService.lastRecommendation);
+        
+        showMessage('🤖 AI学習にも結果を反映しました', 'success');
+    }
+
+    // 統合処理完了メッセージ
+    showMessage('🧠 統合学習に結果を反映しました（統計・AI両方）', 'success');
+
+    // 入力フィールドをクリア
+    document.getElementById('unifiedFirst').value = '';
+    document.getElementById('unifiedSecond').value = '';
+    document.getElementById('unifiedThird').value = '';
+}
+
+// 全学習データリセット機能
+function resetAllLearningData() {
+    if (!confirm('統計学習データとAI学習データの両方をリセットしますか？\n\nこの操作は元に戻せません。')) {
+        return;
+    }
+    
+    // 統計学習データリセット
+    LearningSystem.resetLearningData();
+    
+    // AI学習データリセット
+    if (typeof AIRecommendationService !== 'undefined' && AIRecommendationService.resetLearningData) {
+        AIRecommendationService.resetLearningData();
+    } else {
+        // AI推奨履歴を直接削除
+        localStorage.removeItem('aiRecommendationHistory');
+    }
+    
+    showMessage('🔄 全学習データをリセットしました（統計・AI両方）', 'success');
+}
+
 // ページ読み込み時の初期化
 document.addEventListener('DOMContentLoaded', function() {
     //console.log('競馬予測アプリを初期化中...');

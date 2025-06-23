@@ -156,6 +156,9 @@
             <h3>🔮 予測実行</h3>
             <div class="btn-grid">
                 <button class="btn" style="background: linear-gradient(45deg, #28a745, #1e7e34);" onclick="calculatePredictions()">🚀 予測開始</button>
+                <button class="btn" style="background: linear-gradient(45deg, #667eea, #764ba2);" onclick="getAIRecommendation()">🤖 AI推奨を取得</button>
+                <button class="btn" style="background: linear-gradient(45deg, #9c27b0, #673ab7);" onclick="AIRecommendationService.showLearningStats()">📈 AI学習統計</button>
+                <button class="btn" style="background: linear-gradient(45deg, #ff9800, #f57c00); font-size: 0.85em;" onclick="AIRecommendationService.generateTestAIData()">🧪 AIテストデータ生成</button>
             </div>
         </div>
 
@@ -173,38 +176,56 @@
             </div>
             <div id="resultsContainer"></div>
             
-            <!-- 学習セクション -->
+            <!-- 統合学習セクション -->
             <div id="learningSection" class="section" style="background: #f0f8ff; border-left: 4px solid #2196f3; margin-top: 20px;">
-                <h3 style="color: #1976d2;">📝 レース結果を入力して学習</h3>
+                <h3 style="color: #1976d2;">📝 レース結果を入力して学習（統計・AI統合）</h3>
                 <div class="form-group">
                     <label>実際の着順結果（1着, 2着, 3着の馬名または馬番を入力）</label>
                     <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 10px;">
-                        <input type="text" id="actualFirst" placeholder="1着（馬名 または 馬番）">
-                        <input type="text" id="actualSecond" placeholder="2着（馬名 または 馬番）">
-                        <input type="text" id="actualThird" placeholder="3着（馬名 または 馬番）">
+                        <input type="text" id="unifiedFirst" placeholder="1着（馬名 または 馬番）">
+                        <input type="text" id="unifiedSecond" placeholder="2着（馬名 または 馬番）">
+                        <input type="text" id="unifiedThird" placeholder="3着（馬名 または 馬番）">
                     </div>
                     <p style="color: #1976d2; font-size: 0.85em; margin-bottom: 15px;">
                         💡 <strong>入力方法:</strong><br>
                         ・馬名: ベラジオ（一部でもOK）<br>
-                        ・馬番: 5（数字のみ）
+                        ・馬番: 5（数字のみ）<br>
+                        ・一度の入力で統計学習とAI学習の両方に反映されます
                     </p>
                 </div>
                 <div class="btn-grid">
-                    <button class="btn" style="background: linear-gradient(45deg, #2196f3, #1976d2);" onclick="processRaceResult()">🧠 結果を学習に反映</button>
-                    <button class="btn" style="background: linear-gradient(45deg, #4caf50, #2e7d32);" onclick="showLearningStats()">📈 学習状況を確認</button>
-                    <button class="btn" style="background: linear-gradient(45deg, #f44336, #d32f2f); font-size: 0.9em;" onclick="resetLearningData()">🔄 学習データリセット</button>
+                    <button class="btn" style="background: linear-gradient(45deg, #2196f3, #667eea);" onclick="processUnifiedRaceResult()">🧠 統合学習に反映</button>
+                    <button class="btn" style="background: linear-gradient(45deg, #4caf50, #2e7d32);" onclick="showLearningStats()">📈 統計学習状況</button>
+                    <button class="btn" style="background: linear-gradient(45deg, #667eea, #764ba2);" onclick="AIRecommendationService.showLearningStats()">📊 AI学習統計</button>
+                    <button class="btn" style="background: linear-gradient(45deg, #f44336, #d32f2f); font-size: 0.9em;" onclick="resetAllLearningData()">🔄 全学習データリセット</button>
                 </div>
                 
                 <!-- 学習データ移行セクション -->
                 <div class="section" style="background: #f3e5f5; border-left: 4px solid #9c27b0; margin-top: 15px;">
                     <h4 style="color: #7b1fa2; margin-bottom: 10px;">📦 学習データの移行</h4>
-                    <div class="btn-grid" style="grid-template-columns: 1fr 1fr;">
-                        <button class="btn" style="background: linear-gradient(45deg, #9c27b0, #7b1fa2);" onclick="exportLearningData()">📤 データをエクスポート</button>
-                        <button class="btn" style="background: linear-gradient(45deg, #673ab7, #512da8);" onclick="document.getElementById('importFile').click()">📥 データをインポート</button>
+                    
+                    <!-- 全体データ移行 -->
+                    <div style="margin-bottom: 15px;">
+                        <h5 style="color: #7b1fa2; margin-bottom: 8px; font-size: 1em;">🗂️ 全データ（統計・AI・設定）</h5>
+                        <div class="btn-grid" style="grid-template-columns: 1fr 1fr;">
+                            <button class="btn" style="background: linear-gradient(45deg, #9c27b0, #7b1fa2);" onclick="exportLearningData()">📤 全データエクスポート</button>
+                            <button class="btn" style="background: linear-gradient(45deg, #673ab7, #512da8);" onclick="document.getElementById('importFile').click()">📥 全データインポート</button>
+                        </div>
+                        <input type="file" id="importFile" accept=".json" style="display: none;" onchange="importLearningData(event)">
                     </div>
-                    <input type="file" id="importFile" accept=".json" style="display: none;" onchange="importLearningData(event)">
+                    
+                    <!-- AI学習データ専用移行 -->
+                    <div style="margin-bottom: 10px;">
+                        <h5 style="color: #667eea; margin-bottom: 8px; font-size: 1em;">🤖 AI学習データのみ</h5>
+                        <div class="btn-grid" style="grid-template-columns: 1fr 1fr;">
+                            <button class="btn" style="background: linear-gradient(45deg, #667eea, #764ba2);" onclick="exportAILearningData()">📤 AI データエクスポート</button>
+                            <button class="btn" style="background: linear-gradient(45deg, #5a6fd8, #6b4b9d);" onclick="document.getElementById('importAIFile').click()">📥 AI データインポート</button>
+                        </div>
+                        <input type="file" id="importAIFile" accept=".json" style="display: none;" onchange="importAILearningData(event)">
+                    </div>
+                    
                     <p style="font-size: 0.85em; color: #7b1fa2; margin-top: 8px; margin-bottom: 0;">
-                        💡 端末間で学習データを移行できます（JSONファイル形式）
+                        💡 端末間で学習データを移行できます。AI学習データのみの移行も可能です（JSONファイル形式）
                     </p>
                 </div>
                 <div id="learningFeedback" style="margin-top: 15px;"></div>
@@ -225,6 +246,7 @@
     <script src="js/predictionEngine.js"></script>
     <script src="js/bettingRecommender.js"></script>
     <script src="js/learningSystem.js"></script>
+    <script src="js/aiRecommendationService.js"></script>
     <script src="js/main.js"></script>
 </body>
 </html> 
