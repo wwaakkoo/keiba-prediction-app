@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>競馬予測アプリ（機械学習対応）</title>
     <link rel="stylesheet" href="styles/main.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <div id="appMessage" style="display:none; position:fixed; top:20px; left:50%; transform:translateX(-50%); background:#ffc; color:#333; padding:12px 24px; border-radius:8px; box-shadow:0 2px 8px #0002; z-index:9999; font-size:1.1em;"></div>
@@ -157,10 +158,72 @@
             <div class="btn-grid">
                 <button class="btn" style="background: linear-gradient(45deg, #28a745, #1e7e34);" onclick="calculatePredictions()">🚀 予測開始</button>
                 <button class="btn" style="background: linear-gradient(45deg, #667eea, #764ba2);" onclick="getAIRecommendation()">🤖 AI推奨を取得</button>
-                <button class="btn" style="background: linear-gradient(45deg, #9c27b0, #673ab7);" onclick="AIRecommendationService.showLearningStats()">📈 AI学習統計</button>
+                <button class="btn" style="background: linear-gradient(45deg, #9c27b0, #673ab7);" onclick="AIRecommendationService.showLearningStats()">📈 AI判断分析</button>
                 <button class="btn" style="background: linear-gradient(45deg, #ff9800, #f57c00); font-size: 0.85em;" onclick="AIRecommendationService.generateTestAIData()">🧪 AIテストデータ生成</button>
             </div>
+            
+            <!-- AI推奨モード切り替え -->
+            <div class="section" style="background: #e3f2fd; border-left: 4px solid #2196f3; margin-top: 15px;">
+                <h4 style="color: #1976d2; margin-bottom: 10px;">🔧 AI推奨モード設定</h4>
+                <div style="margin-bottom: 15px;">
+                    <label style="display: flex; align-items: center; margin-bottom: 8px;">
+                        <input type="radio" name="aiMode" value="api" id="apiMode" checked style="margin-right: 8px;">
+                        <span style="font-weight: bold;">🔗 API自動取得</span>
+                        <span style="margin-left: 10px; font-size: 0.9em; color: #666;">（APIキーを使用してClaude AIから自動取得）</span>
+                    </label>
+                    <label style="display: flex; align-items: center;">
+                        <input type="radio" name="aiMode" value="manual" id="manualMode" style="margin-right: 8px;">
+                        <span style="font-weight: bold;">✍️ 手動入力</span>
+                        <span style="margin-left: 10px; font-size: 0.9em; color: #666;">（プロンプトを取得してAI回答を手動入力）</span>
+                    </label>
+                </div>
+                
+                <!-- プロンプト取得ボタン -->
+                <div id="promptSection" style="display: none; background: #fff3cd; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                    <h5 style="color: #856404; margin-bottom: 10px;">📋 AIプロンプト取得</h5>
+                    <div style="margin-bottom: 10px;">
+                        <button class="btn" style="background: linear-gradient(45deg, #ffc107, #e0a800);" onclick="AIRecommendationService.generatePromptForUser()">📤 プロンプトを生成</button>
+                        <span style="margin: 0 10px;">または</span>
+                        <button class="btn" style="background: linear-gradient(45deg, #28a745, #1e7e34); font-size: 0.9em;" onclick="loadSampleHorses(); setTimeout(() => calculatePredictions(), 500);">🐎 テスト用馬データ生成</button>
+                    </div>
+                    <div id="promptOutput" style="margin-top: 10px;"></div>
+                </div>
+                
+                <!-- 手動AI回答入力 -->
+                <div id="manualInputSection" style="display: none; background: #d1ecf1; padding: 15px; border-radius: 8px;">
+                    <h5 style="color: #0c5460; margin-bottom: 10px;">🤖 AI回答を入力</h5>
+                    <textarea id="manualAIResponse" placeholder="Claude AIからの回答をここに貼り付けてください..." style="width: 100%; height: 200px; padding: 10px; border: 1px solid #bee5eb; border-radius: 5px; font-family: monospace; font-size: 12px;"></textarea>
+                    <div class="btn-grid" style="margin-top: 10px;">
+                        <button class="btn" style="background: linear-gradient(45deg, #17a2b8, #138496);" onclick="AIRecommendationService.processManualAIResponse()">🚀 手動回答を処理</button>
+                        <button class="btn" style="background: linear-gradient(45deg, #6c757d, #495057);" onclick="document.getElementById('manualAIResponse').value = ''">🗑️ クリア</button>
+                    </div>
+                </div>
+            </div>
         </div>
+
+        <script>
+            // AI推奨モード切り替え
+            document.addEventListener('DOMContentLoaded', function() {
+                const apiMode = document.getElementById('apiMode');
+                const manualMode = document.getElementById('manualMode');
+                const promptSection = document.getElementById('promptSection');
+                const manualInputSection = document.getElementById('manualInputSection');
+                
+                function updateAIMode() {
+                    if (manualMode.checked) {
+                        promptSection.style.display = 'block';
+                        manualInputSection.style.display = 'block';
+                    } else {
+                        promptSection.style.display = 'none';
+                        manualInputSection.style.display = 'none';
+                    }
+                }
+                
+                apiMode.addEventListener('change', updateAIMode);
+                manualMode.addEventListener('change', updateAIMode);
+                updateAIMode(); // 初期状態を設定
+            });
+        </script>
 
         <!-- 予測結果 -->
         <div id="results" class="results hidden">
@@ -196,7 +259,8 @@
                 <div class="btn-grid">
                     <button class="btn" style="background: linear-gradient(45deg, #2196f3, #667eea);" onclick="processUnifiedRaceResult()">🧠 統合学習に反映</button>
                     <button class="btn" style="background: linear-gradient(45deg, #4caf50, #2e7d32);" onclick="showLearningStats()">📈 統計学習状況</button>
-                    <button class="btn" style="background: linear-gradient(45deg, #667eea, #764ba2);" onclick="AIRecommendationService.showLearningStats()">📊 AI学習統計</button>
+                    <button class="btn" style="background: linear-gradient(45deg, #667eea, #764ba2);" onclick="AIRecommendationService.showLearningStats()">📊 AI判断分析</button>
+                    <button class="btn" style="background: linear-gradient(45deg, #ff9800, #f57c00);" onclick="AIRecommendationService.showLearningGraphs()">📈 AI分析グラフ</button>
                     <button class="btn" style="background: linear-gradient(45deg, #f44336, #d32f2f); font-size: 0.9em;" onclick="resetAllLearningData()">🔄 全学習データリセット</button>
                 </div>
                 
@@ -229,6 +293,30 @@
                     </p>
                 </div>
                 <div id="learningFeedback" style="margin-top: 15px;"></div>
+                
+                <!-- AI判断分析グラフ表示エリア -->
+                <div id="learningGraphsSection" class="section" style="display: none; background: #f8f9fa; border-left: 4px solid #ff9800; margin-top: 20px;">
+                    <h3 style="color: #e65100;">📊 AI判断パターン分析グラフ</h3>
+                    
+                    <!-- グラフ制御ボタン -->
+                    <div class="btn-grid" style="margin-bottom: 20px;">
+                        <button class="btn" style="background: linear-gradient(45deg, #4caf50, #2e7d32);" onclick="AIRecommendationService.showSuccessRateChart()">📈 成功率推移</button>
+                        <button class="btn" style="background: linear-gradient(45deg, #2196f3, #1976d2);" onclick="AIRecommendationService.showConfidenceChart()">🎯 信頼度分析</button>
+                        <button class="btn" style="background: linear-gradient(45deg, #9c27b0, #7b1fa2);" onclick="AIRecommendationService.showOddsChart()">💰 オッズ分布</button>
+                        <button class="btn" style="background: linear-gradient(45deg, #ff9800, #f57c00);" onclick="AIRecommendationService.showBettingStrategyChart()">🎯 買い目成功率</button>
+                        <button class="btn" style="background: linear-gradient(45deg, #f44336, #d32f2f);" onclick="document.getElementById('learningGraphsSection').style.display='none'">❌ 閉じる</button>
+                    </div>
+                    
+                    <!-- グラフキャンバス -->
+                    <div style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                        <canvas id="learningChart" width="400" height="200"></canvas>
+                    </div>
+                    
+                    <!-- グラフ説明 -->
+                    <div id="chartDescription" style="margin-top: 15px; padding: 15px; background: rgba(255,152,0,0.1); border-radius: 8px; color: #e65100;">
+                        📊 グラフを選択して学習状況を可視化できます
+                    </div>
+                </div>
             </div>
             
             <!-- 買い目推奨セクション -->
@@ -246,6 +334,7 @@
     <script src="js/predictionEngine.js"></script>
     <script src="js/bettingRecommender.js"></script>
     <script src="js/learningSystem.js"></script>
+    <script src="js/hybridLearningSystem.js"></script>
     <script src="js/aiRecommendationService.js"></script>
     <script src="js/main.js"></script>
 </body>
