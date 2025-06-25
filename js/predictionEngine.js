@@ -8,6 +8,10 @@ class PredictionEngine {
         }
 
         const horses = HorseManager.getAllHorses();
+        
+        // データ抽出内容を確認（2走分対応）
+        this.logRaceHistoryExtraction(horses);
+        
         const predictions = this.calculateHorsePredictions(horses);
         this.currentPredictions = predictions;
         this.displayResults(predictions);
@@ -501,6 +505,37 @@ class PredictionEngine {
                 showMessage('AI推奨の取得に失敗しました', 'error');
             }
         }
+    }
+
+    // 過去2走のレース履歴抽出ログ
+    static logRaceHistoryExtraction(horses) {
+        console.log('=== 馬データ抽出完了（過去2走対応） ===');
+        console.log(`抽出馬数: ${horses.length}頭`);
+        
+        horses.forEach((horse, index) => {
+            console.log(`\n--- 馬${index + 1}: ${horse.name} ---`);
+            console.log(`オッズ: ${horse.odds}倍`);
+            console.log(`騎手: ${horse.jockey}`);
+            console.log(`前走着順: ${horse.lastRace || '?'}着`);
+            
+            // 前走データの確認
+            if (horse.lastRaceCourse || horse.lastRaceTime || horse.lastRaceAgari) {
+                console.log(`前走: ${horse.lastRaceCourse || '?'} ${horse.lastRaceDistance || '?'}m ${horse.lastRaceTrackType || '?'} ${horse.lastRaceAgari || '?'}秒`);
+                console.log(`前走詳細: ${horse.lastRaceDate || '?'} 斤量${horse.lastRaceWeight || '?'}kg 人気${horse.lastRacePopularity || '?'}番`);
+            } else {
+                console.log(`前走: データなし`);
+            }
+            
+            // 2走前データの確認
+            if (horse.secondLastRaceCourse || horse.secondLastRaceTime || horse.secondLastRaceAgari) {
+                console.log(`2走前: ${horse.secondLastRaceCourse || '?'} ${horse.secondLastRaceDistance || '?'}m ${horse.secondLastRaceTrackType || '?'} ${horse.secondLastRaceAgari || '?'}秒`);
+                console.log(`2走前詳細: ${horse.secondLastRaceDate || '?'} 斤量${horse.secondLastRaceWeight || '?'}kg 人気${horse.secondLastRacePopularity || '?'}番 ${horse.secondLastRaceOrder || '?'}着`);
+            } else {
+                console.log(`2走前: データなし`);
+            }
+        });
+        
+        console.log('\n=== 抽出完了 ===');
     }
 }
 

@@ -270,22 +270,21 @@ class DataConverter {
                 }
             }
             
-            // 前走情報の抽出（最初の前走のみ）
+            // 過去2走情報の抽出
             if (!foundLastRace && line.match(/\d{4}\.\d{2}\.\d{2}/)) {
-                const lastRaceData = DataConverter.parseNetkeibaLastRace(lines, i);
-                if (lastRaceData) {
-                    Object.assign(horse, lastRaceData);
+                const raceHistoryData = DataConverter.parseNetkeibaRaceHistory(lines, i, 2); // 2走分抽出
+                if (raceHistoryData) {
+                    Object.assign(horse, raceHistoryData);
                     // 着順をlastRaceOrderからlastRaceにもコピー（予測エンジン互換のため）
-                    if (lastRaceData.lastRaceOrder !== undefined) {
-                        horse.lastRaceOrder = lastRaceData.lastRaceOrder;
-                        horse.lastRace = lastRaceData.lastRaceOrder;
+                    if (raceHistoryData.lastRaceOrder !== undefined) {
+                        horse.lastRaceOrder = raceHistoryData.lastRaceOrder;
+                        horse.lastRace = raceHistoryData.lastRaceOrder;
                         console.log('馬データに着順セット:', horse.name, horse.lastRaceOrder);
                     } else {
-                        console.log('馬データに着順セット失敗:', horse.name, lastRaceData);
+                        console.log('馬データに着順セット失敗:', horse.name, raceHistoryData);
                     }
                     foundLastRace = true;
-                    i = lastRaceData.nextIndex - 1;  // -1を追加（whileループのi++で次の行に進むため）
-                    //console.log('前走情報を抽出完了:', horse.lastRaceDate);
+                    i = raceHistoryData.nextIndex - 1;  // -1を追加（whileループのi++で次の行に進むため）
                     continue;
                 }
             }
@@ -331,6 +330,63 @@ class DataConverter {
     
     
     // netkeiba形式の前走情報を解析
+    // 過去2走分のレース情報を抽出する新しいメソッド
+    static parseNetkeibaRaceHistory(lines, startIndex, maxRaces = 2) {
+        const raceHistory = {};
+        let i = startIndex;
+        let racesFound = 0;
+        
+        console.log(`=== 過去${maxRaces}走データ抽出開始 ===`);
+        console.log('開始行:', lines[startIndex]);
+        
+        // 最大30行まで検索
+        while (i < lines.length && i < startIndex + 30 && racesFound < maxRaces) {
+            const line = lines[i].trim();
+            
+            // 休養情報や特殊情報をスキップ
+            if (DataConverter.isRestOrSpecialInfo(line)) {
+                i++;
+                continue;
+            }
+            
+            // 次の馬の開始を検出したら終了
+            if (DataConverter.isNetkeibaHorseStart(line)) {
+                console.log('次の馬の開始を検出、レース履歴解析終了');
+                break;
+            }
+            
+            // レース日付を検出
+            if (line.match(/\d{4}\.\d{2}\.\d{2}/)) {
+                const raceData = this.parseNetkeibaLastRace(lines, i);
+                if (raceData) {
+                    if (racesFound === 0) {
+                        // 前走データ
+                        Object.assign(raceHistory, raceData);
+                    } else if (racesFound === 1) {
+                        // 2走前データ（プレフィックスを変更）
+                        Object.keys(raceData).forEach(key => {
+                            if (key !== 'nextIndex') {
+                                const newKey = key.replace('lastRace', 'secondLastRace');
+                                raceHistory[newKey] = raceData[key];
+                            }
+                        });
+                    }
+                    
+                    racesFound++;
+                    i = raceData.nextIndex - 1;
+                    console.log(`${racesFound}走目のデータを抽出完了`);
+                }
+            }
+            
+            i++;
+        }
+        
+        raceHistory.nextIndex = i;
+        console.log(`=== 過去レース抽出完了: ${racesFound}走分 ===`);
+        
+        return racesFound > 0 ? raceHistory : null;
+    }
+
     static parseNetkeibaLastRace(lines, startIndex) {
         const lastRace = {
             lastRaceAgari: 0,
