@@ -61,7 +61,7 @@ class AIRecommendationService {
             trackType: horse.trackType,
             weather: horse.weather,
             trackCondition: horse.trackCondition,
-            // 過去2走データも含める
+            // 過去5走データを含める（指数関数的減衰重み対応）
             raceHistory: {
                 lastRace: {
                     order: horse.lastRaceOrder || horse.lastRace,
@@ -70,7 +70,8 @@ class AIRecommendationService {
                     trackType: horse.lastRaceTrackType,
                     agari: horse.lastRaceAgari,
                     date: horse.lastRaceDate,
-                    popularity: horse.lastRacePopularity
+                    popularity: horse.lastRacePopularity,
+                    weight: 1.00 // 35%重み
                 },
                 secondLastRace: (horse.secondLastRaceOrder || horse.secondLastRaceCourse || horse.secondLastRaceAgari) ? {
                     order: horse.secondLastRaceOrder,
@@ -79,7 +80,38 @@ class AIRecommendationService {
                     trackType: horse.secondLastRaceTrackType,
                     agari: horse.secondLastRaceAgari,
                     date: horse.secondLastRaceDate,
-                    popularity: horse.secondLastRacePopularity
+                    popularity: horse.secondLastRacePopularity,
+                    weight: 0.82 // 29%重み
+                } : null,
+                thirdLastRace: (horse.thirdLastRaceOrder || horse.thirdLastRaceCourse || horse.thirdLastRaceAgari) ? {
+                    order: horse.thirdLastRaceOrder,
+                    course: horse.thirdLastRaceCourse,
+                    distance: horse.thirdLastRaceDistance,
+                    trackType: horse.thirdLastRaceTrackType,
+                    agari: horse.thirdLastRaceAgari,
+                    date: horse.thirdLastRaceDate,
+                    popularity: horse.thirdLastRacePopularity,
+                    weight: 0.67 // 24%重み
+                } : null,
+                fourthLastRace: (horse.fourthLastRaceOrder || horse.fourthLastRaceCourse || horse.fourthLastRaceAgari) ? {
+                    order: horse.fourthLastRaceOrder,
+                    course: horse.fourthLastRaceCourse,
+                    distance: horse.fourthLastRaceDistance,
+                    trackType: horse.fourthLastRaceTrackType,
+                    agari: horse.fourthLastRaceAgari,
+                    date: horse.fourthLastRaceDate,
+                    popularity: horse.fourthLastRacePopularity,
+                    weight: 0.55 // 19%重み
+                } : null,
+                fifthLastRace: (horse.fifthLastRaceOrder || horse.fifthLastRaceCourse || horse.fifthLastRaceAgari) ? {
+                    order: horse.fifthLastRaceOrder,
+                    course: horse.fifthLastRaceCourse,
+                    distance: horse.fifthLastRaceDistance,
+                    trackType: horse.fifthLastRaceTrackType,
+                    agari: horse.fifthLastRaceAgari,
+                    date: horse.fifthLastRaceDate,
+                    popularity: horse.fifthLastRacePopularity,
+                    weight: 0.45 // 16%重み
                 } : null
             }
         }));
@@ -180,6 +212,33 @@ class AIRecommendationService {
                 horseInfo += `]`;
             }
             
+            // 3走前データがあれば追加
+            if (horse.raceHistory?.thirdLastRace) {
+                const thirdRace = horse.raceHistory.thirdLastRace;
+                horseInfo += ` [3走前:${thirdRace.order || '?'}着 ${thirdRace.course || '?'} ${thirdRace.distance || '?'}m`;
+                if (thirdRace.agari) horseInfo += ` 上がり${thirdRace.agari}秒`;
+                if (thirdRace.popularity) horseInfo += ` ${thirdRace.popularity}番人気`;
+                horseInfo += `]`;
+            }
+            
+            // 4走前データがあれば追加
+            if (horse.raceHistory?.fourthLastRace) {
+                const fourthRace = horse.raceHistory.fourthLastRace;
+                horseInfo += ` [4走前:${fourthRace.order || '?'}着 ${fourthRace.course || '?'} ${fourthRace.distance || '?'}m`;
+                if (fourthRace.agari) horseInfo += ` 上がり${fourthRace.agari}秒`;
+                if (fourthRace.popularity) horseInfo += ` ${fourthRace.popularity}番人気`;
+                horseInfo += `]`;
+            }
+            
+            // 5走前データがあれば追加
+            if (horse.raceHistory?.fifthLastRace) {
+                const fifthRace = horse.raceHistory.fifthLastRace;
+                horseInfo += ` [5走前:${fifthRace.order || '?'}着 ${fifthRace.course || '?'} ${fifthRace.distance || '?'}m`;
+                if (fifthRace.agari) horseInfo += ` 上がり${fifthRace.agari}秒`;
+                if (fifthRace.popularity) horseInfo += ` ${fifthRace.popularity}番人気`;
+                horseInfo += `]`;
+            }
+            
             return horseInfo;
         }).join('\n');
         
@@ -198,17 +257,18 @@ ${horseList}
 ## 🎯 分析要領
 以下の観点から総合的に判断してください：
 
-**重視すべき要素（優先順）:**
-1. **前走・2走前の成績推移** - 調子の上向き/下降
+**重視すべき要素（優先順・指数関数的減衰重み）:**
+1. **前5走の成績推移（前走35%→5走前16%）** - 調子の上向き/下降トレンド
 2. **距離・馬場適性** - 今回条件への適応度
 3. **騎手・オッズの妥当性** - 人気と実力の乖離
 4. **年齢・体重変化** - コンディション指標
 
 **具体的分析ポイント:**
-- 前走から今回への条件変化（距離・馬場・格）
-- 上がり3Fと人気のバランス
+- 前5走のトレンド分析（向上・安定・悪化パターン）
+- 上がり3Fの一貫性と好タイム継続性
 - 休養期間とローテーション
 - 騎手変更の影響
+- 好走頻度（3着以内率）
 
 ## 📊 回答フォーマット
 以下のJSON形式で必ず回答してください：
@@ -244,7 +304,8 @@ ${horseList}
 }
 
 **必須事項:**
-- 前走・2走前データを必ず言及
+- 前5走データの指数関数的重み付け分析を必ず実施
+- 各馬のトレンド（向上・安定・悪化）を必ず言及
 - オッズの妥当性を評価
 - 具体的な買い目金額を提示
 - リスク要因を明記
