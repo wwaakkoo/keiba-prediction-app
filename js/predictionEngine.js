@@ -535,19 +535,73 @@ class PredictionEngine {
                 console.log(`2走前: データなし`);
             }
             
-            // パフォーマンス傾向分析
-            if (horse.lastRaceOrder && horse.secondLastRaceOrder) {
-                const lastOrder = this.parseRaceOrder(horse.lastRaceOrder) || this.parseRaceOrder(horse.lastRace);
-                const secondLastOrder = this.parseRaceOrder(horse.secondLastRaceOrder);
+            // 3走前データの確認
+            if (horse.thirdLastRaceCourse || horse.thirdLastRaceTime || horse.thirdLastRaceAgari) {
+                console.log(`3走前: ${horse.thirdLastRaceCourse || '?'} ${horse.thirdLastRaceDistance || '?'}m ${horse.thirdLastRaceTrackType || '?'} ${horse.thirdLastRaceAgari || '?'}秒`);
+                console.log(`3走前詳細: ${horse.thirdLastRaceDate || '?'} 斤量${horse.thirdLastRaceWeight || '?'}kg 人気${horse.thirdLastRacePopularity || '?'}番 ${horse.thirdLastRaceOrder || '?'}着`);
+            } else {
+                console.log(`3走前: データなし`);
+            }
+            
+            // 4走前データの確認
+            if (horse.fourthLastRaceCourse || horse.fourthLastRaceTime || horse.fourthLastRaceAgari) {
+                console.log(`4走前: ${horse.fourthLastRaceCourse || '?'} ${horse.fourthLastRaceDistance || '?'}m ${horse.fourthLastRaceTrackType || '?'} ${horse.fourthLastRaceAgari || '?'}秒`);
+                console.log(`4走前詳細: ${horse.fourthLastRaceDate || '?'} 斤量${horse.fourthLastRaceWeight || '?'}kg 人気${horse.fourthLastRacePopularity || '?'}番 ${horse.fourthLastRaceOrder || '?'}着`);
+            } else {
+                console.log(`4走前: データなし`);
+            }
+            
+            // 5走前データの確認
+            if (horse.fifthLastRaceCourse || horse.fifthLastRaceTime || horse.fifthLastRaceAgari) {
+                console.log(`5走前: ${horse.fifthLastRaceCourse || '?'} ${horse.fifthLastRaceDistance || '?'}m ${horse.fifthLastRaceTrackType || '?'} ${horse.fifthLastRaceAgari || '?'}秒`);
+                console.log(`5走前詳細: ${horse.fifthLastRaceDate || '?'} 斤量${horse.fifthLastRaceWeight || '?'}kg 人気${horse.fifthLastRacePopularity || '?'}番 ${horse.fifthLastRaceOrder || '?'}着`);
+            } else {
+                console.log(`5走前: データなし`);
+            }
+            
+            // パフォーマンス傾向分析（5走分のトレンド）
+            const raceOrders = [
+                this.parseRaceOrder(horse.lastRaceOrder) || this.parseRaceOrder(horse.lastRace),
+                this.parseRaceOrder(horse.secondLastRaceOrder),
+                this.parseRaceOrder(horse.thirdLastRaceOrder),
+                this.parseRaceOrder(horse.fourthLastRaceOrder),
+                this.parseRaceOrder(horse.fifthLastRaceOrder)
+            ].filter(order => order && order !== 99); // 中止を除外
+            
+            if (raceOrders.length >= 2) {
+                // 直近3走のトレンド分析（指数関数的重み付け）
+                const weights = [1.0, 0.82, 0.67]; // 前走、2走前、3走前の重み
+                let weightedSum = 0;
+                let weightSum = 0;
                 
-                if (lastOrder && secondLastOrder) {
-                    const improvement = secondLastOrder - lastOrder;
-                    if (improvement > 0) {
-                        console.log(`📈 成績向上: ${horse.secondLastRaceOrder}着→${horse.lastRaceOrder || horse.lastRace}着 (+${improvement})`);
-                    } else if (improvement < 0) {
-                        console.log(`📉 成績低下: ${horse.secondLastRaceOrder}着→${horse.lastRaceOrder || horse.lastRace}着 (${improvement})`);
+                for (let i = 0; i < Math.min(raceOrders.length, 3); i++) {
+                    weightedSum += raceOrders[i] * weights[i];
+                    weightSum += weights[i];
+                }
+                
+                const recentAverage = weightedSum / weightSum;
+                
+                // 直近2走の変化
+                if (raceOrders.length >= 2) {
+                    const recentChange = raceOrders[1] - raceOrders[0]; // 2走前→前走
+                    if (recentChange > 1) {
+                        console.log(`📈 直近向上: ${raceOrders[1]}着→${raceOrders[0]}着 (+${recentChange}) 重み付き平均: ${recentAverage.toFixed(1)}着`);
+                    } else if (recentChange < -1) {
+                        console.log(`📉 直近悪化: ${raceOrders[1]}着→${raceOrders[0]}着 (${recentChange}) 重み付き平均: ${recentAverage.toFixed(1)}着`);
                     } else {
-                        console.log(`➡️ 成績安定: ${horse.secondLastRaceOrder}着→${horse.lastRaceOrder || horse.lastRace}着`);
+                        console.log(`➡️ 直近安定: ${raceOrders[1]}着→${raceOrders[0]}着 重み付き平均: ${recentAverage.toFixed(1)}着`);
+                    }
+                }
+                
+                // 5走の全体トレンド
+                if (raceOrders.length >= 4) {
+                    const earlyAverage = (raceOrders[2] + raceOrders[3] + (raceOrders[4] || raceOrders[3])) / 3;
+                    const overallTrend = earlyAverage - recentAverage;
+                    
+                    if (overallTrend > 1) {
+                        console.log(`🚀 長期向上トレンド: 過去平均${earlyAverage.toFixed(1)}着→直近平均${recentAverage.toFixed(1)}着`);
+                    } else if (overallTrend < -1) {
+                        console.log(`⚠️ 長期悪化トレンド: 過去平均${earlyAverage.toFixed(1)}着→直近平均${recentAverage.toFixed(1)}着`);
                     }
                 }
             }
@@ -556,27 +610,33 @@ class PredictionEngine {
         console.log('\n=== 抽出完了 ===');
     }
 
-    // 過去2走のレース履歴を総合評価する新機能
+    // 過去5走のレース履歴を総合評価する新機能（指数関数的減衰モデル）
     static calculateRaceHistoryScore(horse, adj) {
         let totalScore = 0;
         
-        // 前走評価（ウェイト70%）
-        const lastRaceScore = this.evaluateSingleRace({
-            agari: horse.lastRaceAgari,
-            order: horse.lastRaceOrder || horse.lastRace,
-            course: horse.lastRaceCourse,
-            distance: horse.lastRaceDistance,
-            trackType: horse.lastRaceTrackType,
-            trackCondition: horse.lastRaceTrackCondition,
-            popularity: horse.lastRacePopularity,
-            weight: horse.lastRaceWeight
-        }, horse, '前走');
+        // 指数関数的減衰重み（λ=0.25）
+        const weights = [
+            { weight: 1.00, percentage: 35 }, // 前走: 35%
+            { weight: 0.82, percentage: 29 }, // 2走前: 29%
+            { weight: 0.67, percentage: 24 }, // 3走前: 24%
+            { weight: 0.55, percentage: 19 }, // 4走前: 19%
+            { weight: 0.45, percentage: 16 }  // 5走前: 16%
+        ];
         
-        totalScore += lastRaceScore * 0.7 * adj.lastRaceWeight;
-        
-        // 2走前評価（ウェイト30%）
-        if (horse.secondLastRaceAgari || horse.secondLastRaceOrder) {
-            const secondLastRaceScore = this.evaluateSingleRace({
+        // 各走のデータ配列
+        const raceData = [
+            {
+                agari: horse.lastRaceAgari,
+                order: horse.lastRaceOrder || horse.lastRace,
+                course: horse.lastRaceCourse,
+                distance: horse.lastRaceDistance,
+                trackType: horse.lastRaceTrackType,
+                trackCondition: horse.lastRaceTrackCondition,
+                popularity: horse.lastRacePopularity,
+                weight: horse.lastRaceWeight,
+                label: '前走'
+            },
+            {
                 agari: horse.secondLastRaceAgari,
                 order: horse.secondLastRaceOrder,
                 course: horse.secondLastRaceCourse,
@@ -584,14 +644,68 @@ class PredictionEngine {
                 trackType: horse.secondLastRaceTrackType,
                 trackCondition: horse.secondLastRaceTrackCondition,
                 popularity: horse.secondLastRacePopularity,
-                weight: horse.secondLastRaceWeight
-            }, horse, '2走前');
+                weight: horse.secondLastRaceWeight,
+                label: '2走前'
+            },
+            {
+                agari: horse.thirdLastRaceAgari,
+                order: horse.thirdLastRaceOrder,
+                course: horse.thirdLastRaceCourse,
+                distance: horse.thirdLastRaceDistance,
+                trackType: horse.thirdLastRaceTrackType,
+                trackCondition: horse.thirdLastRaceTrackCondition,
+                popularity: horse.thirdLastRacePopularity,
+                weight: horse.thirdLastRaceWeight,
+                label: '3走前'
+            },
+            {
+                agari: horse.fourthLastRaceAgari,
+                order: horse.fourthLastRaceOrder,
+                course: horse.fourthLastRaceCourse,
+                distance: horse.fourthLastRaceDistance,
+                trackType: horse.fourthLastRaceTrackType,
+                trackCondition: horse.fourthLastRaceTrackCondition,
+                popularity: horse.fourthLastRacePopularity,
+                weight: horse.fourthLastRaceWeight,
+                label: '4走前'
+            },
+            {
+                agari: horse.fifthLastRaceAgari,
+                order: horse.fifthLastRaceOrder,
+                course: horse.fifthLastRaceCourse,
+                distance: horse.fifthLastRaceDistance,
+                trackType: horse.fifthLastRaceTrackType,
+                trackCondition: horse.fifthLastRaceTrackCondition,
+                popularity: horse.fifthLastRacePopularity,
+                weight: horse.fifthLastRaceWeight,
+                label: '5走前'
+            }
+        ];
+        
+        let totalWeight = 0;
+        
+        // 各走の評価と重み付け
+        for (let i = 0; i < raceData.length; i++) {
+            const race = raceData[i];
+            const weightInfo = weights[i];
             
-            totalScore += secondLastRaceScore * 0.3 * adj.lastRaceWeight;
+            // データが存在する場合のみ評価
+            if (race.agari || race.order) {
+                const raceScore = this.evaluateSingleRace(race, horse, race.label);
+                const weightedScore = raceScore * weightInfo.weight * adj.lastRaceWeight;
+                
+                totalScore += weightedScore;
+                totalWeight += weightInfo.weight;
+            }
         }
         
-        // レースパフォーマンスの一貫性評価
-        const consistencyBonus = this.evaluatePerformanceConsistency(horse);
+        // 重み正規化（実際に評価した走数に応じて調整）
+        if (totalWeight > 0) {
+            totalScore = totalScore / totalWeight * weights[0].weight; // 前走重みで正規化
+        }
+        
+        // 5走分の一貫性評価（より高度なアルゴリズム）
+        const consistencyBonus = this.evaluateAdvancedPerformanceConsistency(horse);
         totalScore += consistencyBonus;
         
         return totalScore;
@@ -741,6 +855,102 @@ class PredictionEngine {
         }
         
         return consistencyScore;
+    }
+
+    // 5走分の高度なパフォーマンス一貫性評価
+    static evaluateAdvancedPerformanceConsistency(horse) {
+        let consistencyScore = 0;
+        
+        // 5走分の着順データを収集
+        const orders = [
+            this.parseRaceOrder(horse.lastRaceOrder) || this.parseRaceOrder(horse.lastRace),
+            this.parseRaceOrder(horse.secondLastRaceOrder),
+            this.parseRaceOrder(horse.thirdLastRaceOrder),
+            this.parseRaceOrder(horse.fourthLastRaceOrder),
+            this.parseRaceOrder(horse.fifthLastRaceOrder)
+        ].filter(order => order && order !== 99); // 中止を除外
+        
+        if (orders.length < 2) return 0;
+        
+        // 1. トレンド分析（重み付き回帰）
+        const weights = [1.0, 0.82, 0.67, 0.55, 0.45];
+        let weightedSum = 0;
+        let positionSum = 0;
+        
+        for (let i = 0; i < orders.length; i++) {
+            weightedSum += orders[i] * weights[i];
+            positionSum += (i + 1) * weights[i]; // 1=最新, 2=2走前...
+        }
+        
+        // 2. 向上トレンドボーナス
+        if (orders.length >= 3) {
+            const recent = (orders[0] + orders[1]) / 2; // 直近2走平均
+            const past = orders.slice(2).reduce((sum, order) => sum + order, 0) / Math.max(1, orders.length - 2);
+            
+            const improvement = past - recent; // 着順は小さいほど良い
+            if (improvement > 1.5) {
+                consistencyScore += 15; // 大幅向上
+            } else if (improvement > 0.5) {
+                consistencyScore += 8; // 緩やかな向上
+            } else if (improvement < -1.5) {
+                consistencyScore -= 10; // 大幅悪化
+            }
+        }
+        
+        // 3. 安定性評価（標準偏差ベース）
+        if (orders.length >= 3) {
+            const mean = orders.reduce((sum, order) => sum + order, 0) / orders.length;
+            const variance = orders.reduce((sum, order) => sum + Math.pow(order - mean, 2), 0) / orders.length;
+            const standardDeviation = Math.sqrt(variance);
+            
+            if (standardDeviation <= 1.0) {
+                consistencyScore += 12; // 非常に安定
+            } else if (standardDeviation <= 2.0) {
+                consistencyScore += 6; // まずまず安定
+            } else if (standardDeviation >= 4.0) {
+                consistencyScore -= 8; // 不安定
+            }
+        }
+        
+        // 4. 好走頻度評価
+        const goodRuns = orders.filter(order => order <= 3).length;
+        const goodRunRate = goodRuns / orders.length;
+        
+        if (goodRunRate >= 0.6) {
+            consistencyScore += 10; // 高頻度で好走
+        } else if (goodRunRate >= 0.4) {
+            consistencyScore += 5; // 適度に好走
+        } else if (goodRunRate <= 0.2) {
+            consistencyScore -= 5; // 好走が少ない
+        }
+        
+        // 5. 5走分の上がり3F一貫性
+        const agariTimes = [
+            parseFloat(horse.lastRaceAgari),
+            parseFloat(horse.secondLastRaceAgari),
+            parseFloat(horse.thirdLastRaceAgari),
+            parseFloat(horse.fourthLastRaceAgari),
+            parseFloat(horse.fifthLastRaceAgari)
+        ].filter(agari => !isNaN(agari));
+        
+        if (agariTimes.length >= 3) {
+            const agariMean = agariTimes.reduce((sum, agari) => sum + agari, 0) / agariTimes.length;
+            const agariStd = Math.sqrt(agariTimes.reduce((sum, agari) => sum + Math.pow(agari - agariMean, 2), 0) / agariTimes.length);
+            
+            if (agariStd <= 0.5) {
+                consistencyScore += 8; // 上がり安定
+            } else if (agariStd >= 1.5) {
+                consistencyScore -= 5; // 上がり不安定
+            }
+            
+            // 継続的に好タイム
+            const goodAgariCount = agariTimes.filter(agari => agari <= 34.5).length;
+            if (goodAgariCount >= Math.ceil(agariTimes.length * 0.6)) {
+                consistencyScore += 10; // 継続して好タイム
+            }
+        }
+        
+        return Math.min(25, Math.max(-15, consistencyScore)); // -15〜25の範囲に制限
     }
 }
 

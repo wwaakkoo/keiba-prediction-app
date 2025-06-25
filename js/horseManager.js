@@ -213,7 +213,7 @@ class HorseManager {
                 </div>
             </div>
             <div class="horse-section">
-                <h4>📊 過去2走情報</h4>
+                <h4>📊 過去5走情報</h4>
                 <div class="horse-content">
                     <!-- 前走情報 -->
                     <div style="border: 2px solid #28a745; padding: 15px; margin-bottom: 15px; border-radius: 8px; background: #f8fff8;">
@@ -328,6 +328,188 @@ class HorseManager {
                             </div>
                         </div>
                     </div>
+                    
+                    <!-- 3〜5走前情報（折りたたみ） -->
+                    <div style="margin-top: 15px;">
+                        <button type="button" onclick="HorseManager.toggleExtendedRaceHistory(this)" 
+                                style="background: #6c757d; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; width: 100%; text-align: left;">
+                            <span style="float: right;">▼</span>
+                            🗂️ 3〜5走前の詳細データを表示
+                        </button>
+                        <div class="extended-race-history" style="display: none; margin-top: 10px;">
+                            
+                            <!-- 3走前情報 -->
+                            <div style="border: 2px solid #ffc107; padding: 15px; margin-bottom: 15px; border-radius: 8px; background: #fffbf0;">
+                                <h5 style="color: #ffc107; margin-bottom: 10px;">3走前</h5>
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+                                    <div class="form-group">
+                                        <label>3走前コース</label>
+                                        <input type="text" name="thirdLastRaceCourse" value="">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>3走前距離</label>
+                                        <input type="text" name="thirdLastRaceDistance" value="">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>3走前馬場</label>
+                                        <input type="text" name="thirdLastRaceTrackType" value="">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>3走前日</label>
+                                        <input type="text" name="thirdLastRaceDate" value="">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>3走前タイム</label>
+                                        <input type="text" name="thirdLastRaceTime" placeholder="例: 1:35.2" style="font-family: monospace;">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>3走前馬場状態</label>
+                                        <select name="thirdLastRaceTrackCondition">
+                                            <option value="">選択してください</option>
+                                            <option value="良">良</option>
+                                            <option value="稍重">稍重</option>
+                                            <option value="重">重</option>
+                                            <option value="不良">不良</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>3走前斤量</label>
+                                        <input type="number" name="thirdLastRaceWeight" step="0.5" placeholder="例: 56.0">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>3走前騎手</label>
+                                        <input type="text" name="thirdLastRaceJockey" placeholder="3走前騎手名">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>3走前人気</label>
+                                        <input type="number" name="thirdLastRacePopularity" placeholder="例: 1">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>3走前着順</label>
+                                        <input type="number" name="thirdLastRaceOrder" placeholder="例: 1">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>3走前上がり3F</label>
+                                        <input type="text" name="thirdLastRaceAgari" placeholder="例: 34.1">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- 4走前情報 -->
+                            <div style="border: 2px solid #dc3545; padding: 15px; margin-bottom: 15px; border-radius: 8px; background: #fff5f5;">
+                                <h5 style="color: #dc3545; margin-bottom: 10px;">4走前</h5>
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+                                    <div class="form-group">
+                                        <label>4走前コース</label>
+                                        <input type="text" name="fourthLastRaceCourse" value="">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>4走前距離</label>
+                                        <input type="text" name="fourthLastRaceDistance" value="">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>4走前馬場</label>
+                                        <input type="text" name="fourthLastRaceTrackType" value="">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>4走前日</label>
+                                        <input type="text" name="fourthLastRaceDate" value="">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>4走前タイム</label>
+                                        <input type="text" name="fourthLastRaceTime" placeholder="例: 1:35.2" style="font-family: monospace;">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>4走前馬場状態</label>
+                                        <select name="fourthLastRaceTrackCondition">
+                                            <option value="">選択してください</option>
+                                            <option value="良">良</option>
+                                            <option value="稍重">稍重</option>
+                                            <option value="重">重</option>
+                                            <option value="不良">不良</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>4走前斤量</label>
+                                        <input type="number" name="fourthLastRaceWeight" step="0.5" placeholder="例: 56.0">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>4走前騎手</label>
+                                        <input type="text" name="fourthLastRaceJockey" placeholder="4走前騎手名">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>4走前人気</label>
+                                        <input type="number" name="fourthLastRacePopularity" placeholder="例: 1">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>4走前着順</label>
+                                        <input type="number" name="fourthLastRaceOrder" placeholder="例: 1">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>4走前上がり3F</label>
+                                        <input type="text" name="fourthLastRaceAgari" placeholder="例: 34.1">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- 5走前情報 -->
+                            <div style="border: 2px solid #6f42c1; padding: 15px; margin-bottom: 15px; border-radius: 8px; background: #f8f5ff;">
+                                <h5 style="color: #6f42c1; margin-bottom: 10px;">5走前</h5>
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+                                    <div class="form-group">
+                                        <label>5走前コース</label>
+                                        <input type="text" name="fifthLastRaceCourse" value="">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>5走前距離</label>
+                                        <input type="text" name="fifthLastRaceDistance" value="">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>5走前馬場</label>
+                                        <input type="text" name="fifthLastRaceTrackType" value="">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>5走前日</label>
+                                        <input type="text" name="fifthLastRaceDate" value="">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>5走前タイム</label>
+                                        <input type="text" name="fifthLastRaceTime" placeholder="例: 1:35.2" style="font-family: monospace;">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>5走前馬場状態</label>
+                                        <select name="fifthLastRaceTrackCondition">
+                                            <option value="">選択してください</option>
+                                            <option value="良">良</option>
+                                            <option value="稍重">稍重</option>
+                                            <option value="重">重</option>
+                                            <option value="不良">不良</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>5走前斤量</label>
+                                        <input type="number" name="fifthLastRaceWeight" step="0.5" placeholder="例: 56.0">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>5走前騎手</label>
+                                        <input type="text" name="fifthLastRaceJockey" placeholder="5走前騎手名">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>5走前人気</label>
+                                        <input type="number" name="fifthLastRacePopularity" placeholder="例: 1">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>5走前着順</label>
+                                        <input type="number" name="fifthLastRaceOrder" placeholder="例: 1">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>5走前上がり3F</label>
+                                        <input type="text" name="fifthLastRaceAgari" placeholder="例: 34.1">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         `;
@@ -341,6 +523,22 @@ class HorseManager {
             customInput.style.display = 'block';
         } else {
             customInput.style.display = 'none';
+        }
+    }
+
+    // 3〜5走前データの折りたたみ機能
+    static toggleExtendedRaceHistory(button) {
+        const extendedSection = button.nextElementSibling;
+        const arrow = button.querySelector('span');
+        
+        if (extendedSection.style.display === 'none') {
+            extendedSection.style.display = 'block';
+            arrow.textContent = '▲';
+            button.innerHTML = button.innerHTML.replace('表示', '非表示');
+        } else {
+            extendedSection.style.display = 'none';
+            arrow.textContent = '▼';
+            button.innerHTML = button.innerHTML.replace('非表示', '表示');
         }
     }
 
@@ -495,6 +693,78 @@ class HorseManager {
             const secondLastRaceAgariInput = card.querySelector('input[name="secondLastRaceAgari"]');
             const secondLastRaceAgari = secondLastRaceAgariInput ? secondLastRaceAgariInput.value : '';
 
+            // 3走前情報の抽出
+            const thirdLastRaceCourseInput = card.querySelector('input[name="thirdLastRaceCourse"]');
+            const thirdLastRaceCourse = thirdLastRaceCourseInput ? thirdLastRaceCourseInput.value : '';
+            const thirdLastRaceDistanceInput = card.querySelector('input[name="thirdLastRaceDistance"]');
+            const thirdLastRaceDistance = thirdLastRaceDistanceInput ? thirdLastRaceDistanceInput.value : '';
+            const thirdLastRaceTrackTypeInput = card.querySelector('input[name="thirdLastRaceTrackType"]');
+            const thirdLastRaceTrackType = thirdLastRaceTrackTypeInput ? thirdLastRaceTrackTypeInput.value : '';
+            const thirdLastRaceDateInput = card.querySelector('input[name="thirdLastRaceDate"]');
+            const thirdLastRaceDate = thirdLastRaceDateInput ? thirdLastRaceDateInput.value : '';
+            const thirdLastRaceTimeInput = card.querySelector('input[name="thirdLastRaceTime"]');
+            const thirdLastRaceTime = thirdLastRaceTimeInput ? thirdLastRaceTimeInput.value : '';
+            const thirdLastRaceTrackConditionSelect = card.querySelector('select[name="thirdLastRaceTrackCondition"]');
+            const thirdLastRaceTrackCondition = thirdLastRaceTrackConditionSelect ? thirdLastRaceTrackConditionSelect.value : '';
+            const thirdLastRaceWeightInput = card.querySelector('input[name="thirdLastRaceWeight"]');
+            const thirdLastRaceWeight = thirdLastRaceWeightInput ? parseFloat(thirdLastRaceWeightInput.value) : 0;
+            const thirdLastRaceJockeyInput = card.querySelector('input[name="thirdLastRaceJockey"]');
+            const thirdLastRaceJockey = thirdLastRaceJockeyInput ? thirdLastRaceJockeyInput.value : '';
+            const thirdLastRacePopularityInput = card.querySelector('input[name="thirdLastRacePopularity"]');
+            const thirdLastRacePopularity = thirdLastRacePopularityInput ? parseInt(thirdLastRacePopularityInput.value) : 0;
+            const thirdLastRaceOrderInput = card.querySelector('input[name="thirdLastRaceOrder"]');
+            const thirdLastRaceOrder = thirdLastRaceOrderInput ? this.parseRaceOrder(thirdLastRaceOrderInput.value) : 0;
+            const thirdLastRaceAgariInput = card.querySelector('input[name="thirdLastRaceAgari"]');
+            const thirdLastRaceAgari = thirdLastRaceAgariInput ? thirdLastRaceAgariInput.value : '';
+
+            // 4走前情報の抽出
+            const fourthLastRaceCourseInput = card.querySelector('input[name="fourthLastRaceCourse"]');
+            const fourthLastRaceCourse = fourthLastRaceCourseInput ? fourthLastRaceCourseInput.value : '';
+            const fourthLastRaceDistanceInput = card.querySelector('input[name="fourthLastRaceDistance"]');
+            const fourthLastRaceDistance = fourthLastRaceDistanceInput ? fourthLastRaceDistanceInput.value : '';
+            const fourthLastRaceTrackTypeInput = card.querySelector('input[name="fourthLastRaceTrackType"]');
+            const fourthLastRaceTrackType = fourthLastRaceTrackTypeInput ? fourthLastRaceTrackTypeInput.value : '';
+            const fourthLastRaceDateInput = card.querySelector('input[name="fourthLastRaceDate"]');
+            const fourthLastRaceDate = fourthLastRaceDateInput ? fourthLastRaceDateInput.value : '';
+            const fourthLastRaceTimeInput = card.querySelector('input[name="fourthLastRaceTime"]');
+            const fourthLastRaceTime = fourthLastRaceTimeInput ? fourthLastRaceTimeInput.value : '';
+            const fourthLastRaceTrackConditionSelect = card.querySelector('select[name="fourthLastRaceTrackCondition"]');
+            const fourthLastRaceTrackCondition = fourthLastRaceTrackConditionSelect ? fourthLastRaceTrackConditionSelect.value : '';
+            const fourthLastRaceWeightInput = card.querySelector('input[name="fourthLastRaceWeight"]');
+            const fourthLastRaceWeight = fourthLastRaceWeightInput ? parseFloat(fourthLastRaceWeightInput.value) : 0;
+            const fourthLastRaceJockeyInput = card.querySelector('input[name="fourthLastRaceJockey"]');
+            const fourthLastRaceJockey = fourthLastRaceJockeyInput ? fourthLastRaceJockeyInput.value : '';
+            const fourthLastRacePopularityInput = card.querySelector('input[name="fourthLastRacePopularity"]');
+            const fourthLastRacePopularity = fourthLastRacePopularityInput ? parseInt(fourthLastRacePopularityInput.value) : 0;
+            const fourthLastRaceOrderInput = card.querySelector('input[name="fourthLastRaceOrder"]');
+            const fourthLastRaceOrder = fourthLastRaceOrderInput ? this.parseRaceOrder(fourthLastRaceOrderInput.value) : 0;
+            const fourthLastRaceAgariInput = card.querySelector('input[name="fourthLastRaceAgari"]');
+            const fourthLastRaceAgari = fourthLastRaceAgariInput ? fourthLastRaceAgariInput.value : '';
+
+            // 5走前情報の抽出
+            const fifthLastRaceCourseInput = card.querySelector('input[name="fifthLastRaceCourse"]');
+            const fifthLastRaceCourse = fifthLastRaceCourseInput ? fifthLastRaceCourseInput.value : '';
+            const fifthLastRaceDistanceInput = card.querySelector('input[name="fifthLastRaceDistance"]');
+            const fifthLastRaceDistance = fifthLastRaceDistanceInput ? fifthLastRaceDistanceInput.value : '';
+            const fifthLastRaceTrackTypeInput = card.querySelector('input[name="fifthLastRaceTrackType"]');
+            const fifthLastRaceTrackType = fifthLastRaceTrackTypeInput ? fifthLastRaceTrackTypeInput.value : '';
+            const fifthLastRaceDateInput = card.querySelector('input[name="fifthLastRaceDate"]');
+            const fifthLastRaceDate = fifthLastRaceDateInput ? fifthLastRaceDateInput.value : '';
+            const fifthLastRaceTimeInput = card.querySelector('input[name="fifthLastRaceTime"]');
+            const fifthLastRaceTime = fifthLastRaceTimeInput ? fifthLastRaceTimeInput.value : '';
+            const fifthLastRaceTrackConditionSelect = card.querySelector('select[name="fifthLastRaceTrackCondition"]');
+            const fifthLastRaceTrackCondition = fifthLastRaceTrackConditionSelect ? fifthLastRaceTrackConditionSelect.value : '';
+            const fifthLastRaceWeightInput = card.querySelector('input[name="fifthLastRaceWeight"]');
+            const fifthLastRaceWeight = fifthLastRaceWeightInput ? parseFloat(fifthLastRaceWeightInput.value) : 0;
+            const fifthLastRaceJockeyInput = card.querySelector('input[name="fifthLastRaceJockey"]');
+            const fifthLastRaceJockey = fifthLastRaceJockeyInput ? fifthLastRaceJockeyInput.value : '';
+            const fifthLastRacePopularityInput = card.querySelector('input[name="fifthLastRacePopularity"]');
+            const fifthLastRacePopularity = fifthLastRacePopularityInput ? parseInt(fifthLastRacePopularityInput.value) : 0;
+            const fifthLastRaceOrderInput = card.querySelector('input[name="fifthLastRaceOrder"]');
+            const fifthLastRaceOrder = fifthLastRaceOrderInput ? this.parseRaceOrder(fifthLastRaceOrderInput.value) : 0;
+            const fifthLastRaceAgariInput = card.querySelector('input[name="fifthLastRaceAgari"]');
+            const fifthLastRaceAgari = fifthLastRaceAgariInput ? fifthLastRaceAgariInput.value : '';
+
             horses.push({
                 name: horseName,
                 odds: odds,
@@ -535,6 +805,42 @@ class HorseManager {
                 secondLastRacePopularity: secondLastRacePopularity,
                 secondLastRaceOrder: secondLastRaceOrder,
                 secondLastRaceAgari: secondLastRaceAgari,
+                // 3走前情報
+                thirdLastRaceCourse: thirdLastRaceCourse,
+                thirdLastRaceDistance: thirdLastRaceDistance,
+                thirdLastRaceTrackType: thirdLastRaceTrackType,
+                thirdLastRaceDate: thirdLastRaceDate,
+                thirdLastRaceTime: thirdLastRaceTime,
+                thirdLastRaceTrackCondition: thirdLastRaceTrackCondition,
+                thirdLastRaceWeight: thirdLastRaceWeight,
+                thirdLastRaceJockey: thirdLastRaceJockey,
+                thirdLastRacePopularity: thirdLastRacePopularity,
+                thirdLastRaceOrder: thirdLastRaceOrder,
+                thirdLastRaceAgari: thirdLastRaceAgari,
+                // 4走前情報
+                fourthLastRaceCourse: fourthLastRaceCourse,
+                fourthLastRaceDistance: fourthLastRaceDistance,
+                fourthLastRaceTrackType: fourthLastRaceTrackType,
+                fourthLastRaceDate: fourthLastRaceDate,
+                fourthLastRaceTime: fourthLastRaceTime,
+                fourthLastRaceTrackCondition: fourthLastRaceTrackCondition,
+                fourthLastRaceWeight: fourthLastRaceWeight,
+                fourthLastRaceJockey: fourthLastRaceJockey,
+                fourthLastRacePopularity: fourthLastRacePopularity,
+                fourthLastRaceOrder: fourthLastRaceOrder,
+                fourthLastRaceAgari: fourthLastRaceAgari,
+                // 5走前情報
+                fifthLastRaceCourse: fifthLastRaceCourse,
+                fifthLastRaceDistance: fifthLastRaceDistance,
+                fifthLastRaceTrackType: fifthLastRaceTrackType,
+                fifthLastRaceDate: fifthLastRaceDate,
+                fifthLastRaceTime: fifthLastRaceTime,
+                fifthLastRaceTrackCondition: fifthLastRaceTrackCondition,
+                fifthLastRaceWeight: fifthLastRaceWeight,
+                fifthLastRaceJockey: fifthLastRaceJockey,
+                fifthLastRacePopularity: fifthLastRacePopularity,
+                fifthLastRaceOrder: fifthLastRaceOrder,
+                fifthLastRaceAgari: fifthLastRaceAgari,
                 // 馬番・枠番情報
                 horseNumber: horseNumber,
                 frameNumber: frameNumber
@@ -847,7 +1153,7 @@ class HorseManager {
                 </div>
             </div>
             <div class="horse-section">
-                <h4>📊 過去2走情報</h4>
+                <h4>📊 過去5走情報</h4>
                 <div class="horse-content">
                     <!-- 前走情報 -->
                     <div style="border: 2px solid #28a745; padding: 15px; margin-bottom: 15px; border-radius: 8px; background: #f8fff8;">
