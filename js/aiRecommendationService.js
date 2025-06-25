@@ -72,7 +72,7 @@ class AIRecommendationService {
                     date: horse.lastRaceDate,
                     popularity: horse.lastRacePopularity
                 },
-                secondLastRace: horse.secondLastRaceOrder ? {
+                secondLastRace: (horse.secondLastRaceOrder || horse.secondLastRaceCourse || horse.secondLastRaceAgari) ? {
                     order: horse.secondLastRaceOrder,
                     course: horse.secondLastRaceCourse,
                     distance: horse.secondLastRaceDistance,
@@ -174,14 +174,38 @@ class AIRecommendationService {
             prompt += `
 ${index + 1}番 ${horse.name || `${index + 1}番馬`}
 - オッズ: ${horse.odds}倍
-- 前走着順: ${horse.lastRace || '不明'}着
 - 騎手: ${horse.jockey || '不明'}
 - 年齢: ${horse.age || '不明'}歳
 - 斤量変化: ${horse.weightChange || 0}kg
-- コース: ${horse.course || '不明'}
-- 距離: ${horse.distance || '不明'}m
-- 馬場種別: ${horse.trackType || '不明'}
-- 馬場状態: ${horse.trackCondition || '不明'}`;
+- 今回レース: ${horse.course || '不明'} ${horse.distance || '不明'}m ${horse.trackType || '不明'} ${horse.trackCondition || '不明'}
+
+📊 過去レース実績:`;
+
+            // 前走データ
+            if (horse.raceHistory?.lastRace) {
+                const lastRace = horse.raceHistory.lastRace;
+                prompt += `
+  前走: ${lastRace.order || '?'}着 ${lastRace.course || '?'} ${lastRace.distance || '?'}m ${lastRace.trackType || '?'}`;
+                if (lastRace.agari) prompt += ` 上がり${lastRace.agari}秒`;
+                if (lastRace.popularity) prompt += ` ${lastRace.popularity}番人気`;
+                if (lastRace.date) prompt += ` (${lastRace.date})`;
+            } else {
+                prompt += `
+  前走: ${horse.lastRace || '不明'}着 (詳細データなし)`;
+            }
+
+            // 2走前データ
+            if (horse.raceHistory?.secondLastRace) {
+                const secondRace = horse.raceHistory.secondLastRace;
+                prompt += `
+  2走前: ${secondRace.order || '?'}着 ${secondRace.course || '?'} ${secondRace.distance || '?'}m ${secondRace.trackType || '?'}`;
+                if (secondRace.agari) prompt += ` 上がり${secondRace.agari}秒`;
+                if (secondRace.popularity) prompt += ` ${secondRace.popularity}番人気`;
+                if (secondRace.date) prompt += ` (${secondRace.date})`;
+            } else {
+                prompt += `
+  2走前: データなし`;
+            }
         });
 
         prompt += `

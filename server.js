@@ -113,9 +113,29 @@ app.post('/api/ai-recommendation', async (req, res) => {
 
 // 競馬分析用プロンプト作成関数
 function createRaceAnalysisPrompt(horses, raceInfo) {
-    const horseList = horses.map((horse, index) => 
-        `${index + 1}. ${horse.name} - オッズ:${horse.odds}倍, 前走:${horse.lastRace}着, 騎手:${horse.jockey}, 年齢:${horse.age}歳`
-    ).join('\n');
+    const horseList = horses.map((horse, index) => {
+        let horseInfo = `${index + 1}. ${horse.name} - オッズ:${horse.odds}倍, 前走:${horse.lastRace || horse.raceHistory?.lastRace?.order || '不明'}着, 騎手:${horse.jockey}, 年齢:${horse.age}歳`;
+        
+        // 前走詳細データがあれば追加
+        if (horse.raceHistory?.lastRace) {
+            const lastRace = horse.raceHistory.lastRace;
+            horseInfo += ` [前走:${lastRace.course || '?'} ${lastRace.distance || '?'}m`;
+            if (lastRace.agari) horseInfo += ` 上がり${lastRace.agari}秒`;
+            if (lastRace.popularity) horseInfo += ` ${lastRace.popularity}番人気`;
+            horseInfo += `]`;
+        }
+        
+        // 2走前データがあれば追加
+        if (horse.raceHistory?.secondLastRace) {
+            const secondRace = horse.raceHistory.secondLastRace;
+            horseInfo += ` [2走前:${secondRace.order || '?'}着 ${secondRace.course || '?'} ${secondRace.distance || '?'}m`;
+            if (secondRace.agari) horseInfo += ` 上がり${secondRace.agari}秒`;
+            if (secondRace.popularity) horseInfo += ` ${secondRace.popularity}番人気`;
+            horseInfo += `]`;
+        }
+        
+        return horseInfo;
+    }).join('\n');
     
     return `競馬レース分析をお願いします。以下の馬について、統計的分析ではなく、あなたの競馬知識に基づいて推奨を提供してください。
 
@@ -124,7 +144,7 @@ function createRaceAnalysisPrompt(horses, raceInfo) {
 - 距離: ${raceInfo?.distance || '未設定'}m
 - 馬場: ${raceInfo?.trackType || '芝'} (${raceInfo?.trackCondition || '良'})
 
-出走馬:
+出走馬データ（前走・2走前の実績を重視して分析してください）:
 ${horseList}
 
 以下のJSON形式で回答してください:
