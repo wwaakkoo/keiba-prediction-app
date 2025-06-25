@@ -41,29 +41,9 @@ class PredictionEngine {
             }
             score += oddsScore * adj.oddsWeight;
 
-            // 前走上がり3F評価（学習調整済み）
-            let lastRaceAgariScore = 0;
-            if (horse.lastRaceAgari) {
-                const agari = parseFloat(horse.lastRaceAgari);
-                if (!isNaN(agari)) {
-                    if (agari <= 33.5) {
-                        lastRaceAgariScore = 25;
-                    } else if (agari <= 34.0) {
-                        lastRaceAgariScore = 20;
-                    } else if (agari <= 34.5) {
-                        lastRaceAgariScore = 10;
-                    } else if (agari <= 35.0) {
-                        lastRaceAgariScore = 0;
-                    } else if (agari <= 36.0) {
-                        lastRaceAgariScore = -5;
-                    } else {
-                        lastRaceAgariScore = -10;
-                    }
-                }
-            } else {
-                lastRaceAgariScore = -10;
-            }
-            score += lastRaceAgariScore * adj.lastRaceWeight;
+            // 過去2走の総合評価（前走重視、2走前も考慮）
+            const raceHistoryScore = this.calculateRaceHistoryScore(horse, adj);
+            score += raceHistoryScore;
 
             // 騎手評価（学習調整済み）
             let jockeyScore = 0;
@@ -533,9 +513,206 @@ class PredictionEngine {
             } else {
                 console.log(`2走前: データなし`);
             }
+            
+            // パフォーマンス傾向分析
+            if (horse.lastRaceOrder && horse.secondLastRaceOrder) {
+                const improvement = parseInt(horse.secondLastRaceOrder) - (parseInt(horse.lastRaceOrder) || parseInt(horse.lastRace));
+                if (improvement > 0) {
+                    console.log(`📈 成績向上: ${horse.secondLastRaceOrder}着→${horse.lastRaceOrder || horse.lastRace}着 (+${improvement})`);
+                } else if (improvement < 0) {
+                    console.log(`📉 成績低下: ${horse.secondLastRaceOrder}着→${horse.lastRaceOrder || horse.lastRace}着 (${improvement})`);
+                } else {
+                    console.log(`➡️ 成績安定: ${horse.secondLastRaceOrder}着→${horse.lastRaceOrder || horse.lastRace}着`);
+                }
+            }
         });
         
         console.log('\n=== 抽出完了 ===');
+    }
+
+    // 過去2走のレース履歴を総合評価する新機能
+    static calculateRaceHistoryScore(horse, adj) {
+        let totalScore = 0;
+        
+        // 前走評価（ウェイト70%）
+        const lastRaceScore = this.evaluateSingleRace({
+            agari: horse.lastRaceAgari,
+            order: horse.lastRaceOrder || horse.lastRace,
+            course: horse.lastRaceCourse,
+            distance: horse.lastRaceDistance,
+            trackType: horse.lastRaceTrackType,
+            trackCondition: horse.lastRaceTrackCondition,
+            popularity: horse.lastRacePopularity,
+            weight: horse.lastRaceWeight
+        }, horse, '前走');
+        
+        totalScore += lastRaceScore * 0.7 * adj.lastRaceWeight;
+        
+        // 2走前評価（ウェイト30%）
+        if (horse.secondLastRaceAgari || horse.secondLastRaceOrder) {
+            const secondLastRaceScore = this.evaluateSingleRace({
+                agari: horse.secondLastRaceAgari,
+                order: horse.secondLastRaceOrder,
+                course: horse.secondLastRaceCourse,
+                distance: horse.secondLastRaceDistance,
+                trackType: horse.secondLastRaceTrackType,
+                trackCondition: horse.secondLastRaceTrackCondition,
+                popularity: horse.secondLastRacePopularity,
+                weight: horse.secondLastRaceWeight
+            }, horse, '2走前');
+            
+            totalScore += secondLastRaceScore * 0.3 * adj.lastRaceWeight;
+        }
+        
+        // レースパフォーマンスの一貫性評価
+        const consistencyBonus = this.evaluatePerformanceConsistency(horse);
+        totalScore += consistencyBonus;
+        
+        return totalScore;
+    }
+
+    // 単一レースの評価
+    static evaluateSingleRace(raceData, horse, raceLabel) {
+        let raceScore = 0;
+        
+        // 上がり3F評価
+        if (raceData.agari) {
+            const agari = parseFloat(raceData.agari);
+            if (!isNaN(agari)) {
+                if (agari <= 33.5) {
+                    raceScore += 25;
+                } else if (agari <= 34.0) {
+                    raceScore += 20;
+                } else if (agari <= 34.5) {
+                    raceScore += 10;
+                } else if (agari <= 35.0) {
+                    raceScore += 0;
+                } else if (agari <= 36.0) {
+                    raceScore -= 5;
+                } else {
+                    raceScore -= 10;
+                }
+            }
+        } else {
+            raceScore -= 10; // データなしペナルティ
+        }
+        
+        // 着順評価
+        if (raceData.order) {
+            const order = parseInt(raceData.order);
+            if (!isNaN(order)) {
+                if (order === 1) {
+                    raceScore += 30; // 勝利ボーナス
+                } else if (order === 2) {
+                    raceScore += 20; // 2着ボーナス
+                } else if (order === 3) {
+                    raceScore += 15; // 3着ボーナス
+                } else if (order <= 5) {
+                    raceScore += 5; // 5着以内
+                } else if (order <= 8) {
+                    raceScore += 0; // 中位
+                } else {
+                    raceScore -= 10; // 下位
+                }
+            }
+        }
+        
+        // 人気と着順の乖離評価（穴馬・凡走の判定）
+        if (raceData.popularity && raceData.order) {
+            const popularity = parseInt(raceData.popularity);
+            const order = parseInt(raceData.order);
+            
+            if (!isNaN(popularity) && !isNaN(order)) {
+                const performanceGap = popularity - order;
+                if (performanceGap > 3) {
+                    raceScore += 10; // 人気を上回る好走
+                } else if (performanceGap < -3) {
+                    raceScore -= 8; // 人気を下回る凡走
+                }
+            }
+        }
+        
+        // 距離適性評価（今回レースとの比較）
+        if (raceData.distance && horse.distance) {
+            const lastDistance = parseInt(raceData.distance);
+            const currentDistance = parseInt(horse.distance);
+            
+            if (!isNaN(lastDistance) && !isNaN(currentDistance)) {
+                const distanceGap = Math.abs(currentDistance - lastDistance);
+                if (distanceGap <= 200) {
+                    raceScore += 5; // 同距離帯
+                } else if (distanceGap <= 400) {
+                    raceScore += 2; // 近い距離
+                } else {
+                    raceScore -= 3; // 距離変更
+                }
+            }
+        }
+        
+        // 馬場適性評価
+        if (raceData.trackType && horse.trackType) {
+            if (raceData.trackType === horse.trackType) {
+                raceScore += 5; // 同じ馬場種別
+            } else {
+                raceScore -= 5; // 馬場変更
+            }
+        }
+        
+        return raceScore;
+    }
+
+    // パフォーマンス一貫性の評価
+    static evaluatePerformanceConsistency(horse) {
+        let consistencyScore = 0;
+        
+        // 前走と2走前のデータが両方ある場合のみ評価
+        if (horse.lastRaceOrder && horse.secondLastRaceOrder) {
+            const lastOrder = parseInt(horse.lastRaceOrder) || parseInt(horse.lastRace);
+            const secondLastOrder = parseInt(horse.secondLastRaceOrder);
+            
+            if (!isNaN(lastOrder) && !isNaN(secondLastOrder)) {
+                // 着順の向上・悪化を評価
+                const improvement = secondLastOrder - lastOrder;
+                
+                if (improvement > 0) {
+                    consistencyScore += Math.min(improvement * 3, 15); // 向上ボーナス（最大15点）
+                } else if (improvement < 0) {
+                    consistencyScore += Math.max(improvement * 2, -10); // 悪化ペナルティ（最大-10点）
+                }
+                
+                // 安定性評価（両方5着以内など）
+                if (lastOrder <= 5 && secondLastOrder <= 5) {
+                    consistencyScore += 8; // 安定して好走
+                } else if (lastOrder <= 3 || secondLastOrder <= 3) {
+                    consistencyScore += 5; // どちらかで好走
+                }
+            }
+        }
+        
+        // 上がり3Fの一貫性評価
+        if (horse.lastRaceAgari && horse.secondLastRaceAgari) {
+            const lastAgari = parseFloat(horse.lastRaceAgari);
+            const secondLastAgari = parseFloat(horse.secondLastRaceAgari);
+            
+            if (!isNaN(lastAgari) && !isNaN(secondLastAgari)) {
+                const agariGap = Math.abs(lastAgari - secondLastAgari);
+                
+                if (agariGap <= 0.5) {
+                    consistencyScore += 5; // 安定した脚色
+                } else if (agariGap <= 1.0) {
+                    consistencyScore += 2; // まずまず安定
+                } else {
+                    consistencyScore -= 2; // 脚色にばらつき
+                }
+                
+                // 両方とも好タイムの場合
+                if (lastAgari <= 34.0 && secondLastAgari <= 34.0) {
+                    consistencyScore += 8; // 継続して好調
+                }
+            }
+        }
+        
+        return consistencyScore;
     }
 }
 

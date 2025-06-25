@@ -60,7 +60,28 @@ class AIRecommendationService {
             distance: horse.distance,
             trackType: horse.trackType,
             weather: horse.weather,
-            trackCondition: horse.trackCondition
+            trackCondition: horse.trackCondition,
+            // 過去2走データも含める
+            raceHistory: {
+                lastRace: {
+                    order: horse.lastRaceOrder || horse.lastRace,
+                    course: horse.lastRaceCourse,
+                    distance: horse.lastRaceDistance,
+                    trackType: horse.lastRaceTrackType,
+                    agari: horse.lastRaceAgari,
+                    date: horse.lastRaceDate,
+                    popularity: horse.lastRacePopularity
+                },
+                secondLastRace: horse.secondLastRaceOrder ? {
+                    order: horse.secondLastRaceOrder,
+                    course: horse.secondLastRaceCourse,
+                    distance: horse.secondLastRaceDistance,
+                    trackType: horse.secondLastRaceTrackType,
+                    agari: horse.secondLastRaceAgari,
+                    date: horse.secondLastRaceDate,
+                    popularity: horse.secondLastRacePopularity
+                } : null
+            }
         }));
 
         const currentRaceInfo = raceInfo || this.getCurrentRaceInfo();
