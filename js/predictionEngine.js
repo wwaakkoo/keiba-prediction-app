@@ -79,12 +79,27 @@ class PredictionEngine {
 
             // レースレベル分析スコア追加
             const currentRaceLevel = this.getCurrentRaceLevel();
+            const raceDistance = this.getCurrentRaceDistance();
+            const trackType = this.getCurrentTrackType();
             if (typeof RaceAnalysisEngine !== 'undefined') {
-                const raceAnalysisResult = RaceAnalysisIntegrator.enhancePredictionWithRaceAnalysis(horse, currentRaceLevel);
+                const raceAnalysisResult = RaceAnalysisIntegrator.enhancePredictionWithRaceAnalysis(horse, currentRaceLevel, raceDistance, trackType);
                 score += raceAnalysisResult.raceAnalysisBonus;
                 
-                // デバッグ用ログ
-                console.log(`${horse.name} - レース分析: ${raceAnalysisResult.raceAnalysisBonus}点 (${raceAnalysisResult.raceAnalysis.classProgression.description})`);
+                // 予測システム統合検証用詳細ログ（タイム指数分析追加）
+                console.log(`=== 予測システム統合検証: ${horse.name} ===`);
+                console.log(`📊 基本スコア: ${score - raceAnalysisResult.raceAnalysisBonus}点`);
+                console.log(`🎯 レース分析ボーナス: ${raceAnalysisResult.raceAnalysisBonus}点`);
+                console.log(`📈 最終スコア: ${score}点`);
+                console.log(`🏁 クラス分析: ${raceAnalysisResult.raceAnalysis.classProgression.description}`);
+                if (raceAnalysisResult.raceAnalysis.runningStyle) {
+                    console.log(`🏃 脚質分析: ${raceAnalysisResult.raceAnalysis.runningStyle.analysis}`);
+                    console.log(`💪 脚質効果: ${raceAnalysisResult.raceAnalysis.runningStyle.effectiveness}点`);
+                }
+                if (raceAnalysisResult.raceAnalysis.timeIndexHistory) {
+                    console.log(`⏱️ タイム指数分析: ${raceAnalysisResult.raceAnalysis.timeIndexHistory.analysis}`);
+                    console.log(`🎯 平均指数: ${raceAnalysisResult.raceAnalysis.timeIndexHistory.averageTimeIndex} / 最高指数: ${raceAnalysisResult.raceAnalysis.timeIndexHistory.bestTimeIndex}`);
+                }
+                console.log(`🔧 現在レース条件: ${currentRaceLevel} / ${raceDistance}m / ${trackType}`);
             }
 
             // 新しい特徴量の評価
@@ -965,16 +980,22 @@ class PredictionEngine {
 
     // 現在のレースレベルを取得
     static getCurrentRaceLevel() {
-        // 馬データ入力エリアから最初の馬のレースレベルを取得
+        // レース基本情報から今回レースレベルを取得
+        const raceLevelSelect = document.getElementById('raceLevel');
+        if (raceLevelSelect && raceLevelSelect.value) {
+            return raceLevelSelect.value;
+        }
+        
+        // フォールバック：馬データ入力エリアから最初の馬のレースレベルを取得
         const firstHorse = document.querySelector('.horse-card');
         if (firstHorse) {
-            const raceLevelSelect = firstHorse.querySelector('select[name="raceLevel"]');
-            if (raceLevelSelect) {
-                return raceLevelSelect.value || '1勝';
+            const horseRaceLevelSelect = firstHorse.querySelector('select[name="raceLevel"]');
+            if (horseRaceLevelSelect) {
+                return horseRaceLevelSelect.value || '1勝';
             }
         }
         
-        // レース基本情報からも確認を試行
+        // フォールバック：レース名から推測
         const raceNameInput = document.getElementById('raceName');
         if (raceNameInput && raceNameInput.value) {
             const raceName = raceNameInput.value.toLowerCase();
@@ -986,6 +1007,46 @@ class PredictionEngine {
         }
         
         return '1勝'; // デフォルト値
+    }
+
+    // 現在のレース距離を取得
+    static getCurrentRaceDistance() {
+        // レース基本情報から距離を取得
+        const raceDistanceSelect = document.getElementById('raceDistance');
+        if (raceDistanceSelect && raceDistanceSelect.value) {
+            return raceDistanceSelect.value;
+        }
+        
+        // 馬データから距離を取得を試行
+        const firstHorse = document.querySelector('.horse-card');
+        if (firstHorse) {
+            const distanceInput = firstHorse.querySelector('input[name="distance"]');
+            if (distanceInput && distanceInput.value) {
+                return distanceInput.value;
+            }
+        }
+        
+        return '1600'; // デフォルト値
+    }
+
+    // 現在の馬場種別を取得
+    static getCurrentTrackType() {
+        // レース基本情報から馬場種別を取得
+        const trackTypeSelect = document.getElementById('raceTrackType');
+        if (trackTypeSelect && trackTypeSelect.value) {
+            return trackTypeSelect.value;
+        }
+        
+        // 馬データから馬場種別を取得を試行
+        const firstHorse = document.querySelector('.horse-card');
+        if (firstHorse) {
+            const trackTypeInput = firstHorse.querySelector('select[name="trackType"]');
+            if (trackTypeInput && trackTypeInput.value) {
+                return trackTypeInput.value;
+            }
+        }
+        
+        return '芝'; // デフォルト値
     }
 }
 

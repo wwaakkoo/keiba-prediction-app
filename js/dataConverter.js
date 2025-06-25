@@ -110,6 +110,7 @@ class DataConverter {
             age: 0,
             weightChange: 0,
             restDays: 0,
+            runningStyle: '',  // 脚質プロパティを追加
             lastRaceTime: '',
             lastRaceWeight: 0,
             lastRaceOdds: 0,
@@ -211,6 +212,23 @@ class DataConverter {
                     horse.popularity = parseInt(oddsMatch[2]);
                     foundOdds = true;
                     ////console.log('オッズ抽出:', horse.odds, '人気:', horse.popularity);
+                }
+            }
+            
+            // 脚質の抽出（馬体重変化行の前にある「差中9週」のような形式、「大逃げ」パターンも対応）
+            if (!horse.runningStyle && line.match(/^(大|逃|先|差|追|自).*(週|日|月)/)) {
+                const styleMatch = line.match(/^(大|逃|先|差|追|自)/);
+                if (styleMatch) {
+                    const styleChar = styleMatch[1];
+                    switch (styleChar) {
+                        case '大': horse.runningStyle = '逃げ'; break; // 大逃げは逃げとして分類
+                        case '逃': horse.runningStyle = '逃げ'; break;
+                        case '先': horse.runningStyle = '先行'; break;
+                        case '差': horse.runningStyle = '差し'; break;
+                        case '追': horse.runningStyle = '追込'; break;
+                        case '自': horse.runningStyle = '自在'; break;
+                    }
+                    console.log('脚質抽出:', horse.runningStyle, 'from', line);
                 }
             }
             
@@ -483,11 +501,38 @@ class DataConverter {
                         }
                     }
                     
-                    // 次の行でレース名をチェック
+                    // 次の行でレース名とレースレベルをチェック
                     const nextLine = lines[i + 1]?.trim() || '';
                     if (nextLine && !nextLine.match(/\d{4}\.\d{2}\.\d{2}/) && !nextLine.includes('芝') && !nextLine.includes('ダ')) {
                         lastRace.lastRaceName = nextLine;
                         console.log('前走レース名抽出:', nextLine);
+                        
+                        // レースレベルの抽出
+                        if (nextLine.includes('G1') || nextLine.includes('GI')) {
+                            lastRace.lastRaceLevel = 'G1';
+                        } else if (nextLine.includes('G2') || nextLine.includes('GII')) {
+                            lastRace.lastRaceLevel = 'G2';
+                        } else if (nextLine.includes('G3') || nextLine.includes('GIII')) {
+                            lastRace.lastRaceLevel = 'G3';
+                        } else if (nextLine.includes('Listed') || nextLine.includes('L')) {
+                            lastRace.lastRaceLevel = 'L';
+                        } else if (nextLine.includes('OP') || nextLine.includes('オープン')) {
+                            lastRace.lastRaceLevel = 'OP';
+                        } else if (nextLine.includes('3勝')) {
+                            lastRace.lastRaceLevel = '3勝';
+                        } else if (nextLine.includes('2勝')) {
+                            lastRace.lastRaceLevel = '2勝';
+                        } else if (nextLine.includes('1勝')) {
+                            lastRace.lastRaceLevel = '1勝';
+                        } else if (nextLine.includes('未勝利')) {
+                            lastRace.lastRaceLevel = '未勝利';
+                        } else if (nextLine.includes('新馬')) {
+                            lastRace.lastRaceLevel = '新馬';
+                        }
+                        
+                        if (lastRace.lastRaceLevel) {
+                            console.log('前走レースレベル抽出:', lastRace.lastRaceLevel);
+                        }
                     }
                 }
             }
@@ -784,6 +829,7 @@ class DataConverter {
         const raceDistance = document.getElementById('raceDistance').value;
         const raceTrackType = document.getElementById('raceTrackType').value;
         const raceTrackCondition = document.getElementById('raceTrackCondition').value;
+        const raceLevel = document.getElementById('raceLevel').value;
         
         ////console.log('=== レース基本情報を全馬に適用 ===');
         ////console.log('レース名:', raceName);
@@ -831,6 +877,15 @@ class DataConverter {
                 if (trackConditionSelect) {
                     trackConditionSelect.value = raceTrackCondition;
                     ////console.log(`馬${index + 1}の馬場状態を${raceTrackCondition}に更新`);
+                }
+            }
+            
+            // 今回レースレベルの更新
+            if (raceLevel) {
+                const raceLevelSelect = card.querySelector('select[name="raceLevel"]');
+                if (raceLevelSelect) {
+                    raceLevelSelect.value = raceLevel;
+                    ////console.log(`馬${index + 1}の今回レースレベルを${raceLevel}に更新`);
                 }
             }
         });

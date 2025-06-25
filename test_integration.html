@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>タイム指数統合テスト</title>
+</head>
+<body>
+    <h1>タイム指数統合テスト</h1>
+    <button onclick="runTests()">テスト実行</button>
+    <div id="results"></div>
+
+    <script src="js/raceAnalysisEngine.js"></script>
+    <script>
+        function runTests() {
+            const results = document.getElementById('results');
+            results.innerHTML = '<h2>テスト結果:</h2>';
+            
+            console.log('=== タイム指数統合テスト開始 ===');
+            
+            // テスト1: 基本的なタイム指数計算
+            console.log('\n1. 基本タイム指数計算テスト');
+            const test1 = RaceAnalysisEngine.calculateTimeIndex('1:36.5', 1600, '良', '中山', '芝');
+            console.log('テスト1結果:', test1);
+            results.innerHTML += `<p>テスト1 (1:36.5/1600m芝良): 指数${test1.timeIndex} - ${test1.description}</p>`;
+            
+            // テスト2: ダート稍重
+            const test2 = RaceAnalysisEngine.calculateTimeIndex('83.2', 1400, '稍重', '東京', 'ダート');
+            console.log('テスト2結果:', test2);
+            results.innerHTML += `<p>テスト2 (83.2/1400mダート稍重): 指数${test2.timeIndex} - ${test2.description}</p>`;
+            
+            // テスト3: タイム指数履歴分析
+            console.log('\n2. タイム指数履歴分析テスト');
+            const testHorse = {
+                name: 'テスト馬',
+                lastRaceTime: '1:35.8',
+                lastRaceDistance: 1600,
+                lastRaceTrackCondition: '良',
+                lastRaceCourse: '東京',
+                lastRaceTrackType: '芝',
+                secondLastRaceTime: '83.5',
+                secondLastRaceDistance: 1400,
+                secondLastRaceTrackCondition: '稍重',
+                secondLastRaceCourse: '中山',
+                secondLastRaceTrackType: 'ダート',
+                thirdLastRaceTime: '1:37.2',
+                thirdLastRaceDistance: 1600,
+                thirdLastRaceTrackCondition: '重',
+                thirdLastRaceCourse: '阪神',
+                thirdLastRaceTrackType: '芝'
+            };
+            
+            const timeHistory = RaceAnalysisEngine.analyzeTimeIndexHistory(testHorse);
+            console.log('タイム指数履歴:', timeHistory);
+            results.innerHTML += `<p>テスト3 (履歴分析): ${timeHistory.analysis}</p>`;
+            
+            // テスト4: 包括的レース分析（タイム指数含む）
+            console.log('\n3. 包括的レース分析テスト');
+            const raceReport = RaceAnalysisEngine.generateRaceAnalysisReport(testHorse, '1勝', 1600, '芝');
+            console.log('包括分析結果:', raceReport);
+            results.innerHTML += `<p>テスト4 (包括分析): 総合スコア${raceReport.overallScore}</p>`;
+            
+            if (raceReport.timeIndexHistory) {
+                results.innerHTML += `<p>・タイム指数: ${raceReport.timeIndexHistory.analysis}</p>`;
+                results.innerHTML += `<p>・推奨事項: ${raceReport.recommendations.join(', ')}</p>`;
+            }
+            
+            // テスト5: 予測統合テスト（統合クラス）
+            console.log('\n4. 予測統合テスト');
+            if (typeof RaceAnalysisIntegrator !== 'undefined') {
+                const integrationResult = RaceAnalysisIntegrator.enhancePredictionWithRaceAnalysis(testHorse, '1勝', 1600, '芝');
+                console.log('統合結果:', integrationResult);
+                results.innerHTML += `<p>テスト5 (統合): ボーナス${integrationResult.raceAnalysisBonus}点</p>`;
+            }
+            
+            console.log('=== テスト完了 ===');
+            results.innerHTML += '<p><strong>すべてのテストが完了しました。コンソールで詳細を確認してください。</strong></p>';
+        }
+    </script>
+</body>
+</html>
