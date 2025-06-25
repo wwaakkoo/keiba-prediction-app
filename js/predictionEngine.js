@@ -77,6 +77,16 @@ class PredictionEngine {
             }
             score += jockeyScore * adj.jockeyWeight;
 
+            // レースレベル分析スコア追加
+            const currentRaceLevel = this.getCurrentRaceLevel();
+            if (typeof RaceAnalysisEngine !== 'undefined') {
+                const raceAnalysisResult = RaceAnalysisIntegrator.enhancePredictionWithRaceAnalysis(horse, currentRaceLevel);
+                score += raceAnalysisResult.raceAnalysisBonus;
+                
+                // デバッグ用ログ
+                console.log(`${horse.name} - レース分析: ${raceAnalysisResult.raceAnalysisBonus}点 (${raceAnalysisResult.raceAnalysis.classProgression.description})`);
+            }
+
             // 新しい特徴量の評価
             // 年齢評価
             let ageScore = 0;
@@ -951,6 +961,31 @@ class PredictionEngine {
         }
         
         return Math.min(25, Math.max(-15, consistencyScore)); // -15〜25の範囲に制限
+    }
+
+    // 現在のレースレベルを取得
+    static getCurrentRaceLevel() {
+        // 馬データ入力エリアから最初の馬のレースレベルを取得
+        const firstHorse = document.querySelector('.horse-card');
+        if (firstHorse) {
+            const raceLevelSelect = firstHorse.querySelector('select[name="raceLevel"]');
+            if (raceLevelSelect) {
+                return raceLevelSelect.value || '1勝';
+            }
+        }
+        
+        // レース基本情報からも確認を試行
+        const raceNameInput = document.getElementById('raceName');
+        if (raceNameInput && raceNameInput.value) {
+            const raceName = raceNameInput.value.toLowerCase();
+            if (raceName.includes('g1') || raceName.includes('天皇賞') || raceName.includes('ダービー') || raceName.includes('有馬記念')) {
+                return 'G1';
+            } else if (raceName.includes('g2') || raceName.includes('g3')) {
+                return raceName.includes('g2') ? 'G2' : 'G3';
+            }
+        }
+        
+        return '1勝'; // デフォルト値
     }
 }
 

@@ -270,9 +270,9 @@ class DataConverter {
                 }
             }
             
-            // 過去2走情報の抽出
+            // 過去5走情報の抽出
             if (!foundLastRace && line.match(/\d{4}\.\d{2}\.\d{2}/)) {
-                const raceHistoryData = DataConverter.parseNetkeibaRaceHistory(lines, i, 2); // 2走分抽出
+                const raceHistoryData = DataConverter.parseNetkeibaRaceHistory(lines, i, 5); // 5走分抽出
                 if (raceHistoryData) {
                     Object.assign(horse, raceHistoryData);
                     // 着順をlastRaceOrderからlastRaceにもコピー（予測エンジン互換のため）
@@ -330,8 +330,8 @@ class DataConverter {
     
     
     // netkeiba形式の前走情報を解析
-    // 過去2走分のレース情報を抽出する新しいメソッド
-    static parseNetkeibaRaceHistory(lines, startIndex, maxRaces = 2) {
+    // 過去5走分のレース情報を抽出する新しいメソッド
+    static parseNetkeibaRaceHistory(lines, startIndex, maxRaces = 5) {
         const raceHistory = {};
         let i = startIndex;
         let racesFound = 0;
@@ -367,6 +367,30 @@ class DataConverter {
                         Object.keys(raceData).forEach(key => {
                             if (key !== 'nextIndex') {
                                 const newKey = key.replace('lastRace', 'secondLastRace');
+                                raceHistory[newKey] = raceData[key];
+                            }
+                        });
+                    } else if (racesFound === 2) {
+                        // 3走前データ（プレフィックスを変更）
+                        Object.keys(raceData).forEach(key => {
+                            if (key !== 'nextIndex') {
+                                const newKey = key.replace('lastRace', 'thirdLastRace');
+                                raceHistory[newKey] = raceData[key];
+                            }
+                        });
+                    } else if (racesFound === 3) {
+                        // 4走前データ（プレフィックスを変更）
+                        Object.keys(raceData).forEach(key => {
+                            if (key !== 'nextIndex') {
+                                const newKey = key.replace('lastRace', 'fourthLastRace');
+                                raceHistory[newKey] = raceData[key];
+                            }
+                        });
+                    } else if (racesFound === 4) {
+                        // 5走前データ（プレフィックスを変更）
+                        Object.keys(raceData).forEach(key => {
+                            if (key !== 'nextIndex') {
+                                const newKey = key.replace('lastRace', 'fifthLastRace');
                                 raceHistory[newKey] = raceData[key];
                             }
                         });
