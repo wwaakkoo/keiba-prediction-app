@@ -427,11 +427,18 @@ class DataConverter {
                     lastRace.lastRaceDate = `${dateMatch[1]}-${dateMatch[2]}-${dateMatch[3]}`;
                     foundValidRace = true;
                     
-                    // コース名＋着順の抽出（例: "阪神7" → 7着）
-                    const placeMatch = line.match(/([阪神京都中山東京大井船橋川崎浦和新潟福島中京小倉札幌函館メイダン門別名古屋笠松園田姫路高知佐賀金沢盛岡水沢]+)(\d{1,2})$/);
-                    if (placeMatch) {
-                        lastRace.lastRaceOrder = parseInt(placeMatch[2]);
+                    // コース名＋着順の抽出（例: "阪神7" → 7着、"阪神中" → 中止）
+                    // まず数字の着順をチェック
+                    const numericPlaceMatch = line.match(/([阪神京都中山東京大井船橋川崎浦和新潟福島中京小倉札幌函館メイダン門別名古屋笠松園田姫路高知佐賀金沢盛岡水沢]+)(\d{1,2})$/);
+                    // 次に中止/取消のパターンをチェック（コース名の「中」と区別）
+                    const dnfPlaceMatch = line.match(/(阪神|京都|東京|大井|船橋|川崎|浦和|新潟|福島|小倉|札幌|函館|メイダン|門別|名古屋|笠松|園田|姫路|高知|佐賀|金沢|盛岡|水沢)(中|取|除|失)$/);
+                    
+                    if (numericPlaceMatch) {
+                        lastRace.lastRaceOrder = parseInt(numericPlaceMatch[2]);
                         console.log('前走着順抽出:', line, '→', lastRace.lastRaceOrder);
+                    } else if (dnfPlaceMatch) {
+                        lastRace.lastRaceOrder = 'DNS'; // Did Not Start/Finish
+                        console.log('前走着順抽出（中断/取消）:', line, '→', lastRace.lastRaceOrder);
                     } else {
                         console.log('前走着順抽出失敗:', line);
                     }

@@ -2,6 +2,27 @@
 class PredictionEngine {
     static currentPredictions = [];
 
+    // 着順データを安全に数値化するユーティリティ関数
+    static parseRaceOrder(orderValue) {
+        if (!orderValue) return null;
+        
+        // 文字列を正規化
+        const orderStr = String(orderValue).trim();
+        
+        // 中止・取消・除外・失格の場合
+        if (orderStr === 'DNS' || orderStr === '中' || orderStr === '取' || orderStr === '除' || orderStr === '失') {
+            return 99; // 大きな数値として扱う（最下位扱い）
+        }
+        
+        // 数値の場合
+        const numericOrder = parseInt(orderStr);
+        if (!isNaN(numericOrder) && numericOrder > 0) {
+            return numericOrder;
+        }
+        
+        return null;
+    }
+
     static calculatePredictions() {
         if (!HorseManager.validateHorses()) {
             return;
@@ -516,13 +537,18 @@ class PredictionEngine {
             
             // パフォーマンス傾向分析
             if (horse.lastRaceOrder && horse.secondLastRaceOrder) {
-                const improvement = parseInt(horse.secondLastRaceOrder) - (parseInt(horse.lastRaceOrder) || parseInt(horse.lastRace));
-                if (improvement > 0) {
-                    console.log(`📈 成績向上: ${horse.secondLastRaceOrder}着→${horse.lastRaceOrder || horse.lastRace}着 (+${improvement})`);
-                } else if (improvement < 0) {
-                    console.log(`📉 成績低下: ${horse.secondLastRaceOrder}着→${horse.lastRaceOrder || horse.lastRace}着 (${improvement})`);
-                } else {
-                    console.log(`➡️ 成績安定: ${horse.secondLastRaceOrder}着→${horse.lastRaceOrder || horse.lastRace}着`);
+                const lastOrder = this.parseRaceOrder(horse.lastRaceOrder) || this.parseRaceOrder(horse.lastRace);
+                const secondLastOrder = this.parseRaceOrder(horse.secondLastRaceOrder);
+                
+                if (lastOrder && secondLastOrder) {
+                    const improvement = secondLastOrder - lastOrder;
+                    if (improvement > 0) {
+                        console.log(`📈 成績向上: ${horse.secondLastRaceOrder}着→${horse.lastRaceOrder || horse.lastRace}着 (+${improvement})`);
+                    } else if (improvement < 0) {
+                        console.log(`📉 成績低下: ${horse.secondLastRaceOrder}着→${horse.lastRaceOrder || horse.lastRace}着 (${improvement})`);
+                    } else {
+                        console.log(`➡️ 成績安定: ${horse.secondLastRaceOrder}着→${horse.lastRaceOrder || horse.lastRace}着`);
+                    }
                 }
             }
         });
@@ -599,8 +625,8 @@ class PredictionEngine {
         
         // 着順評価
         if (raceData.order) {
-            const order = parseInt(raceData.order);
-            if (!isNaN(order)) {
+            const order = this.parseRaceOrder(raceData.order);
+            if (order) {
                 if (order === 1) {
                     raceScore += 30; // 勝利ボーナス
                 } else if (order === 2) {
@@ -611,6 +637,8 @@ class PredictionEngine {
                     raceScore += 5; // 5着以内
                 } else if (order <= 8) {
                     raceScore += 0; // 中位
+                } else if (order === 99) {
+                    raceScore -= 20; // 中止・取消は大幅減点
                 } else {
                     raceScore -= 10; // 下位
                 }
@@ -620,9 +648,9 @@ class PredictionEngine {
         // 人気と着順の乖離評価（穴馬・凡走の判定）
         if (raceData.popularity && raceData.order) {
             const popularity = parseInt(raceData.popularity);
-            const order = parseInt(raceData.order);
+            const order = this.parseRaceOrder(raceData.order);
             
-            if (!isNaN(popularity) && !isNaN(order)) {
+            if (!isNaN(popularity) && order && order !== 99) { // 中止以外の場合のみ
                 const performanceGap = popularity - order;
                 if (performanceGap > 3) {
                     raceScore += 10; // 人気を上回る好走
@@ -667,10 +695,10 @@ class PredictionEngine {
         
         // 前走と2走前のデータが両方ある場合のみ評価
         if (horse.lastRaceOrder && horse.secondLastRaceOrder) {
-            const lastOrder = parseInt(horse.lastRaceOrder) || parseInt(horse.lastRace);
-            const secondLastOrder = parseInt(horse.secondLastRaceOrder);
+            const lastOrder = this.parseRaceOrder(horse.lastRaceOrder) || this.parseRaceOrder(horse.lastRace);
+            const secondLastOrder = this.parseRaceOrder(horse.secondLastRaceOrder);
             
-            if (!isNaN(lastOrder) && !isNaN(secondLastOrder)) {
+            if (lastOrder && secondLastOrder) {
                 // 着順の向上・悪化を評価
                 const improvement = secondLastOrder - lastOrder;
                 

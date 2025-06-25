@@ -2,6 +2,26 @@
 class HorseManager {
     static horseCount = 0;
 
+    // 着順データを安全に数値化するユーティリティ関数
+    static parseRaceOrder(orderValue) {
+        if (!orderValue) return null;
+        
+        const orderStr = String(orderValue).trim();
+        
+        // 中止・取消・除外・失格の場合
+        if (orderStr === 'DNS' || orderStr === '中' || orderStr === '取' || orderStr === '除' || orderStr === '失') {
+            return 99; // 大きな数値として扱う（最下位扱い）
+        }
+        
+        // 数値の場合
+        const numericOrder = parseInt(orderStr);
+        if (!isNaN(numericOrder) && numericOrder > 0) {
+            return numericOrder;
+        }
+        
+        return null;
+    }
+
     static addHorse() {
         this.horseCount++;
         const container = document.getElementById('horsesContainer');
@@ -387,10 +407,10 @@ class HorseManager {
             
             const lastRaceSelect = card.querySelector('select[name="lastRace"]');
             const lastRaceOrderInput = card.querySelector('input[name="lastRaceOrder"]');
-            const lastRaceOrder = lastRaceOrderInput ? parseInt(lastRaceOrderInput.value) : '';
+            const lastRaceOrder = lastRaceOrderInput ? this.parseRaceOrder(lastRaceOrderInput.value) : '';
             let lastRace;
             if (lastRaceOrderInput && lastRaceOrderInput.value) {
-                lastRace = parseInt(lastRaceOrderInput.value);
+                lastRace = this.parseRaceOrder(lastRaceOrderInput.value) || 6;
             } else if (lastRaceSelect) {
                 lastRace = parseInt(lastRaceSelect.value);
             } else {
@@ -471,7 +491,7 @@ class HorseManager {
             const secondLastRacePopularityInput = card.querySelector('input[name="secondLastRacePopularity"]');
             const secondLastRacePopularity = secondLastRacePopularityInput ? parseInt(secondLastRacePopularityInput.value) : 0;
             const secondLastRaceOrderInput = card.querySelector('input[name="secondLastRaceOrder"]');
-            const secondLastRaceOrder = secondLastRaceOrderInput ? parseInt(secondLastRaceOrderInput.value) : 0;
+            const secondLastRaceOrder = secondLastRaceOrderInput ? this.parseRaceOrder(secondLastRaceOrderInput.value) : 0;
             const secondLastRaceAgariInput = card.querySelector('input[name="secondLastRaceAgari"]');
             const secondLastRaceAgari = secondLastRaceAgariInput ? secondLastRaceAgariInput.value : '';
 
