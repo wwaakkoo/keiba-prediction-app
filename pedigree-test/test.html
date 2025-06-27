@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>血統抽出テスト - 分離版</title>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .log { background-color: #f8f9fa; padding: 10px; border-radius: 3px; font-family: monospace; font-size: 12px; white-space: pre-wrap; max-height: 300px; overflow-y: auto; }
+        table { border-collapse: collapse; width: 100%; margin: 10px 0; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .test-data { background-color: #e9ecef; padding: 10px; border-radius: 3px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>血統抽出テスト - 分離版</h1>
+    
+    <div class="test-section">
+        <h2>テストデータ</h2>
+        <div class="test-data">
+            <strong>テスト用の競馬データ（netkeiba形式）:</strong>
+            <pre id="testDataDisplay"></pre>
+        </div>
+    </div>
+    
+    <div class="test-section">
+        <h2>期待結果</h2>
+        <table>
+            <tr>
+                <th>馬番</th>
+                <th>馬名</th>
+                <th>父系</th>
+                <th>母系</th>
+                <th>母父</th>
+            </tr>
+            <tr>
+                <td>1</td>
+                <td>ベラジオオペラ</td>
+                <td>ロードカナロア</td>
+                <td>エアルーティーン</td>
+                <td>ハービンジャー</td>
+            </tr>
+            <tr>
+                <td>2</td>
+                <td>ドゥレッツァ</td>
+                <td>ドゥラメンテ</td>
+                <td>モアザンセイクリッド</td>
+                <td>More Than Ready</td>
+            </tr>
+        </table>
+    </div>
+    
+    <div id="testResults"></div>
+    
+    <script src="pedigreeExtractor.js"></script>
+    <script>
+        // テストデータ
+        const testData = `1\t1\t
+消
+ロードカナロア
+ベラジオオペラ
+エアルーティーン
+(ハービンジャー)
+栗東・上村  
+先中9週
+510kg(+2)
+4.0 (1人気)
+牡5鹿
+
+横山和
+58.0\t
+1\t2\t
+消
+ドゥラメンテ
+ドゥレッツァ
+モアザンセイクリッド
+(More Than Ready)
+美浦・尾関  
+先中9週
+468kg(前計不)
+6.7 (4人気)
+牡5青鹿
+
+横山武
+58.0\t`;
+
+        // テストデータを表示
+        document.getElementById('testDataDisplay').textContent = testData;
+        
+        console.log('=== 血統抽出分離テスト開始 ===');
+        
+        try {
+            // 血統抽出実行
+            const results = PedigreeExtractor.parseAllHorses(testData);
+            
+            console.log('=== 最終結果 ===');
+            console.log('抽出された馬の数:', results.length);
+            
+            // 期待結果
+            const expected = [
+                { name: 'ベラジオオペラ', sire: 'ロードカナロア', dam: 'エアルーティーン', damSire: 'ハービンジャー' },
+                { name: 'ドゥレッツァ', sire: 'ドゥラメンテ', dam: 'モアザンセイクリッド', damSire: 'More Than Ready' }
+            ];
+            
+            // 結果評価
+            let successCount = 0;
+            let totalTests = 0;
+            let testResults = [];
+            
+            expected.forEach((exp, index) => {
+                const actual = results[index];
+                const horseResult = {
+                    index: index + 1,
+                    expected: exp,
+                    actual: actual || {},
+                    tests: []
+                };
+                
+                // 各項目をテスト
+                ['name', 'sire', 'dam', 'damSire'].forEach(field => {
+                    totalTests++;
+                    const success = actual && actual[field] === exp[field];
+                    if (success) successCount++;
+                    
+                    horseResult.tests.push({
+                        field,
+                        expected: exp[field],
+                        actual: actual ? actual[field] : '未抽出',
+                        success
+                    });
+                });
+                
+                testResults.push(horseResult);
+            });
+            
+            // 結果を表示
+            const successRate = Math.round((successCount / totalTests) * 100);
+            const overallSuccess = successCount === totalTests;
+            
+            let html = `
+                <div class="test-section ${overallSuccess ? 'success' : 'error'}">
+                    <h2>テスト結果総合</h2>
+                    <p><strong>成功率: ${successCount}/${totalTests} (${successRate}%)</strong></p>
+                    <p>状態: ${overallSuccess ? '✅ 全テスト成功' : '❌ 一部テスト失敗'}</p>
+                </div>
+            `;
+            
+            testResults.forEach(horseResult => {
+                const horseSuccess = horseResult.tests.every(test => test.success);
+                html += `
+                    <div class="test-section ${horseSuccess ? 'success' : 'error'}">
+                        <h3>馬 ${horseResult.index} - ${horseResult.expected.name}</h3>
+                        <table>
+                            <tr><th>項目</th><th>期待値</th><th>実際の値</th><th>結果</th></tr>
+                            ${horseResult.tests.map(test => `
+                                <tr>
+                                    <td>${test.field}</td>
+                                    <td>${test.expected}</td>
+                                    <td>${test.actual}</td>
+                                    <td>${test.success ? '✅' : '❌'}</td>
+                                </tr>
+                            `).join('')}
+                        </table>
+                        ${horseResult.actual.processLog ? `
+                            <h4>処理ログ</h4>
+                            <div class="log">${horseResult.actual.processLog.join('\n')}</div>
+                        ` : ''}
+                    </div>
+                `;
+            });
+            
+            // 詳細ログ
+            html += `
+                <div class="test-section">
+                    <h3>生データ出力</h3>
+                    <div class="log">${JSON.stringify(results, null, 2)}</div>
+                </div>
+            `;
+            
+            document.getElementById('testResults').innerHTML = html;
+            
+            // コンソールに最終サマリー
+            console.log('\n=== 最終サマリー ===');
+            console.log(`成功率: ${successCount}/${totalTests} (${successRate}%)`);
+            testResults.forEach(horseResult => {
+                console.log(`\n馬${horseResult.index} (${horseResult.expected.name}):`);
+                horseResult.tests.forEach(test => {
+                    console.log(`  ${test.field}: ${test.success ? '✅' : '❌'} (期待: ${test.expected}, 実際: ${test.actual})`);
+                });
+            });
+            
+        } catch (error) {
+            console.error('テスト実行エラー:', error);
+            document.getElementById('testResults').innerHTML = `
+                <div class="test-section error">
+                    <h2>エラー発生</h2>
+                    <p>テスト実行中にエラーが発生しました:</p>
+                    <div class="log">${error.message}\n\n${error.stack}</div>
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>

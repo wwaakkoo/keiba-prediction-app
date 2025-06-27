@@ -113,52 +113,125 @@ app.post('/api/ai-recommendation', async (req, res) => {
 
 // 競馬分析用プロンプト作成関数
 function createRaceAnalysisPrompt(horses, raceInfo) {
-    const horseList = horses.map((horse, index) => 
-        `${index + 1}. ${horse.name} - オッズ:${horse.odds}倍, 前走:${horse.lastRace}着, 騎手:${horse.jockey}, 年齢:${horse.age}歳`
-    ).join('\n');
+    const horseList = horses.map((horse, index) => {
+        let horseInfo = `${index + 1}. ${horse.name} - オッズ:${horse.odds}倍, 前走:${horse.lastRace || horse.raceHistory?.lastRace?.order || '不明'}着, 騎手:${horse.jockey}, 年齢:${horse.age}歳`;
+        
+        // 前走詳細データがあれば追加
+        if (horse.raceHistory?.lastRace) {
+            const lastRace = horse.raceHistory.lastRace;
+            horseInfo += ` [前走:${lastRace.course || '?'} ${lastRace.distance || '?'}m`;
+            if (lastRace.agari) horseInfo += ` 上がり${lastRace.agari}秒`;
+            if (lastRace.popularity) horseInfo += ` ${lastRace.popularity}番人気`;
+            horseInfo += `]`;
+        }
+        
+        // 2走前データがあれば追加
+        if (horse.raceHistory?.secondLastRace) {
+            const secondRace = horse.raceHistory.secondLastRace;
+            horseInfo += ` [2走前:${secondRace.order || '?'}着 ${secondRace.course || '?'} ${secondRace.distance || '?'}m`;
+            if (secondRace.agari) horseInfo += ` 上がり${secondRace.agari}秒`;
+            if (secondRace.popularity) horseInfo += ` ${secondRace.popularity}番人気`;
+            horseInfo += `]`;
+        }
+        
+        // 3走前データがあれば追加
+        if (horse.raceHistory?.thirdLastRace) {
+            const thirdRace = horse.raceHistory.thirdLastRace;
+            horseInfo += ` [3走前:${thirdRace.order || '?'}着 ${thirdRace.course || '?'} ${thirdRace.distance || '?'}m`;
+            if (thirdRace.agari) horseInfo += ` 上がり${thirdRace.agari}秒`;
+            if (thirdRace.popularity) horseInfo += ` ${thirdRace.popularity}番人気`;
+            horseInfo += `]`;
+        }
+        
+        // 4走前データがあれば追加
+        if (horse.raceHistory?.fourthLastRace) {
+            const fourthRace = horse.raceHistory.fourthLastRace;
+            horseInfo += ` [4走前:${fourthRace.order || '?'}着 ${fourthRace.course || '?'} ${fourthRace.distance || '?'}m`;
+            if (fourthRace.agari) horseInfo += ` 上がり${fourthRace.agari}秒`;
+            if (fourthRace.popularity) horseInfo += ` ${fourthRace.popularity}番人気`;
+            horseInfo += `]`;
+        }
+        
+        // 5走前データがあれば追加
+        if (horse.raceHistory?.fifthLastRace) {
+            const fifthRace = horse.raceHistory.fifthLastRace;
+            horseInfo += ` [5走前:${fifthRace.order || '?'}着 ${fifthRace.course || '?'} ${fifthRace.distance || '?'}m`;
+            if (fifthRace.agari) horseInfo += ` 上がり${fifthRace.agari}秒`;
+            if (fifthRace.popularity) horseInfo += ` ${fifthRace.popularity}番人気`;
+            horseInfo += `]`;
+        }
+        
+        return horseInfo;
+    }).join('\n');
     
-    return `競馬レース分析をお願いします。以下の馬について、統計的分析ではなく、あなたの競馬知識に基づいて推奨を提供してください。
+    return `【競馬レース予想分析】
+あなたは経験豊富な競馬予想の専門家です。以下のデータを基に、実戦的な買い目を推奨してください。
 
-レース情報:
-- コース: ${raceInfo?.course || '未設定'}
-- 距離: ${raceInfo?.distance || '未設定'}m
-- 馬場: ${raceInfo?.trackType || '芝'} (${raceInfo?.trackCondition || '良'})
+## 📍 レース基本情報
+- **コース**: ${raceInfo?.course || '未設定'}
+- **距離**: ${raceInfo?.distance || '未設定'}m
+- **馬場**: ${raceInfo?.trackType || '芝'} (${raceInfo?.trackCondition || '良'})
+- **天候**: ${raceInfo?.weather || '晴'}
 
-出走馬:
+## 🐎 出走馬詳細データ
 ${horseList}
 
-以下のJSON形式で回答してください:
+## 🎯 分析要領
+以下の観点から総合的に判断してください：
+
+**重視すべき要素（優先順・指数関数的減衰重み）:**
+1. **前5走の成績推移（前走35%→5走前16%）** - 調子の上向き/下降トレンド
+2. **距離・馬場適性** - 今回条件への適応度
+3. **騎手・オッズの妥当性** - 人気と実力の乖離
+4. **年齢・体重変化** - コンディション指標
+
+**具体的分析ポイント:**
+- 前5走のトレンド分析（向上・安定・悪化パターン）
+- 上がり3Fの一貫性と好タイム継続性
+- 休養期間とローテーション
+- 騎手変更の影響
+- 好走頻度（3着以内率）
+
+## 📊 回答フォーマット
+以下のJSON形式で必ず回答してください：
+
 {
-  "analysis": "レース全体の分析（200文字程度）",
+  "analysis": "レース全体の流れと展開予想（150文字程度）",
+  "keyFactors": [
+    "注目ポイント1",
+    "注目ポイント2", 
+    "注目ポイント3"
+  ],
   "topPicks": [
     {
       "horse": "馬名",
       "horseNumber": 馬番,
-      "reason": "推奨理由（100文字程度）",
-      "confidence": "high/medium/low"
+      "reason": "推奨理由（前走比較含む）",
+      "confidence": "high/medium/low",
+      "expectedFinish": "1-3着/4-6着/7着以下"
     }
   ],
   "bettingStrategy": [
     {
-      "type": "単勝/複勝/ワイド",
-      "combination": "買い目（例：1番、1-2番）",
-      "amount": "推奨金額（例：300-500円）",
-      "expectedReturn": "期待リターン（例：1500円前後）",
+      "type": "単勝/複勝/ワイド/馬連",
+      "combination": "具体的買い目",
+      "amount": "100円-1000円",
+      "expectedReturn": "予想配当",
       "risk": "high/medium/low",
-      "reason": "理由"
+      "reason": "根拠（オッズ妥当性含む）"
     }
   ],
-  "summary": "まとめ（100文字以内）",
+  "riskAnalysis": "リスクと対策（80文字程度）",
   "confidence": "high/medium/low"
 }
 
-重要：
-1. 統計計算や過去データ分析に頼らず、生データから直感的に判断してください
-2. 馬の実績・条件・騎手・オッズのみを参考にしてください
-3. あなた独自の競馬知識と経験で分析してください
-4. 最大3頭まで推奨してください
-5. 単勝・複勝・ワイドの買い目を提案してください
-6. 日本語で回答してください`;
+**必須事項:**
+- 前5走データの指数関数的重み付け分析を必ず実施
+- 各馬のトレンド（向上・安定・悪化）を必ず言及
+- オッズの妥当性を評価
+- 具体的な買い目金額を提示
+- リスク要因を明記
+- 日本語で簡潔に回答`;
 }
 
 // メインページの配信

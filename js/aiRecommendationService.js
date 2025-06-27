@@ -54,13 +54,70 @@ class AIRecommendationService {
             jockey: horse.jockey,
             age: horse.age,
             weightChange: horse.weightChange,
+            // 血統情報を追加
+            sire: horse.sire || '',
+            dam: horse.dam || '',
+            damSire: horse.damSire || '',
             // 統計計算結果は除外（AI独自判断のため）
             // score, winProbability, placeProbability, winExpectedValue, placeExpectedValue は使用しない
             course: horse.course,
             distance: horse.distance,
             trackType: horse.trackType,
             weather: horse.weather,
-            trackCondition: horse.trackCondition
+            trackCondition: horse.trackCondition,
+            // 過去5走データを含める（指数関数的減衰重み対応）
+            raceHistory: {
+                lastRace: {
+                    order: horse.lastRaceOrder || horse.lastRace,
+                    course: horse.lastRaceCourse,
+                    distance: horse.lastRaceDistance,
+                    trackType: horse.lastRaceTrackType,
+                    agari: horse.lastRaceAgari,
+                    date: horse.lastRaceDate,
+                    popularity: horse.lastRacePopularity,
+                    weight: 1.00 // 35%重み
+                },
+                secondLastRace: (horse.secondLastRaceOrder || horse.secondLastRaceCourse || horse.secondLastRaceAgari) ? {
+                    order: horse.secondLastRaceOrder,
+                    course: horse.secondLastRaceCourse,
+                    distance: horse.secondLastRaceDistance,
+                    trackType: horse.secondLastRaceTrackType,
+                    agari: horse.secondLastRaceAgari,
+                    date: horse.secondLastRaceDate,
+                    popularity: horse.secondLastRacePopularity,
+                    weight: 0.82 // 29%重み
+                } : null,
+                thirdLastRace: (horse.thirdLastRaceOrder || horse.thirdLastRaceCourse || horse.thirdLastRaceAgari) ? {
+                    order: horse.thirdLastRaceOrder,
+                    course: horse.thirdLastRaceCourse,
+                    distance: horse.thirdLastRaceDistance,
+                    trackType: horse.thirdLastRaceTrackType,
+                    agari: horse.thirdLastRaceAgari,
+                    date: horse.thirdLastRaceDate,
+                    popularity: horse.thirdLastRacePopularity,
+                    weight: 0.67 // 24%重み
+                } : null,
+                fourthLastRace: (horse.fourthLastRaceOrder || horse.fourthLastRaceCourse || horse.fourthLastRaceAgari) ? {
+                    order: horse.fourthLastRaceOrder,
+                    course: horse.fourthLastRaceCourse,
+                    distance: horse.fourthLastRaceDistance,
+                    trackType: horse.fourthLastRaceTrackType,
+                    agari: horse.fourthLastRaceAgari,
+                    date: horse.fourthLastRaceDate,
+                    popularity: horse.fourthLastRacePopularity,
+                    weight: 0.55 // 19%重み
+                } : null,
+                fifthLastRace: (horse.fifthLastRaceOrder || horse.fifthLastRaceCourse || horse.fifthLastRaceAgari) ? {
+                    order: horse.fifthLastRaceOrder,
+                    course: horse.fifthLastRaceCourse,
+                    distance: horse.fifthLastRaceDistance,
+                    trackType: horse.fifthLastRaceTrackType,
+                    agari: horse.fifthLastRaceAgari,
+                    date: horse.fifthLastRaceDate,
+                    popularity: horse.fifthLastRacePopularity,
+                    weight: 0.45 // 16%重み
+                } : null
+            }
         }));
 
         const currentRaceInfo = raceInfo || this.getCurrentRaceInfo();
@@ -136,70 +193,148 @@ class AIRecommendationService {
         }
     }
     
-    // Claude AIに送信するプロンプトの作成（純粋データ版）
+    // Claude AIに送信するプロンプトの作成（純粋データ版・レース分析統合）
     static formatRaceDataForClaude(horses, raceInfo) {
-        let prompt = `あなたは経験豊富な競馬予想の専門家です。以下の生データのみを参考に、統計的分析に頼らず、あなたの競馬知識と直感に基づいて買い目を推奨してください。
+        const horseList = horses.map((horse, index) => {
+            let horseInfo = `${index + 1}. ${horse.name || `${index + 1}番馬`} - オッズ:${horse.odds}倍, 前走:${horse.lastRace || horse.raceHistory?.lastRace?.order || '不明'}着, 騎手:${horse.jockey || '不明'}, 年齢:${horse.age || '不明'}歳`;
+            
+            // 血統情報を追加
+            if (horse.sire || horse.dam || horse.damSire) {
+                horseInfo += ` [血統:`;
+                if (horse.sire) horseInfo += `父${horse.sire}`;
+                if (horse.dam) horseInfo += ` 母${horse.dam}`;
+                if (horse.damSire) horseInfo += ` 母父${horse.damSire}`;
+                horseInfo += `]`;
+            }
+            
+            // レースレベル・脚質情報を追加
+            if (horse.raceLevel) horseInfo += `, 今回レベル:${horse.raceLevel}`;
+            if (horse.runningStyle) horseInfo += `, 基本脚質:${horse.runningStyle}`;
+            if (horse.lastRaceLevel) horseInfo += `, 前走レベル:${horse.lastRaceLevel}`;
+            
+            // 前走詳細データがあれば追加
+            if (horse.raceHistory?.lastRace) {
+                const lastRace = horse.raceHistory.lastRace;
+                horseInfo += ` [前走:${lastRace.course || '?'} ${lastRace.distance || '?'}m`;
+                if (lastRace.agari) horseInfo += ` 上がり${lastRace.agari}秒`;
+                if (lastRace.popularity) horseInfo += ` ${lastRace.popularity}番人気`;
+                horseInfo += `]`;
+            }
+            
+            // 2走前データがあれば追加
+            if (horse.raceHistory?.secondLastRace) {
+                const secondRace = horse.raceHistory.secondLastRace;
+                horseInfo += ` [2走前:${secondRace.order || '?'}着 ${secondRace.course || '?'} ${secondRace.distance || '?'}m`;
+                if (secondRace.agari) horseInfo += ` 上がり${secondRace.agari}秒`;
+                if (secondRace.popularity) horseInfo += ` ${secondRace.popularity}番人気`;
+                horseInfo += `]`;
+            }
+            
+            // 3走前データがあれば追加
+            if (horse.raceHistory?.thirdLastRace) {
+                const thirdRace = horse.raceHistory.thirdLastRace;
+                horseInfo += ` [3走前:${thirdRace.order || '?'}着 ${thirdRace.course || '?'} ${thirdRace.distance || '?'}m`;
+                if (thirdRace.agari) horseInfo += ` 上がり${thirdRace.agari}秒`;
+                if (thirdRace.popularity) horseInfo += ` ${thirdRace.popularity}番人気`;
+                horseInfo += `]`;
+            }
+            
+            // 4走前データがあれば追加
+            if (horse.raceHistory?.fourthLastRace) {
+                const fourthRace = horse.raceHistory.fourthLastRace;
+                horseInfo += ` [4走前:${fourthRace.order || '?'}着 ${fourthRace.course || '?'} ${fourthRace.distance || '?'}m`;
+                if (fourthRace.agari) horseInfo += ` 上がり${fourthRace.agari}秒`;
+                if (fourthRace.popularity) horseInfo += ` ${fourthRace.popularity}番人気`;
+                horseInfo += `]`;
+            }
+            
+            // 5走前データがあれば追加
+            if (horse.raceHistory?.fifthLastRace) {
+                const fifthRace = horse.raceHistory.fifthLastRace;
+                horseInfo += ` [5走前:${fifthRace.order || '?'}着 ${fifthRace.course || '?'} ${fifthRace.distance || '?'}m`;
+                if (fifthRace.agari) horseInfo += ` 上がり${fifthRace.agari}秒`;
+                if (fifthRace.popularity) horseInfo += ` ${fifthRace.popularity}番人気`;
+                horseInfo += `]`;
+            }
+            
+            return horseInfo;
+        }).join('\n');
+        
+        return `【競馬レース予想分析】
+あなたは経験豊富な競馬予想の専門家です。以下のデータを基に、実戦的な買い目を推奨してください。
 
-# レース情報
-- 距離: ${raceInfo.distance || '不明'}m
-- コース: ${raceInfo.course || '不明'}
-- 馬場状態: ${raceInfo.trackCondition || '不明'}
-- 天候: ${raceInfo.weather || '不明'}
+## 📍 レース基本情報
+- **コース**: ${raceInfo?.course || '未設定'}
+- **距離**: ${raceInfo?.distance || '未設定'}m
+- **馬場**: ${raceInfo?.trackType || '芝'} (${raceInfo?.trackCondition || '良'})
+- **天候**: ${raceInfo?.weather || '晴'}
 
-# 出走馬データ（生データのみ）
-`;
+## 🐎 出走馬詳細データ
+${horseList}
 
-        horses.forEach((horse, index) => {
-            prompt += `
-${index + 1}番 ${horse.name || `${index + 1}番馬`}
-- オッズ: ${horse.odds}倍
-- 前走着順: ${horse.lastRace || '不明'}着
-- 騎手: ${horse.jockey || '不明'}
-- 年齢: ${horse.age || '不明'}歳
-- 斤量変化: ${horse.weightChange || 0}kg
-- コース: ${horse.course || '不明'}
-- 距離: ${horse.distance || '不明'}m
-- 馬場種別: ${horse.trackType || '不明'}
-- 馬場状態: ${horse.trackCondition || '不明'}`;
-        });
+## 🎯 分析要領
+以下の観点から総合的に判断してください：
 
-        prompt += `
+**重視すべき要素（優先順・指数関数的減衰重み）:**
+1. **前5走の成績推移（前走35%→5走前16%）** - 調子の上向き/下降トレンド
+2. **レースレベル昇降級** - G1からOP、1勝→2勝等のクラス変化影響
+3. **脚質・展開適性** - 逃げ/先行/差し/追込の距離・ペース適性
+4. **血統・配合適性** - 父系・母系・母父の距離・馬場適性、配合相性
+5. **距離・馬場適性** - 今回条件への適応度
+6. **騎手・オッズの妥当性** - 人気と実力の乖離
+7. **年齢・体重変化** - コンディション指標
 
-# 求める回答形式
-以下のJSON形式で回答してください：
+**具体的分析ポイント:**
+- 前5走のトレンド分析（向上・安定・悪化パターン）
+- レースレベル変化（昇級ショック・降級プラス効果）
+- 脚質一貫性と距離適性（逃げ→短距離、追込→長距離等）
+- 血統による距離・馬場適性（父系スピード型・スタミナ型、母父の影響）
+- 配合パターン分析（インブリード・アウトブリード・ニックス相性）
+- 上がり3Fの一貫性と好タイム継続性
+- 休養期間とローテーション
+- 騎手変更の影響
+- 好走頻度（3着以内率）
+
+## 📊 回答フォーマット
+以下のJSON形式で必ず回答してください：
 
 {
-  "analysis": "レース全体の分析（150文字以内）",
+  "analysis": "レース全体の流れと展開予想（150文字程度）",
+  "keyFactors": [
+    "注目ポイント1",
+    "注目ポイント2", 
+    "注目ポイント3"
+  ],
   "topPicks": [
     {
       "horse": "馬名",
       "horseNumber": 馬番,
-      "reason": "推奨理由（50文字以内）",
-      "confidence": "high/medium/low"
+      "reason": "推奨理由（前走比較含む）",
+      "confidence": "high/medium/low",
+      "expectedFinish": "1-3着/4-6着/7着以下"
     }
   ],
   "bettingStrategy": [
     {
-      "type": "券種",
-      "combination": "買い目",
-      "amount": "推奨金額",
+      "type": "単勝/複勝/ワイド/馬連",
+      "combination": "具体的買い目",
+      "amount": "100円-1000円",
+      "expectedReturn": "予想配当",
       "risk": "high/medium/low",
-      "reason": "理由"
+      "reason": "根拠（オッズ妥当性含む）"
     }
   ],
-  "summary": "まとめ（100文字以内）",
+  "riskAnalysis": "リスクと対策（80文字程度）",
   "confidence": "high/medium/low"
 }
 
-重要：
-1. 統計計算や過去データ分析に頼らず、生データから直感的に判断してください
-2. 馬の実績・条件・騎手・オッズのみを参考にしてください
-3. あなた独自の競馬知識と経験で分析してください
-4. 最大3頭まで推奨してください
-5. 単勝・複勝・ワイドの買い目を提案してください
-6. 日本語で回答してください`;
-
-        return prompt;
+**必須事項:**
+- 前5走データの指数関数的重み付け分析を必ず実施
+- 各馬のトレンド（向上・安定・悪化）を必ず言及
+- オッズの妥当性を評価
+- 具体的な買い目金額を提示
+- リスク要因を明記
+- 日本語で簡潔に回答`;
     }
     
     // 純粋データでのAI推奨生成（学習データ非依存）
@@ -1291,6 +1426,32 @@ ${index + 1}番 ${horse.name || `${index + 1}番馬`}
             `;
         }
 
+        // 重要ファクター
+        if (recommendation.keyFactors && recommendation.keyFactors.length > 0) {
+            html += `
+                <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 10px; margin-bottom: 15px;">
+                    <h4 style="margin: 0 0 15px 0; display: flex; align-items: center;">
+                        <span style="margin-right: 8px;">🔍</span>レース攻略ポイント
+                    </h4>
+                    <div style="display: grid; gap: 8px;">
+            `;
+            
+            recommendation.keyFactors.forEach((factor, index) => {
+                html += `
+                    <div style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 6px; border-left: 3px solid #ffd700;">
+                        <div style="display: flex; align-items: center;">
+                            <span style="background: #ffd700; color: #333; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.8em; font-weight: bold; margin-right: 10px;">
+                                ${index + 1}
+                            </span>
+                            <span style="font-size: 0.95em; line-height: 1.4;">${factor}</span>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div></div>';
+        }
+
         // 注目馬
         if (recommendation.topPicks && recommendation.topPicks.length > 0) {
             html += `
@@ -1311,16 +1472,22 @@ ${index + 1}番 ${horse.name || `${index + 1}番馬`}
                 const pickHorseNumber = pick.horseNumber || (index + 1);
                 const pickHorse = pick.horse || '不明';
                 const pickReason = pick.reason || '推奨理由が設定されていません';
+                const expectedFinish = pick.expectedFinish || '';
                 
                 html += `
                     <div style="background: rgba(255,255,255,0.05); padding: 12px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid ${confidenceColor};">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                             <strong style="font-size: 1.1em;">${pickHorseNumber}番 ${pickHorse}</strong>
-                            <span style="background: ${confidenceColor}; padding: 4px 8px; border-radius: 20px; font-size: 0.8em; font-weight: bold;">
-                                信頼度: ${confidenceText}
-                            </span>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                ${expectedFinish ? `<span style="background: rgba(255,255,255,0.2); padding: 4px 8px; border-radius: 15px; font-size: 0.75em; font-weight: bold;">
+                                    🎯 ${expectedFinish}
+                                </span>` : ''}
+                                <span style="background: ${confidenceColor}; padding: 4px 8px; border-radius: 20px; font-size: 0.8em; font-weight: bold;">
+                                    信頼度: ${confidenceText}
+                                </span>
+                            </div>
                         </div>
-                        <p style="margin: 0; font-size: 0.9em; opacity: 0.9;">${pickReason}</p>
+                        <p style="margin: 0; font-size: 0.9em; opacity: 0.9; line-height: 1.4;">${pickReason}</p>
                     </div>
                 `;
             });
@@ -1374,6 +1541,20 @@ ${index + 1}番 ${horse.name || `${index + 1}番馬`}
             });
             
             html += '</div></div>';
+        }
+
+        // リスク分析
+        if (recommendation.riskAnalysis) {
+            html += `
+                <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 10px; margin-bottom: 15px;">
+                    <h4 style="margin: 0 0 10px 0; display: flex; align-items: center;">
+                        <span style="margin-right: 8px;">⚠️</span>リスク分析と対策
+                    </h4>
+                    <div style="background: rgba(255,193,7,0.1); border-left: 4px solid #ffc107; padding: 12px; border-radius: 6px;">
+                        <p style="margin: 0; line-height: 1.6; color: rgba(255,255,255,0.95);">${recommendation.riskAnalysis}</p>
+                    </div>
+                </div>
+            `;
         }
 
         // まとめ

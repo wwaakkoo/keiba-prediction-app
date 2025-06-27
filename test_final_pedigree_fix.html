@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>最終血統修正テスト</title>
+    <meta charset="UTF-8">
+</head>
+<body>
+    <h1>最終血統修正テスト - インデックス修正版</h1>
+    
+    <div id="testResult"></div>
+    
+    <script src="js/dataConverter.js"></script>
+    <script>
+        console.log('=== 最終血統修正テスト開始 ===');
+        
+        // テストデータ
+        const testData = `1\t1\t
+消
+ロードカナロア
+ベラジオオペラ
+エアルーティーン
+(ハービンジャー)
+栗東・上村  
+先中9週
+510kg(+2)
+4.0 (1人気)
+牡5鹿
+
+横山和
+58.0\t
+1\t2\t
+消
+ドゥラメンテ
+ドゥレッツァ
+モアザンセイクリッド
+(More Than Ready)
+美浦・尾関  
+先中9週
+468kg(前計不)
+6.7 (4人気)
+牡5青鹿
+
+横山武
+58.0\t`;
+
+        try {
+            console.log('🧪 修正版テストデータを解析中...');
+            
+            const result = DataConverter.parseNetkeibaData(testData);
+            
+            console.log('✅ 解析結果:', result);
+            console.log(`📊 解析された馬の数: ${result.horses.length}`);
+            
+            let results = [];
+            
+            result.horses.forEach((horse, index) => {
+                console.log(`=== 馬 ${index + 1}: ${horse.name} ===`);
+                console.log(`🐎 父系: ${horse.sire || '未抽出'}`);
+                console.log(`🐎 母系: ${horse.dam || '未抽出'}`);
+                console.log(`🐎 母父: ${horse.damSire || '未抽出'}`);
+                
+                results.push({
+                    name: horse.name,
+                    sire: horse.sire,
+                    dam: horse.dam,
+                    damSire: horse.damSire
+                });
+                console.log('---');
+            });
+            
+            // 期待結果チェック
+            const expectedResults = [
+                { name: 'ベラジオオペラ', sire: 'ロードカナロア', dam: 'エアルーティーン', damSire: 'ハービンジャー' },
+                { name: 'ドゥレッツァ', sire: 'ドゥラメンテ', dam: 'モアザンセイクリッド', damSire: 'More Than Ready' }
+            ];
+            
+            let successCount = 0;
+            let errorMessages = [];
+            
+            expectedResults.forEach((expected, index) => {
+                const actual = results[index];
+                if (!actual) {
+                    errorMessages.push(`❌ 馬${index + 1}のデータが存在しない`);
+                    return;
+                }
+                
+                if (actual.sire === expected.sire) {
+                    successCount++;
+                    console.log(`✅ 馬${index + 1}の父系抽出成功: ${actual.sire}`);
+                } else {
+                    errorMessages.push(`❌ 馬${index + 1}の父系抽出失敗: 期待値=${expected.sire}, 実際=${actual.sire}`);
+                }
+                
+                if (actual.dam === expected.dam) {
+                    successCount++;
+                    console.log(`✅ 馬${index + 1}の母系抽出成功: ${actual.dam}`);
+                } else {
+                    errorMessages.push(`❌ 馬${index + 1}の母系抽出失敗: 期待値=${expected.dam}, 実際=${actual.dam}`);
+                }
+                
+                if (actual.damSire === expected.damSire) {
+                    successCount++;
+                    console.log(`✅ 馬${index + 1}の母父抽出成功: ${actual.damSire}`);
+                } else {
+                    errorMessages.push(`❌ 馬${index + 1}の母父抽出失敗: 期待値=${expected.damSire}, 実際=${actual.damSire}`);
+                }
+                
+                if (actual.name === expected.name) {
+                    successCount++;
+                    console.log(`✅ 馬${index + 1}の馬名抽出成功: ${actual.name}`);
+                } else {
+                    errorMessages.push(`❌ 馬${index + 1}の馬名抽出失敗: 期待値=${expected.name}, 実際=${actual.name}`);
+                }
+            });
+            
+            const testResultDiv = document.getElementById('testResult');
+            const totalTests = expectedResults.length * 4; // 各馬につき4項目（馬名、父系、母系、母父）
+            
+            testResultDiv.innerHTML = `
+                <h2>テスト結果</h2>
+                <div style="padding: 10px; margin: 10px 0; background-color: ${errorMessages.length === 0 ? '#d4edda' : '#f8d7da'}; border: 1px solid ${errorMessages.length === 0 ? '#c3e6cb' : '#f5c6cb'}; border-radius: 5px;">
+                    <strong>成功率: ${successCount}/${totalTests} (${Math.round(successCount/totalTests*100)}%)</strong>
+                </div>
+                
+                <div style="color: red;">
+                    ${errorMessages.map(msg => `<p>${msg}</p>`).join('')}
+                </div>
+                
+                <h3>抽出結果詳細</h3>
+                <table border="1" style="border-collapse: collapse; width: 100%;">
+                    <tr>
+                        <th>馬名</th>
+                        <th>父系</th>
+                        <th>母系</th>
+                        <th>母父</th>
+                    </tr>
+                    ${results.map(horse => `
+                        <tr>
+                            <td>${horse.name || '未抽出'}</td>
+                            <td>${horse.sire || '未抽出'}</td>
+                            <td>${horse.dam || '未抽出'}</td>
+                            <td>${horse.damSire || '未抽出'}</td>
+                        </tr>
+                    `).join('')}
+                </table>
+                
+                <h3>生データ</h3>
+                <pre style="background-color: #f8f9fa; padding: 10px; border-radius: 5px; overflow-x: auto;">${JSON.stringify(result, null, 2)}</pre>
+            `;
+            
+            // 最終判定
+            if (errorMessages.length === 0) {
+                console.log('🎉 修正完全成功！すべての血統データが正常に抽出されました');
+            } else {
+                console.log('⚠️ まだ問題があります:', errorMessages);
+            }
+            
+        } catch (error) {
+            console.error('❌ テスト実行エラー:', error);
+            document.getElementById('testResult').innerHTML = `<p style="color: red;">エラー: ${error.message}</p>`;
+        }
+    </script>
+</body>
+</html>

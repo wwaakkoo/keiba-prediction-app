@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>血統データベース統合テスト</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        .result { background: #f0f0f0; padding: 10px; margin: 10px 0; border-radius: 3px; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>血統データベース統合テスト</h1>
+    
+    <div class="test-section">
+        <h2>1. 基本的な血統分析テスト</h2>
+        <button onclick="testBasicPedigreeAnalysis()">実行</button>
+        <div id="basicResults" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>2. 血統データベース検索テスト</h2>
+        <button onclick="testPedigreeSearch()">実行</button>
+        <div id="searchResults" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>3. 距離適性予測テスト</h2>
+        <button onclick="testDistanceAptitude()">実行</button>
+        <div id="distanceResults" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>4. 血統統計レポートテスト</h2>
+        <button onclick="testPedigreeStats()">実行</button>
+        <div id="statsResults" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>5. 配合パターン分析テスト</h2>
+        <button onclick="testMatingPatterns()">実行</button>
+        <div id="matingResults" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>6. 血統抽出機能テスト</h2>
+        <textarea id="testData" style="width: 100%; height: 120px; font-family: monospace;" placeholder="netkeiba形式のデータを貼り付け">1	1	
+消
+ロードカナロア
+ベラジオオペラ
+エアルーティーン
+(ハービンジャー)
+栗東・上村  
+先中9週
+510kg(+2)
+4.0 (1人気)
+牡5鹿
+
+2	2	
+消
+ディープインパクト
+ドゥレッツァ
+モアザンセイクリッド
+(More Than Ready)
+美浦・尾関  
+先中9週
+468kg(前計不)
+6.7 (4人気)
+牡5青鹿</textarea>
+        <button onclick="testPedigreeExtraction()">血統抽出テスト実行</button>
+        <div id="extractionResults" class="result"></div>
+    </div>
+
+    <script src="js/pedigreeDatabase.js"></script>
+    <script src="js/dataConverter.js"></script>
+    <script>
+        function testBasicPedigreeAnalysis() {
+            const results = document.getElementById('basicResults');
+            results.innerHTML = '<h3>血統分析結果:</h3>';
+            
+            console.log('=== 基本血統分析テスト ===');
+            
+            // テスト1: ディープインパクト産駒
+            const test1 = PedigreeDatabase.analyzePedigree('ディープインパクト', 'エアグルーヴ', 'サンデーサイレンス');
+            console.log('テスト1 - ディープインパクト産駒:', test1);
+            results.innerHTML += `
+                <h4>ディープインパクト × エアグルーヴ (母父: サンデーサイレンス)</h4>
+                <p>総合評価: ${test1.overallRating.grade}級 (${test1.overallRating.totalScore}点)</p>
+                <p>父系分析: ${test1.sireAnalysis.analysis}</p>
+                <p>母父分析: ${test1.damSireAnalysis.analysis}</p>
+                <p>配合相性: ${test1.matingAnalysis.compatibility}点 - ${test1.matingAnalysis.analysis}</p>
+                <p>推奨事項: ${test1.recommendations.join('、')}</p>
+            `;
+            
+            // テスト2: ロードカナロア産駒
+            const test2 = PedigreeDatabase.analyzePedigree('ロードカナロア', 'ダンシングブレーヴ', 'ストームキャット');
+            console.log('テスト2 - ロードカナロア産駒:', test2);
+            results.innerHTML += `
+                <h4>ロードカナロア × ダンシングブレーヴ (母父: ストームキャット)</h4>
+                <p>総合評価: ${test2.overallRating.grade}級 (${test2.overallRating.totalScore}点)</p>
+                <p>父系分析: ${test2.sireAnalysis.analysis}</p>
+                <p>配合相性: ${test2.matingAnalysis.compatibility}点 - ${test2.matingAnalysis.analysis}</p>
+                <p>期待能力: スピード${test2.expectedAbilities.speed}、芝適性${test2.expectedAbilities.turf}、ダート適性${test2.expectedAbilities.dirt}</p>
+            `;
+            
+            // テスト3: 未登録血統
+            const test3 = PedigreeDatabase.analyzePedigree('未知種牡馬', '平凡牝馬', '未知母父');
+            console.log('テスト3 - 未登録血統:', test3);
+            results.innerHTML += `
+                <h4>未知種牡馬 × 平凡牝馬 (母父: 未知母父)</h4>
+                <p>総合評価: ${test3.overallRating.grade}級 (${test3.overallRating.totalScore}点)</p>
+                <p>分析: データベース未登録の血統として標準評価</p>
+            `;
+        }
+        
+        function testPedigreeSearch() {
+            const results = document.getElementById('searchResults');
+            results.innerHTML = '<h3>検索結果:</h3>';
+            
+            console.log('=== 血統検索テスト ===');
+            
+            // 種牡馬検索
+            const searchResult1 = PedigreeDatabase.searchPedigree('ディープ');
+            console.log('検索「ディープ」:', searchResult1);
+            results.innerHTML += `<p>「ディープ」検索: ${searchResult1.length}件の結果</p>`;
+            
+            const searchResult2 = PedigreeDatabase.searchPedigree('サンデー');
+            console.log('検索「サンデー」:', searchResult2);
+            results.innerHTML += `<p>「サンデー」検索: ${searchResult2.length}件の結果</p>`;
+            
+            searchResult1.forEach(result => {
+                results.innerHTML += `<p>・${result.name} (${result.type}): ${result.data.description || result.data.specialties}</p>`;
+            });
+        }
+        
+        function testDistanceAptitude() {
+            const results = document.getElementById('distanceResults');
+            results.innerHTML = '<h3>距離適性予測:</h3>';
+            
+            console.log('=== 距離適性予測テスト ===');
+            
+            const pedigreeAnalysis = PedigreeDatabase.analyzePedigree('ディープインパクト', 'テスト牝馬', 'サンデーサイレンス');
+            const distanceApt = PedigreeDatabase.predictDistanceAptitude(pedigreeAnalysis);
+            console.log('距離適性予測:', distanceApt);
+            
+            results.innerHTML += '<h4>ディープインパクト産駒の距離適性予測:</h4>';
+            Object.entries(distanceApt).forEach(([distance, aptitude]) => {
+                results.innerHTML += `<p>${distance}m: ${aptitude}点</p>`;
+            });
+        }
+        
+        function testPedigreeStats() {
+            const results = document.getElementById('statsResults');
+            results.innerHTML = '<h3>血統統計:</h3>';
+            
+            console.log('=== 血統統計テスト ===');
+            
+            const stats = PedigreeDatabase.generatePedigreeStatsReport();
+            console.log('血統統計:', stats);
+            
+            results.innerHTML += `
+                <p>登録種牡馬数: ${stats.totalStallions}頭</p>
+                <p>登録母父数: ${stats.totalBroodmareSires}頭</p>
+                <p>血統系統数: ${stats.pedigreeLinesCount}系統</p>
+                <p>平均種牡馬評価: ${stats.averageRating}点</p>
+                <h4>上位種牡馬:</h4>
+            `;
+            
+            stats.topRatedStallions.forEach((stallion, index) => {
+                results.innerHTML += `<p>${index + 1}位: ${stallion.name} (${stallion.rating}点 - ${stallion.type})</p>`;
+            });
+            
+            results.innerHTML += '<h4>優勢血統系統:</h4>';
+            stats.dominantLines.forEach((line, index) => {
+                results.innerHTML += `<p>${index + 1}位: ${line.name} (勢力${(line.dominance * 100).toFixed(1)}% - 評価${line.rating}点)</p>`;
+            });
+        }
+        
+        function testMatingPatterns() {
+            const results = document.getElementById('matingResults');
+            results.innerHTML = '<h3>配合パターン分析:</h3>';
+            
+            console.log('=== 配合パターン分析テスト ===');
+            
+            const patterns = [
+                { sire: 'ディープインパクト', dam: 'スピード牝馬', damSire: 'ノーザンテースト', expected: 'スピード×瞬発力' },
+                { sire: 'キングカメハメハ', dam: 'パワー牝馬', damSire: 'ミスタープロスペクター', expected: 'パワー強化' },
+                { sire: 'ロードカナロア', dam: '万能牝馬', damSire: 'ストームキャット', expected: '万能×スピード' },
+                { sire: 'ステイゴールド', dam: 'スタミナ牝馬', damSire: 'サンデーサイレンス', expected: 'スタミナ×瞬発力' }
+            ];
+            
+            patterns.forEach((pattern, index) => {
+                const analysis = PedigreeDatabase.analyzePedigree(pattern.sire, pattern.dam, pattern.damSire);
+                console.log(`パターン${index + 1}:`, analysis);
+                
+                results.innerHTML += `
+                    <h4>パターン${index + 1}: ${pattern.sire} × ${pattern.dam}</h4>
+                    <p>期待配合: ${pattern.expected}</p>
+                    <p>実際の分析: ${analysis.matingAnalysis.analysis}</p>
+                    <p>配合パターン: ${analysis.matingAnalysis.pattern}</p>
+                    <p>強化ポイント: ${analysis.matingAnalysis.expectedStrengths.join('、')}</p>
+                    <p>相性評価: ${analysis.matingAnalysis.compatibility}点</p>
+                `;
+            });
+        }
+        
+        // 初期化時にコンソールにヘルプを表示
+        console.log('=== 血統データベーステスト環境 ===');
+        console.log('利用可能なテスト関数:');
+        console.log('- testBasicPedigreeAnalysis() : 基本血統分析');
+        console.log('- testPedigreeSearch() : 血統検索');
+        console.log('- testDistanceAptitude() : 距離適性予測');
+        console.log('- testPedigreeStats() : 統計レポート');
+        console.log('- testMatingPatterns() : 配合パターン');
+        console.log('');
+        console.log('手動テスト例:');
+        console.log('const result = PedigreeDatabase.analyzePedigree("ディープインパクト", "エアグルーヴ", "サンデーサイレンス");');
+        console.log('console.log(result);');
+        
+        // 血統抽出テスト関数
+        function testPedigreeExtraction() {
+            const testData = document.getElementById('testData').value;
+            const resultsDiv = document.getElementById('extractionResults');
+            
+            console.log('=== 血統抽出テスト開始 ===');
+            console.log('入力データ:', testData);
+            
+            try {
+                // DataConverterの血統抽出機能をテスト
+                if (typeof DataConverter !== 'undefined' && DataConverter.parseNetkeibaData) {
+                    const horses = DataConverter.parseNetkeibaData(testData);
+                    console.log('DataConverter結果:', horses);
+                    
+                    let html = '<h3>📊 血統抽出結果 (DataConverter使用)</h3>';
+                    horses.forEach((horse, index) => {
+                        const pedigreeCount = [horse.sire, horse.dam, horse.damSire].filter(x => x).length;
+                        const rate = ((pedigreeCount / 3) * 100).toFixed(1);
+                        
+                        html += `
+                            <div style="border: 1px solid #ddd; padding: 10px; margin: 10px 0;">
+                                <h4>馬${index + 1}: ${horse.name || '未抽出'}</h4>
+                                <p><strong>父:</strong> ${horse.sire || '未抽出'}</p>
+                                <p><strong>母:</strong> ${horse.dam || '未抽出'}</p>
+                                <p><strong>母父:</strong> ${horse.damSire || '未抽出'}</p>
+                                <p><strong>オッズ:</strong> ${horse.odds || '未抽出'}倍</p>
+                                <p><strong>脚質:</strong> ${horse.runningStyle || '未抽出'}</p>
+                                <p><strong>血統抽出率:</strong> ${pedigreeCount}/3 (${rate}%)</p>
+                                <p style="color: ${rate >= 80 ? 'green' : rate >= 50 ? 'orange' : 'red'};">
+                                    ${rate >= 80 ? '✅ 抽出良好' : rate >= 50 ? '⚠️ 抽出不完全' : '❌ 抽出失敗'}
+                                </p>
+                            </div>
+                        `;
+                    });
+                    
+                    // 全体の統計
+                    const totalPedigree = horses.reduce((sum, horse) => {
+                        return sum + [horse.sire, horse.dam, horse.damSire].filter(x => x).length;
+                    }, 0);
+                    const maxPedigree = horses.length * 3;
+                    const overallRate = ((totalPedigree / maxPedigree) * 100).toFixed(1);
+                    
+                    html += `
+                        <div style="background: #e6f3ff; padding: 15px; margin: 20px 0; border-radius: 5px;">
+                            <h4>📈 全体統計</h4>
+                            <p><strong>総合血統抽出率:</strong> ${totalPedigree}/${maxPedigree} (${overallRate}%)</p>
+                            <p><strong>抽出された馬数:</strong> ${horses.length}頭</p>
+                            <p><strong>問題点:</strong> ${overallRate < 80 ? '血統抽出に改善が必要' : '抽出良好'}</p>
+                        </div>
+                    `;
+                    
+                    resultsDiv.innerHTML = html;
+                } else {
+                    resultsDiv.innerHTML = '<div style="color: red;">❌ DataConverterが読み込まれていません</div>';
+                }
+                
+            } catch (error) {
+                resultsDiv.innerHTML = `<div style="color: red;">❌ エラー: ${error.message}</div>`;
+                console.error('血統抽出テストエラー:', error);
+            }
+        }
+    </script>
+</body>
+</html>

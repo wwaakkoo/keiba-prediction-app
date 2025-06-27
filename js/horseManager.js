@@ -2,6 +2,26 @@
 class HorseManager {
     static horseCount = 0;
 
+    // 着順データを安全に数値化するユーティリティ関数
+    static parseRaceOrder(orderValue) {
+        if (!orderValue) return null;
+        
+        const orderStr = String(orderValue).trim();
+        
+        // 中止・取消・除外・失格の場合
+        if (orderStr === 'DNS' || orderStr === '中' || orderStr === '取' || orderStr === '除' || orderStr === '失') {
+            return 99; // 大きな数値として扱う（最下位扱い）
+        }
+        
+        // 数値の場合
+        const numericOrder = parseInt(orderStr);
+        if (!isNaN(numericOrder) && numericOrder > 0) {
+            return numericOrder;
+        }
+        
+        return null;
+    }
+
     static addHorse() {
         this.horseCount++;
         const container = document.getElementById('horsesContainer');
@@ -17,6 +37,24 @@ class HorseManager {
                 <div class="form-group">
                     <label>馬名</label>
                     <input type="text" name="horseName" placeholder="馬名を入力">
+                </div>
+                <!-- 血統情報セクション -->
+                <div class="horse-section">
+                    <h4>🧬 血統情報</h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+                        <div class="form-group">
+                            <label>父系（種牡馬）</label>
+                            <input type="text" name="sire" placeholder="例: ロードカナロア">
+                        </div>
+                        <div class="form-group">
+                            <label>母系（繁殖牝馬）</label>
+                            <input type="text" name="dam" placeholder="例: ベラジオオペラ">
+                        </div>
+                        <div class="form-group">
+                            <label>母父（母の父）</label>
+                            <input type="text" name="damSire" placeholder="例: ハービンジャー">
+                        </div>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label>オッズ</label>
@@ -89,6 +127,76 @@ class HorseManager {
                         <option value="0" selected>変化なし</option>
                         <option value="1">増加</option>
                         <option value="-1">減少</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>今回レースレベル</label>
+                    <select name="raceLevel">
+                        <option value="G1">G1</option>
+                        <option value="G2">G2</option>
+                        <option value="G3">G3</option>
+                        <option value="L">Listed（L）</option>
+                        <option value="OP">オープン特別</option>
+                        <option value="3勝">3勝クラス（1600万下）</option>
+                        <option value="2勝">2勝クラス（1000万下）</option>
+                        <option value="1勝" selected>1勝クラス（500万下）</option>
+                        <option value="未勝利">未勝利戦</option>
+                        <option value="新馬">新馬戦</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>脚質（主な戦法）</label>
+                    <select name="runningStyle">
+                        <option value="逃げ">逃げ</option>
+                        <option value="先行" selected>先行</option>
+                        <option value="差し">差し</option>
+                        <option value="追込">追込</option>
+                        <option value="自在">自在</option>
+                    </select>
+                </div>
+            </div>
+            <div class="horse-section">
+                <h4>🧬 血統情報</h4>
+                <div class="form-group">
+                    <label>父（種牡馬）</label>
+                    <select name="sire">
+                        <option value="">選択してください</option>
+                        <option value="ディープインパクト">ディープインパクト</option>
+                        <option value="ハーツクライ">ハーツクライ</option>
+                        <option value="ロードカナロア">ロードカナロア</option>
+                        <option value="オルフェーヴル">オルフェーヴル</option>
+                        <option value="キングカメハメハ">キングカメハメハ</option>
+                        <option value="ダイワメジャー">ダイワメジャー</option>
+                        <option value="クロフネ">クロフネ</option>
+                        <option value="ステイゴールド">ステイゴールド</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>母</label>
+                    <select name="dam">
+                        <option value="">選択してください</option>
+                        <option value="エアグルーヴ">エアグルーヴ</option>
+                        <option value="ダンシングブレーヴ">ダンシングブレーヴ</option>
+                        <option value="シンコウラブリイ">シンコウラブリイ</option>
+                        <option value="アドマイヤグルーヴ">アドマイヤグルーヴ</option>
+                        <option value="ダイワスカーレット">ダイワスカーレット</option>
+                        <option value="ヴォードヴィル">ヴォードヴィル</option>
+                        <option value="フサイチパンドラ">フサイチパンドラ</option>
+                        <option value="スイートジャスミン">スイートジャスミン</option>
+                        <option value="クロフネママ">クロフネママ</option>
+                        <option value="ステイゴールドママ">ステイゴールドママ</option>
+                        <option value="custom">その他（入力）</option>
+                    </select>
+                    <input type="text" name="damCustom" placeholder="母馬名を入力" style="display: none; margin-top: 5px;" onchange="HorseManager.toggleCustomDam(this)">
+                </div>
+                <div class="form-group">
+                    <label>母父</label>
+                    <select name="damSire">
+                        <option value="">選択してください</option>
+                        <option value="サンデーサイレンス">サンデーサイレンス</option>
+                        <option value="ノーザンテースト">ノーザンテースト</option>
+                        <option value="ミスタープロスペクター">ミスタープロスペクター</option>
+                        <option value="ストームキャット">ストームキャット</option>
                     </select>
                 </div>
             </div>
@@ -190,60 +298,401 @@ class HorseManager {
                             <option value="56">50日以上</option>
                         </select>
                     </div>
+                    <div class="form-group">
+                        <label>今回レースレベル</label>
+                        <select name="raceLevel">
+                            <option value="">選択してください</option>
+                            <option value="G1">G1</option>
+                            <option value="G2">G2</option>
+                            <option value="G3">G3</option>
+                            <option value="L">Listed（L）</option>
+                            <option value="OP">オープン特別</option>
+                            <option value="3勝">3勝クラス</option>
+                            <option value="2勝">2勝クラス</option>
+                            <option value="1勝" selected>1勝クラス</option>
+                            <option value="未勝利">未勝利戦</option>
+                            <option value="新馬">新馬戦</option>
+                        </select>
+                    </div>
                 </div>
             </div>
             <div class="horse-section">
-                <h4>📊 前走情報</h4>
+                <h4>📊 過去5走情報</h4>
                 <div class="horse-content">
-                    <div class="form-group">
-                        <label>前走コース</label>
-                        <input type="text" name="lastRaceCourse" value="">
+                    <!-- 前走情報 -->
+                    <div style="border: 2px solid #28a745; padding: 15px; margin-bottom: 15px; border-radius: 8px; background: #f8fff8;">
+                        <h5 style="color: #28a745; margin-bottom: 10px;">前走</h5>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+                            <div class="form-group">
+                                <label>前走コース</label>
+                                <input type="text" name="lastRaceCourse" value="">
+                            </div>
+                            <div class="form-group">
+                                <label>前走距離</label>
+                                <input type="text" name="lastRaceDistance" value="">
+                            </div>
+                            <div class="form-group">
+                                <label>前走馬場</label>
+                                <input type="text" name="lastRaceTrackType" value="">
+                            </div>
+                            <div class="form-group">
+                                <label>前走日</label>
+                                <input type="text" name="lastRaceDate" value="">
+                            </div>
+                            <div class="form-group">
+                                <label>前走タイム</label>
+                                <input type="text" name="lastRaceTime" placeholder="例: 1:35.2" style="font-family: monospace;">
+                            </div>
+                            <div class="form-group">
+                                <label>前走馬場状態</label>
+                                <select name="lastRaceTrackCondition">
+                                    <option value="">選択してください</option>
+                                    <option value="良">良</option>
+                                    <option value="稍重">稍重</option>
+                                    <option value="重">重</option>
+                                    <option value="不良">不良</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>前走斤量</label>
+                                <input type="number" name="lastRaceWeight" step="0.5" placeholder="例: 56.0">
+                            </div>
+                            <div class="form-group">
+                                <label>前走騎手</label>
+                                <input type="text" name="lastRaceJockey" placeholder="前走騎手名">
+                            </div>
+                            <div class="form-group">
+                                <label>前走人気</label>
+                                <input type="number" name="lastRacePopularity" placeholder="例: 1">
+                            </div>
+                            <div class="form-group">
+                                <label>前走着順</label>
+                                <input type="number" name="lastRaceOrder" placeholder="例: 1">
+                            </div>
+                            <div class="form-group">
+                                <label>前走上がり3F</label>
+                                <input type="text" name="lastRaceAgari" placeholder="例: 34.1">
+                            </div>
+                            <div class="form-group">
+                                <label>前走レースレベル</label>
+                                <select name="lastRaceLevel">
+                                    <option value="">選択してください</option>
+                                    <option value="G1">G1</option>
+                                    <option value="G2">G2</option>
+                                    <option value="G3">G3</option>
+                                    <option value="L">Listed（L）</option>
+                                    <option value="OP">オープン特別</option>
+                                    <option value="3勝">3勝クラス</option>
+                                    <option value="2勝">2勝クラス</option>
+                                    <option value="1勝">1勝クラス</option>
+                                    <option value="未勝利">未勝利戦</option>
+                                    <option value="新馬">新馬戦</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label>前走距離</label>
-                        <input type="text" name="lastRaceDistance" value="">
+                    
+                    <!-- 2走前情報 -->
+                    <div style="border: 2px solid #007bff; padding: 15px; margin-bottom: 15px; border-radius: 8px; background: #f8f9ff;">
+                        <h5 style="color: #007bff; margin-bottom: 10px;">2走前</h5>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+                            <div class="form-group">
+                                <label>2走前コース</label>
+                                <input type="text" name="secondLastRaceCourse" value="">
+                            </div>
+                            <div class="form-group">
+                                <label>2走前距離</label>
+                                <input type="text" name="secondLastRaceDistance" value="">
+                            </div>
+                            <div class="form-group">
+                                <label>2走前馬場</label>
+                                <input type="text" name="secondLastRaceTrackType" value="">
+                            </div>
+                            <div class="form-group">
+                                <label>2走前日</label>
+                                <input type="text" name="secondLastRaceDate" value="">
+                            </div>
+                            <div class="form-group">
+                                <label>2走前タイム</label>
+                                <input type="text" name="secondLastRaceTime" placeholder="例: 1:35.2" style="font-family: monospace;">
+                            </div>
+                            <div class="form-group">
+                                <label>2走前馬場状態</label>
+                                <select name="secondLastRaceTrackCondition">
+                                    <option value="">選択してください</option>
+                                    <option value="良">良</option>
+                                    <option value="稍重">稍重</option>
+                                    <option value="重">重</option>
+                                    <option value="不良">不良</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>2走前斤量</label>
+                                <input type="number" name="secondLastRaceWeight" step="0.5" placeholder="例: 56.0">
+                            </div>
+                            <div class="form-group">
+                                <label>2走前騎手</label>
+                                <input type="text" name="secondLastRaceJockey" placeholder="2走前騎手名">
+                            </div>
+                            <div class="form-group">
+                                <label>2走前人気</label>
+                                <input type="number" name="secondLastRacePopularity" placeholder="例: 1">
+                            </div>
+                            <div class="form-group">
+                                <label>2走前着順</label>
+                                <input type="number" name="secondLastRaceOrder" placeholder="例: 1">
+                            </div>
+                            <div class="form-group">
+                                <label>2走前上がり3F</label>
+                                <input type="text" name="secondLastRaceAgari" placeholder="例: 34.1">
+                            </div>
+                            <div class="form-group">
+                                <label>2走前レースレベル</label>
+                                <select name="secondLastRaceLevel">
+                                    <option value="">選択してください</option>
+                                    <option value="G1">G1</option>
+                                    <option value="G2">G2</option>
+                                    <option value="G3">G3</option>
+                                    <option value="L">Listed（L）</option>
+                                    <option value="OP">オープン特別</option>
+                                    <option value="3勝">3勝クラス</option>
+                                    <option value="2勝">2勝クラス</option>
+                                    <option value="1勝">1勝クラス</option>
+                                    <option value="未勝利">未勝利戦</option>
+                                    <option value="新馬">新馬戦</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label>前走馬場</label>
-                        <input type="text" name="lastRaceTrackType" value="">
-                    </div>
-                    <div class="form-group">
-                        <label>前走日</label>
-                        <input type="text" name="lastRaceDate" value="">
-                    </div>
-                    <div class="form-group">
-                        <label>前走タイム</label>
-                        <input type="text" name="lastRaceTime" placeholder="例: 1:35.2" style="font-family: monospace;">
-                    </div>
-                    <div class="form-group">
-                        <label>前走馬場状態</label>
-                        <select name="lastRaceTrackCondition">
-                            <option value="">選択してください</option>
-                            <option value="良">良</option>
-                            <option value="稍重">稍重</option>
-                            <option value="重">重</option>
-                            <option value="不良">不良</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>前走斤量</label>
-                        <input type="number" name="lastRaceWeight" step="0.5" placeholder="例: 56.0">
-                    </div>
-                    <div class="form-group">
-                        <label>前走騎手</label>
-                        <input type="text" name="lastRaceJockey" placeholder="前走騎手名">
-                    </div>
-                    <div class="form-group">
-                        <label>前走人気</label>
-                        <input type="number" name="lastRacePopularity" placeholder="例: 1">
-                    </div>
-                    <div class="form-group">
-                        <label>前走着順</label>
-                        <input type="number" name="lastRaceOrder" placeholder="例: 1">
-                    </div>
-                    <div class="form-group">
-                        <label>前走上がり3F</label>
-                        <input type="text" name="lastRaceAgari" placeholder="例: 34.1">
+                    
+                    <!-- 3〜5走前情報（折りたたみ） -->
+                    <div style="margin-top: 15px;">
+                        <button type="button" onclick="HorseManager.toggleExtendedRaceHistory(this)" 
+                                style="background: #6c757d; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; width: 100%; text-align: left;">
+                            <span style="float: right;">▼</span>
+                            🗂️ 3〜5走前の詳細データを表示
+                        </button>
+                        <div class="extended-race-history" style="display: none; margin-top: 10px;">
+                            
+                            <!-- 3走前情報 -->
+                            <div style="border: 2px solid #ffc107; padding: 15px; margin-bottom: 15px; border-radius: 8px; background: #fffbf0;">
+                                <h5 style="color: #ffc107; margin-bottom: 10px;">3走前</h5>
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+                                    <div class="form-group">
+                                        <label>3走前コース</label>
+                                        <input type="text" name="thirdLastRaceCourse" value="">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>3走前距離</label>
+                                        <input type="text" name="thirdLastRaceDistance" value="">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>3走前馬場</label>
+                                        <input type="text" name="thirdLastRaceTrackType" value="">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>3走前日</label>
+                                        <input type="text" name="thirdLastRaceDate" value="">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>3走前タイム</label>
+                                        <input type="text" name="thirdLastRaceTime" placeholder="例: 1:35.2" style="font-family: monospace;">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>3走前馬場状態</label>
+                                        <select name="thirdLastRaceTrackCondition">
+                                            <option value="">選択してください</option>
+                                            <option value="良">良</option>
+                                            <option value="稍重">稍重</option>
+                                            <option value="重">重</option>
+                                            <option value="不良">不良</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>3走前斤量</label>
+                                        <input type="number" name="thirdLastRaceWeight" step="0.5" placeholder="例: 56.0">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>3走前騎手</label>
+                                        <input type="text" name="thirdLastRaceJockey" placeholder="3走前騎手名">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>3走前人気</label>
+                                        <input type="number" name="thirdLastRacePopularity" placeholder="例: 1">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>3走前着順</label>
+                                        <input type="number" name="thirdLastRaceOrder" placeholder="例: 1">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>3走前上がり3F</label>
+                                        <input type="text" name="thirdLastRaceAgari" placeholder="例: 34.1">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>3走前レースレベル</label>
+                                        <select name="thirdLastRaceLevel">
+                                            <option value="">選択してください</option>
+                                            <option value="G1">G1</option>
+                                            <option value="G2">G2</option>
+                                            <option value="G3">G3</option>
+                                            <option value="L">Listed（L）</option>
+                                            <option value="OP">オープン特別</option>
+                                            <option value="3勝">3勝クラス</option>
+                                            <option value="2勝">2勝クラス</option>
+                                            <option value="1勝">1勝クラス</option>
+                                            <option value="未勝利">未勝利戦</option>
+                                            <option value="新馬">新馬戦</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- 4走前情報 -->
+                            <div style="border: 2px solid #dc3545; padding: 15px; margin-bottom: 15px; border-radius: 8px; background: #fff5f5;">
+                                <h5 style="color: #dc3545; margin-bottom: 10px;">4走前</h5>
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+                                    <div class="form-group">
+                                        <label>4走前コース</label>
+                                        <input type="text" name="fourthLastRaceCourse" value="">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>4走前距離</label>
+                                        <input type="text" name="fourthLastRaceDistance" value="">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>4走前馬場</label>
+                                        <input type="text" name="fourthLastRaceTrackType" value="">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>4走前日</label>
+                                        <input type="text" name="fourthLastRaceDate" value="">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>4走前タイム</label>
+                                        <input type="text" name="fourthLastRaceTime" placeholder="例: 1:35.2" style="font-family: monospace;">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>4走前馬場状態</label>
+                                        <select name="fourthLastRaceTrackCondition">
+                                            <option value="">選択してください</option>
+                                            <option value="良">良</option>
+                                            <option value="稍重">稍重</option>
+                                            <option value="重">重</option>
+                                            <option value="不良">不良</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>4走前斤量</label>
+                                        <input type="number" name="fourthLastRaceWeight" step="0.5" placeholder="例: 56.0">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>4走前騎手</label>
+                                        <input type="text" name="fourthLastRaceJockey" placeholder="4走前騎手名">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>4走前人気</label>
+                                        <input type="number" name="fourthLastRacePopularity" placeholder="例: 1">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>4走前着順</label>
+                                        <input type="number" name="fourthLastRaceOrder" placeholder="例: 1">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>4走前上がり3F</label>
+                                        <input type="text" name="fourthLastRaceAgari" placeholder="例: 34.1">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>4走前レースレベル</label>
+                                        <select name="fourthLastRaceLevel">
+                                            <option value="">選択してください</option>
+                                            <option value="G1">G1</option>
+                                            <option value="G2">G2</option>
+                                            <option value="G3">G3</option>
+                                            <option value="L">Listed（L）</option>
+                                            <option value="OP">オープン特別</option>
+                                            <option value="3勝">3勝クラス</option>
+                                            <option value="2勝">2勝クラス</option>
+                                            <option value="1勝">1勝クラス</option>
+                                            <option value="未勝利">未勝利戦</option>
+                                            <option value="新馬">新馬戦</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- 5走前情報 -->
+                            <div style="border: 2px solid #6f42c1; padding: 15px; margin-bottom: 15px; border-radius: 8px; background: #f8f5ff;">
+                                <h5 style="color: #6f42c1; margin-bottom: 10px;">5走前</h5>
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+                                    <div class="form-group">
+                                        <label>5走前コース</label>
+                                        <input type="text" name="fifthLastRaceCourse" value="">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>5走前距離</label>
+                                        <input type="text" name="fifthLastRaceDistance" value="">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>5走前馬場</label>
+                                        <input type="text" name="fifthLastRaceTrackType" value="">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>5走前日</label>
+                                        <input type="text" name="fifthLastRaceDate" value="">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>5走前タイム</label>
+                                        <input type="text" name="fifthLastRaceTime" placeholder="例: 1:35.2" style="font-family: monospace;">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>5走前馬場状態</label>
+                                        <select name="fifthLastRaceTrackCondition">
+                                            <option value="">選択してください</option>
+                                            <option value="良">良</option>
+                                            <option value="稍重">稍重</option>
+                                            <option value="重">重</option>
+                                            <option value="不良">不良</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>5走前斤量</label>
+                                        <input type="number" name="fifthLastRaceWeight" step="0.5" placeholder="例: 56.0">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>5走前騎手</label>
+                                        <input type="text" name="fifthLastRaceJockey" placeholder="5走前騎手名">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>5走前人気</label>
+                                        <input type="number" name="fifthLastRacePopularity" placeholder="例: 1">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>5走前着順</label>
+                                        <input type="number" name="fifthLastRaceOrder" placeholder="例: 1">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>5走前上がり3F</label>
+                                        <input type="text" name="fifthLastRaceAgari" placeholder="例: 34.1">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>5走前レースレベル</label>
+                                        <select name="fifthLastRaceLevel">
+                                            <option value="">選択してください</option>
+                                            <option value="G1">G1</option>
+                                            <option value="G2">G2</option>
+                                            <option value="G3">G3</option>
+                                            <option value="L">Listed（L）</option>
+                                            <option value="OP">オープン特別</option>
+                                            <option value="3勝">3勝クラス</option>
+                                            <option value="2勝">2勝クラス</option>
+                                            <option value="1勝">1勝クラス</option>
+                                            <option value="未勝利">未勝利戦</option>
+                                            <option value="新馬">新馬戦</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -261,6 +710,22 @@ class HorseManager {
         }
     }
 
+    // 3〜5走前データの折りたたみ機能
+    static toggleExtendedRaceHistory(button) {
+        const extendedSection = button.nextElementSibling;
+        const arrow = button.querySelector('span');
+        
+        if (extendedSection.style.display === 'none') {
+            extendedSection.style.display = 'block';
+            arrow.textContent = '▲';
+            button.innerHTML = button.innerHTML.replace('表示', '非表示');
+        } else {
+            extendedSection.style.display = 'none';
+            arrow.textContent = '▼';
+            button.innerHTML = button.innerHTML.replace('非表示', '表示');
+        }
+    }
+
     static removeHorse(button) {
         button.closest('.horse-card').remove();
     }
@@ -274,10 +739,10 @@ class HorseManager {
         this.clearAllHorses();
         
         const sampleData = [
-            {name: 'ベラジオオペラ', odds: 4.0, lastRace: 1, jockey: '横山和生'},
-            {name: 'ドゥレッツァ', odds: 6.7, lastRace: 3, jockey: '横山武史'},
-            {name: 'レガレイラ', odds: 4.9, lastRace: 1, jockey: '戸崎圭太'},
-            {name: 'チャックネイト', odds: 104.2, lastRace: 2, jockey: 'D.レーン'}
+            {name: 'ベラジオオペラ', odds: 4.0, lastRace: 1, jockey: '横山和生', sire: 'ロードカナロア', dam: 'エアルーティーン', damSire: 'ハービンジャー'},
+            {name: 'ドゥレッツァ', odds: 6.7, lastRace: 3, jockey: '横山武史', sire: 'ドゥラメンテ', dam: 'モアザンセイクリッド', damSire: 'More Than Ready'},
+            {name: 'レガレイラ', odds: 4.9, lastRace: 1, jockey: '戸崎圭太', sire: 'ディープインパクト', dam: 'レディアンバサダー', damSire: 'キングカメハメハ'},
+            {name: 'チャックネイト', odds: 104.2, lastRace: 2, jockey: 'D.レーン', sire: 'ハーツクライ', dam: 'シンハライト', damSire: 'サンデーサイレンス'}
         ];
 
         sampleData.forEach(data => {
@@ -288,6 +753,11 @@ class HorseManager {
             lastCard.querySelector('input[name="horseName"]').value = data.name;
             lastCard.querySelector('input[name="odds"]').value = data.odds;
             lastCard.querySelector('select[name="lastRace"]').value = data.lastRace;
+            
+            // 血統情報を設定
+            if (data.sire) lastCard.querySelector('input[name="sire"]').value = data.sire;
+            if (data.dam) lastCard.querySelector('input[name="dam"]').value = data.dam;
+            if (data.damSire) lastCard.querySelector('input[name="damSire"]').value = data.damSire;
             
             const jockeySelect = lastCard.querySelector('select[name="jockey"]');
             const jockeyCustom = lastCard.querySelector('input[name="jockeyCustom"]');
@@ -324,10 +794,10 @@ class HorseManager {
             
             const lastRaceSelect = card.querySelector('select[name="lastRace"]');
             const lastRaceOrderInput = card.querySelector('input[name="lastRaceOrder"]');
-            const lastRaceOrder = lastRaceOrderInput ? parseInt(lastRaceOrderInput.value) : '';
+            const lastRaceOrder = lastRaceOrderInput ? this.parseRaceOrder(lastRaceOrderInput.value) : '';
             let lastRace;
             if (lastRaceOrderInput && lastRaceOrderInput.value) {
-                lastRace = parseInt(lastRaceOrderInput.value);
+                lastRace = this.parseRaceOrder(lastRaceOrderInput.value) || 6;
             } else if (lastRaceSelect) {
                 lastRace = parseInt(lastRaceSelect.value);
             } else {
@@ -349,6 +819,22 @@ class HorseManager {
             const age = ageSelect ? parseInt(ageSelect.value) : 5;
             const weightChangeSelect = card.querySelector('select[name="weightChange"]');
             const weightChange = weightChangeSelect ? parseInt(weightChangeSelect.value) : 0;
+
+            // レースレベルと脚質情報
+            const raceLevelSelect = card.querySelector('select[name="raceLevel"]');
+            const raceLevel = raceLevelSelect ? raceLevelSelect.value : '';
+            const runningStyleSelect = card.querySelector('select[name="runningStyle"]');
+            const runningStyle = runningStyleSelect ? runningStyleSelect.value : '先行';
+            
+            // 血統情報（直接入力）
+            const sireInput = card.querySelector('input[name="sire"]');
+            const sire = sireInput ? sireInput.value || '' : '';
+            
+            const damInput = card.querySelector('input[name="dam"]');
+            const dam = damInput ? damInput.value || '' : '';
+            
+            const damSireInput = card.querySelector('input[name="damSire"]');
+            const damSire = damSireInput ? damSireInput.value || '' : '';
 
             // 今回のレース情報
             const courseSelect = card.querySelector('select[name="course"]');
@@ -388,6 +874,118 @@ class HorseManager {
             const lastRaceAgariInput = card.querySelector('input[name="lastRaceAgari"]');
             const lastRaceAgari = lastRaceAgariInput ? lastRaceAgariInput.value : '';
 
+            // 前走レースレベル
+            const lastRaceLevelSelect = card.querySelector('select[name="lastRaceLevel"]');
+            const lastRaceLevel = lastRaceLevelSelect ? lastRaceLevelSelect.value : '';
+
+            // 2走前情報の抽出
+            const secondLastRaceCourseInput = card.querySelector('input[name="secondLastRaceCourse"]');
+            const secondLastRaceCourse = secondLastRaceCourseInput ? secondLastRaceCourseInput.value : '';
+            const secondLastRaceDistanceInput = card.querySelector('input[name="secondLastRaceDistance"]');
+            const secondLastRaceDistance = secondLastRaceDistanceInput ? secondLastRaceDistanceInput.value : '';
+            const secondLastRaceTrackTypeInput = card.querySelector('input[name="secondLastRaceTrackType"]');
+            const secondLastRaceTrackType = secondLastRaceTrackTypeInput ? secondLastRaceTrackTypeInput.value : '';
+            const secondLastRaceDateInput = card.querySelector('input[name="secondLastRaceDate"]');
+            const secondLastRaceDate = secondLastRaceDateInput ? secondLastRaceDateInput.value : '';
+            const secondLastRaceTimeInput = card.querySelector('input[name="secondLastRaceTime"]');
+            const secondLastRaceTime = secondLastRaceTimeInput ? secondLastRaceTimeInput.value : '';
+            const secondLastRaceTrackConditionSelect = card.querySelector('select[name="secondLastRaceTrackCondition"]');
+            const secondLastRaceTrackCondition = secondLastRaceTrackConditionSelect ? secondLastRaceTrackConditionSelect.value : '';
+            const secondLastRaceWeightInput = card.querySelector('input[name="secondLastRaceWeight"]');
+            const secondLastRaceWeight = secondLastRaceWeightInput ? parseFloat(secondLastRaceWeightInput.value) : 0;
+            const secondLastRaceJockeyInput = card.querySelector('input[name="secondLastRaceJockey"]');
+            const secondLastRaceJockey = secondLastRaceJockeyInput ? secondLastRaceJockeyInput.value : '';
+            const secondLastRacePopularityInput = card.querySelector('input[name="secondLastRacePopularity"]');
+            const secondLastRacePopularity = secondLastRacePopularityInput ? parseInt(secondLastRacePopularityInput.value) : 0;
+            const secondLastRaceOrderInput = card.querySelector('input[name="secondLastRaceOrder"]');
+            const secondLastRaceOrder = secondLastRaceOrderInput ? this.parseRaceOrder(secondLastRaceOrderInput.value) : 0;
+            const secondLastRaceAgariInput = card.querySelector('input[name="secondLastRaceAgari"]');
+            const secondLastRaceAgari = secondLastRaceAgariInput ? secondLastRaceAgariInput.value : '';
+            // 2走前レースレベル
+            const secondLastRaceLevelSelect = card.querySelector('select[name="secondLastRaceLevel"]');
+            const secondLastRaceLevel = secondLastRaceLevelSelect ? secondLastRaceLevelSelect.value : '';
+
+            // 3走前情報の抽出
+            const thirdLastRaceCourseInput = card.querySelector('input[name="thirdLastRaceCourse"]');
+            const thirdLastRaceCourse = thirdLastRaceCourseInput ? thirdLastRaceCourseInput.value : '';
+            const thirdLastRaceDistanceInput = card.querySelector('input[name="thirdLastRaceDistance"]');
+            const thirdLastRaceDistance = thirdLastRaceDistanceInput ? thirdLastRaceDistanceInput.value : '';
+            const thirdLastRaceTrackTypeInput = card.querySelector('input[name="thirdLastRaceTrackType"]');
+            const thirdLastRaceTrackType = thirdLastRaceTrackTypeInput ? thirdLastRaceTrackTypeInput.value : '';
+            const thirdLastRaceDateInput = card.querySelector('input[name="thirdLastRaceDate"]');
+            const thirdLastRaceDate = thirdLastRaceDateInput ? thirdLastRaceDateInput.value : '';
+            const thirdLastRaceTimeInput = card.querySelector('input[name="thirdLastRaceTime"]');
+            const thirdLastRaceTime = thirdLastRaceTimeInput ? thirdLastRaceTimeInput.value : '';
+            const thirdLastRaceTrackConditionSelect = card.querySelector('select[name="thirdLastRaceTrackCondition"]');
+            const thirdLastRaceTrackCondition = thirdLastRaceTrackConditionSelect ? thirdLastRaceTrackConditionSelect.value : '';
+            const thirdLastRaceWeightInput = card.querySelector('input[name="thirdLastRaceWeight"]');
+            const thirdLastRaceWeight = thirdLastRaceWeightInput ? parseFloat(thirdLastRaceWeightInput.value) : 0;
+            const thirdLastRaceJockeyInput = card.querySelector('input[name="thirdLastRaceJockey"]');
+            const thirdLastRaceJockey = thirdLastRaceJockeyInput ? thirdLastRaceJockeyInput.value : '';
+            const thirdLastRacePopularityInput = card.querySelector('input[name="thirdLastRacePopularity"]');
+            const thirdLastRacePopularity = thirdLastRacePopularityInput ? parseInt(thirdLastRacePopularityInput.value) : 0;
+            const thirdLastRaceOrderInput = card.querySelector('input[name="thirdLastRaceOrder"]');
+            const thirdLastRaceOrder = thirdLastRaceOrderInput ? this.parseRaceOrder(thirdLastRaceOrderInput.value) : 0;
+            const thirdLastRaceAgariInput = card.querySelector('input[name="thirdLastRaceAgari"]');
+            const thirdLastRaceAgari = thirdLastRaceAgariInput ? thirdLastRaceAgariInput.value : '';
+            // 3走前レースレベル
+            const thirdLastRaceLevelSelect = card.querySelector('select[name="thirdLastRaceLevel"]');
+            const thirdLastRaceLevel = thirdLastRaceLevelSelect ? thirdLastRaceLevelSelect.value : '';
+
+            // 4走前情報の抽出
+            const fourthLastRaceCourseInput = card.querySelector('input[name="fourthLastRaceCourse"]');
+            const fourthLastRaceCourse = fourthLastRaceCourseInput ? fourthLastRaceCourseInput.value : '';
+            const fourthLastRaceDistanceInput = card.querySelector('input[name="fourthLastRaceDistance"]');
+            const fourthLastRaceDistance = fourthLastRaceDistanceInput ? fourthLastRaceDistanceInput.value : '';
+            const fourthLastRaceTrackTypeInput = card.querySelector('input[name="fourthLastRaceTrackType"]');
+            const fourthLastRaceTrackType = fourthLastRaceTrackTypeInput ? fourthLastRaceTrackTypeInput.value : '';
+            const fourthLastRaceDateInput = card.querySelector('input[name="fourthLastRaceDate"]');
+            const fourthLastRaceDate = fourthLastRaceDateInput ? fourthLastRaceDateInput.value : '';
+            const fourthLastRaceTimeInput = card.querySelector('input[name="fourthLastRaceTime"]');
+            const fourthLastRaceTime = fourthLastRaceTimeInput ? fourthLastRaceTimeInput.value : '';
+            const fourthLastRaceTrackConditionSelect = card.querySelector('select[name="fourthLastRaceTrackCondition"]');
+            const fourthLastRaceTrackCondition = fourthLastRaceTrackConditionSelect ? fourthLastRaceTrackConditionSelect.value : '';
+            const fourthLastRaceWeightInput = card.querySelector('input[name="fourthLastRaceWeight"]');
+            const fourthLastRaceWeight = fourthLastRaceWeightInput ? parseFloat(fourthLastRaceWeightInput.value) : 0;
+            const fourthLastRaceJockeyInput = card.querySelector('input[name="fourthLastRaceJockey"]');
+            const fourthLastRaceJockey = fourthLastRaceJockeyInput ? fourthLastRaceJockeyInput.value : '';
+            const fourthLastRacePopularityInput = card.querySelector('input[name="fourthLastRacePopularity"]');
+            const fourthLastRacePopularity = fourthLastRacePopularityInput ? parseInt(fourthLastRacePopularityInput.value) : 0;
+            const fourthLastRaceOrderInput = card.querySelector('input[name="fourthLastRaceOrder"]');
+            const fourthLastRaceOrder = fourthLastRaceOrderInput ? this.parseRaceOrder(fourthLastRaceOrderInput.value) : 0;
+            const fourthLastRaceAgariInput = card.querySelector('input[name="fourthLastRaceAgari"]');
+            const fourthLastRaceAgari = fourthLastRaceAgariInput ? fourthLastRaceAgariInput.value : '';
+            // 4走前レースレベル
+            const fourthLastRaceLevelSelect = card.querySelector('select[name="fourthLastRaceLevel"]');
+            const fourthLastRaceLevel = fourthLastRaceLevelSelect ? fourthLastRaceLevelSelect.value : '';
+
+            // 5走前情報の抽出
+            const fifthLastRaceCourseInput = card.querySelector('input[name="fifthLastRaceCourse"]');
+            const fifthLastRaceCourse = fifthLastRaceCourseInput ? fifthLastRaceCourseInput.value : '';
+            const fifthLastRaceDistanceInput = card.querySelector('input[name="fifthLastRaceDistance"]');
+            const fifthLastRaceDistance = fifthLastRaceDistanceInput ? fifthLastRaceDistanceInput.value : '';
+            const fifthLastRaceTrackTypeInput = card.querySelector('input[name="fifthLastRaceTrackType"]');
+            const fifthLastRaceTrackType = fifthLastRaceTrackTypeInput ? fifthLastRaceTrackTypeInput.value : '';
+            const fifthLastRaceDateInput = card.querySelector('input[name="fifthLastRaceDate"]');
+            const fifthLastRaceDate = fifthLastRaceDateInput ? fifthLastRaceDateInput.value : '';
+            const fifthLastRaceTimeInput = card.querySelector('input[name="fifthLastRaceTime"]');
+            const fifthLastRaceTime = fifthLastRaceTimeInput ? fifthLastRaceTimeInput.value : '';
+            const fifthLastRaceTrackConditionSelect = card.querySelector('select[name="fifthLastRaceTrackCondition"]');
+            const fifthLastRaceTrackCondition = fifthLastRaceTrackConditionSelect ? fifthLastRaceTrackConditionSelect.value : '';
+            const fifthLastRaceWeightInput = card.querySelector('input[name="fifthLastRaceWeight"]');
+            const fifthLastRaceWeight = fifthLastRaceWeightInput ? parseFloat(fifthLastRaceWeightInput.value) : 0;
+            const fifthLastRaceJockeyInput = card.querySelector('input[name="fifthLastRaceJockey"]');
+            const fifthLastRaceJockey = fifthLastRaceJockeyInput ? fifthLastRaceJockeyInput.value : '';
+            const fifthLastRacePopularityInput = card.querySelector('input[name="fifthLastRacePopularity"]');
+            const fifthLastRacePopularity = fifthLastRacePopularityInput ? parseInt(fifthLastRacePopularityInput.value) : 0;
+            const fifthLastRaceOrderInput = card.querySelector('input[name="fifthLastRaceOrder"]');
+            const fifthLastRaceOrder = fifthLastRaceOrderInput ? this.parseRaceOrder(fifthLastRaceOrderInput.value) : 0;
+            const fifthLastRaceAgariInput = card.querySelector('input[name="fifthLastRaceAgari"]');
+            const fifthLastRaceAgari = fifthLastRaceAgariInput ? fifthLastRaceAgariInput.value : '';
+            // 5走前レースレベル
+            const fifthLastRaceLevelSelect = card.querySelector('select[name="fifthLastRaceLevel"]');
+            const fifthLastRaceLevel = fifthLastRaceLevelSelect ? fifthLastRaceLevelSelect.value : '';
+
             horses.push({
                 name: horseName,
                 odds: odds,
@@ -397,6 +995,13 @@ class HorseManager {
                 jockey: jockey,
                 age: age,
                 weightChange: weightChange,
+                // レースレベルと脚質情報
+                raceLevel: raceLevel,
+                runningStyle: runningStyle,
+                // 血統情報
+                sire: sire,
+                dam: dam,
+                damSire: damSire,
                 course: course,
                 distance: distance,
                 trackType: trackType,
@@ -416,10 +1021,76 @@ class HorseManager {
                 lastRacePopularity: lastRacePopularity,
                 lastRaceOrder: lastRaceOrder,
                 lastRaceAgari: lastRaceAgari,
+                lastRaceLevel: lastRaceLevel,
+                // 2走前情報
+                secondLastRaceCourse: secondLastRaceCourse,
+                secondLastRaceDistance: secondLastRaceDistance,
+                secondLastRaceTrackType: secondLastRaceTrackType,
+                secondLastRaceDate: secondLastRaceDate,
+                secondLastRaceTime: secondLastRaceTime,
+                secondLastRaceTrackCondition: secondLastRaceTrackCondition,
+                secondLastRaceWeight: secondLastRaceWeight,
+                secondLastRaceJockey: secondLastRaceJockey,
+                secondLastRacePopularity: secondLastRacePopularity,
+                secondLastRaceOrder: secondLastRaceOrder,
+                secondLastRaceAgari: secondLastRaceAgari,
+                secondLastRaceLevel: secondLastRaceLevel,
+                // 3走前情報
+                thirdLastRaceCourse: thirdLastRaceCourse,
+                thirdLastRaceDistance: thirdLastRaceDistance,
+                thirdLastRaceTrackType: thirdLastRaceTrackType,
+                thirdLastRaceDate: thirdLastRaceDate,
+                thirdLastRaceTime: thirdLastRaceTime,
+                thirdLastRaceTrackCondition: thirdLastRaceTrackCondition,
+                thirdLastRaceWeight: thirdLastRaceWeight,
+                thirdLastRaceJockey: thirdLastRaceJockey,
+                thirdLastRacePopularity: thirdLastRacePopularity,
+                thirdLastRaceOrder: thirdLastRaceOrder,
+                thirdLastRaceAgari: thirdLastRaceAgari,
+                thirdLastRaceLevel: thirdLastRaceLevel,
+                // 4走前情報
+                fourthLastRaceCourse: fourthLastRaceCourse,
+                fourthLastRaceDistance: fourthLastRaceDistance,
+                fourthLastRaceTrackType: fourthLastRaceTrackType,
+                fourthLastRaceDate: fourthLastRaceDate,
+                fourthLastRaceTime: fourthLastRaceTime,
+                fourthLastRaceTrackCondition: fourthLastRaceTrackCondition,
+                fourthLastRaceWeight: fourthLastRaceWeight,
+                fourthLastRaceJockey: fourthLastRaceJockey,
+                fourthLastRacePopularity: fourthLastRacePopularity,
+                fourthLastRaceOrder: fourthLastRaceOrder,
+                fourthLastRaceAgari: fourthLastRaceAgari,
+                fourthLastRaceLevel: fourthLastRaceLevel,
+                // 5走前情報
+                fifthLastRaceCourse: fifthLastRaceCourse,
+                fifthLastRaceDistance: fifthLastRaceDistance,
+                fifthLastRaceTrackType: fifthLastRaceTrackType,
+                fifthLastRaceDate: fifthLastRaceDate,
+                fifthLastRaceTime: fifthLastRaceTime,
+                fifthLastRaceTrackCondition: fifthLastRaceTrackCondition,
+                fifthLastRaceWeight: fifthLastRaceWeight,
+                fifthLastRaceJockey: fifthLastRaceJockey,
+                fifthLastRacePopularity: fifthLastRacePopularity,
+                fifthLastRaceOrder: fifthLastRaceOrder,
+                fifthLastRaceAgari: fifthLastRaceAgari,
+                fifthLastRaceLevel: fifthLastRaceLevel,
                 // 馬番・枠番情報
                 horseNumber: horseNumber,
                 frameNumber: frameNumber
             });
+        });
+
+        // 検証用デバッグログ（レースレベル・基本脚質抽出確認）
+        console.log('=== 入力・抽出システム検証 ===');
+        horses.forEach((horse, index) => {
+            console.log(`🐎 ${horse.name || `馬${index + 1}`}:`);
+            console.log(`  基本情報: オッズ=${horse.odds}倍 / 脚質=${horse.runningStyle || '未設定'} / 騎手=${horse.jockey || '未設定'}`);
+            console.log(`  今回: レベル=${horse.raceLevel || '未設定'}`);
+            console.log(`  1走前: レベル=${horse.lastRaceLevel || '未設定'}`);
+            console.log(`  2走前: レベル=${horse.secondLastRaceLevel || '未設定'}`);
+            console.log(`  3走前: レベル=${horse.thirdLastRaceLevel || '未設定'}`);
+            console.log(`  4走前: レベル=${horse.fourthLastRaceLevel || '未設定'}`);
+            console.log(`  5走前: レベル=${horse.fifthLastRaceLevel || '未設定'}`);
         });
 
         return horses;
@@ -558,13 +1229,31 @@ class HorseManager {
                     <label>馬名</label>
                     <input type="text" name="horseName" value="${horseData.name || ''}" required>
                 </div>
+                <!-- 血統情報セクション -->
+                <div class="horse-section">
+                    <h4>🧬 血統情報</h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+                        <div class="form-group">
+                            <label>父系（種牡馬）</label>
+                            <input type="text" name="sire" value="${horseData.sire || ''}" placeholder="例: ロードカナロア">
+                        </div>
+                        <div class="form-group">
+                            <label>母系（繁殖牝馬）</label>
+                            <input type="text" name="dam" value="${horseData.dam || ''}" placeholder="例: ベラジオオペラ">
+                        </div>
+                        <div class="form-group">
+                            <label>母父（母の父）</label>
+                            <input type="text" name="damSire" value="${horseData.damSire || ''}" placeholder="例: ハービンジャー">
+                        </div>
+                    </div>
+                </div>
                 <div class="form-group">
                     <label>オッズ</label>
                     <input type="number" name="odds" step="0.1" placeholder="例: 3.5" value="${horseData.odds || ''}">
                 </div>
                 <div class="form-group">
                     <label>前走着順</label>
-                    <input type="number" name="lastRaceOrder" placeholder="例: 1" value="${horseData.lastRaceOrder || ''}">
+                    <input type="text" name="lastRaceOrder" placeholder="例: 1, DNS, 取消" value="${horseData.lastRaceOrder || ''}">
                 </div>
                 <!--
                 <div class="form-group">
@@ -625,6 +1314,72 @@ class HorseManager {
                         <option value="1" ${weightChangeValue === 1 ? 'selected' : ''}>増加</option>
                         <option value="-1" ${weightChangeValue === -1 ? 'selected' : ''}>減少</option>
                     </select>
+                </div>
+                <div class="form-group">
+                    <label>脚質（主な戦法）</label>
+                    <select name="runningStyle">
+                        <option value="" ${!horseData.runningStyle ? 'selected' : ''}>選択してください</option>
+                        <option value="逃げ" ${horseData.runningStyle === '逃げ' ? 'selected' : ''}>逃げ</option>
+                        <option value="先行" ${horseData.runningStyle === '先行' ? 'selected' : ''}>先行</option>
+                        <option value="差し" ${horseData.runningStyle === '差し' ? 'selected' : ''}>差し</option>
+                        <option value="追込" ${horseData.runningStyle === '追込' ? 'selected' : ''}>追込</option>
+                        <option value="自在" ${horseData.runningStyle === '自在' ? 'selected' : ''}>自在</option>
+                    </select>
+                </div>
+            </div>
+            <div class="horse-section">
+                <h4>🧬 血統情報</h4>
+                <div class="form-group">
+                    <label>父（種牡馬）</label>
+                    <select name="sire" onchange="HorseManager.toggleCustomSire(this)">
+                        <option value="" ${!horseData.sire ? 'selected' : ''}>選択してください</option>
+                        <option value="ディープインパクト" ${horseData.sire === 'ディープインパクト' ? 'selected' : ''}>ディープインパクト</option>
+                        <option value="ハーツクライ" ${horseData.sire === 'ハーツクライ' ? 'selected' : ''}>ハーツクライ</option>
+                        <option value="ロードカナロア" ${horseData.sire === 'ロードカナロア' ? 'selected' : ''}>ロードカナロア</option>
+                        <option value="オルフェーヴル" ${horseData.sire === 'オルフェーヴル' ? 'selected' : ''}>オルフェーヴル</option>
+                        <option value="キングカメハメハ" ${horseData.sire === 'キングカメハメハ' ? 'selected' : ''}>キングカメハメハ</option>
+                        <option value="ダイワメジャー" ${horseData.sire === 'ダイワメジャー' ? 'selected' : ''}>ダイワメジャー</option>
+                        <option value="クロフネ" ${horseData.sire === 'クロフネ' ? 'selected' : ''}>クロフネ</option>
+                        <option value="ステイゴールド" ${horseData.sire === 'ステイゴールド' ? 'selected' : ''}>ステイゴールド</option>
+                        <option value="キタサンブラック" ${horseData.sire === 'キタサンブラック' ? 'selected' : ''}>キタサンブラック</option>
+                        <option value="ドゥラメンテ" ${horseData.sire === 'ドゥラメンテ' ? 'selected' : ''}>ドゥラメンテ</option>
+                        <option value="custom" ${horseData.sire && !['ディープインパクト', 'ハーツクライ', 'ロードカナロア', 'オルフェーヴル', 'キングカメハメハ', 'ダイワメジャー', 'クロフネ', 'ステイゴールド', 'キタサンブラック', 'ドゥラメンテ'].includes(horseData.sire) ? 'selected' : ''}>その他（入力）</option>
+                    </select>
+                    <input type="text" name="sireCustom" placeholder="種牡馬名を入力" value="${horseData.sire && !['ディープインパクト', 'ハーツクライ', 'ロードカナロア', 'オルフェーヴル', 'キングカメハメハ', 'ダイワメジャー', 'クロフネ', 'ステイゴールド', 'キタサンブラック', 'ドゥラメンテ'].includes(horseData.sire) ? horseData.sire : ''}" style="display: ${horseData.sire && !['ディープインパクト', 'ハーツクライ', 'ロードカナロア', 'オルフェーヴル', 'キングカメハメハ', 'ダイワメジャー', 'クロフネ', 'ステイゴールド', 'キタサンブラック', 'ドゥラメンテ'].includes(horseData.sire) ? 'block' : 'none'}; margin-top: 5px;">
+                </div>
+                <div class="form-group">
+                    <label>母</label>
+                    <select name="dam" onchange="HorseManager.toggleCustomDam(this)">
+                        <option value="" ${!horseData.dam ? 'selected' : ''}>選択してください</option>
+                        <option value="エアグルーヴ" ${horseData.dam === 'エアグルーヴ' ? 'selected' : ''}>エアグルーヴ</option>
+                        <option value="ダンシングブレーヴ" ${horseData.dam === 'ダンシングブレーヴ' ? 'selected' : ''}>ダンシングブレーヴ</option>
+                        <option value="シンコウラブリイ" ${horseData.dam === 'シンコウラブリイ' ? 'selected' : ''}>シンコウラブリイ</option>
+                        <option value="アドマイヤグルーヴ" ${horseData.dam === 'アドマイヤグルーヴ' ? 'selected' : ''}>アドマイヤグルーヴ</option>
+                        <option value="ダイワスカーレット" ${horseData.dam === 'ダイワスカーレット' ? 'selected' : ''}>ダイワスカーレット</option>
+                        <option value="ヴォードヴィル" ${horseData.dam === 'ヴォードヴィル' ? 'selected' : ''}>ヴォードヴィル</option>
+                        <option value="フサイチパンドラ" ${horseData.dam === 'フサイチパンドラ' ? 'selected' : ''}>フサイチパンドラ</option>
+                        <option value="スイートジャスミン" ${horseData.dam === 'スイートジャスミン' ? 'selected' : ''}>スイートジャスミン</option>
+                        <option value="クロフネママ" ${horseData.dam === 'クロフネママ' ? 'selected' : ''}>クロフネママ</option>
+                        <option value="ステイゴールドママ" ${horseData.dam === 'ステイゴールドママ' ? 'selected' : ''}>ステイゴールドママ</option>
+                        <option value="ランドオーバーシー" ${horseData.dam === 'ランドオーバーシー' ? 'selected' : ''}>ランドオーバーシー</option>
+                        <option value="custom" ${horseData.dam && !['エアグルーヴ', 'ダンシングブレーヴ', 'シンコウラブリイ', 'アドマイヤグルーヴ', 'ダイワスカーレット', 'ヴォードヴィル', 'フサイチパンドラ', 'スイートジャスミン', 'クロフネママ', 'ステイゴールドママ', 'ランドオーバーシー'].includes(horseData.dam) ? 'selected' : ''}>その他（入力）</option>
+                    </select>
+                    <input type="text" name="damCustom" placeholder="母馬名を入力" value="${horseData.dam && !['エアグルーヴ', 'ダンシングブレーヴ', 'シンコウラブリイ', 'アドマイヤグルーヴ', 'ダイワスカーレット', 'ヴォードヴィル', 'フサイチパンドラ', 'スイートジャスミン', 'クロフネママ', 'ステイゴールドママ', 'ランドオーバーシー'].includes(horseData.dam) ? horseData.dam : ''}" style="display: ${horseData.dam && !['エアグルーヴ', 'ダンシングブレーヴ', 'シンコウラブリイ', 'アドマイヤグルーヴ', 'ダイワスカーレット', 'ヴォードヴィル', 'フサイチパンドラ', 'スイートジャスミン', 'クロフネママ', 'ステイゴールドママ', 'ランドオーバーシー'].includes(horseData.dam) ? 'block' : 'none'}; margin-top: 5px;">
+                </div>
+                <div class="form-group">
+                    <label>母父</label>
+                    <select name="damSire" onchange="HorseManager.toggleCustomDamSire(this)">
+                        <option value="" ${!horseData.damSire ? 'selected' : ''}>選択してください</option>
+                        <option value="サンデーサイレンス" ${horseData.damSire === 'サンデーサイレンス' ? 'selected' : ''}>サンデーサイレンス</option>
+                        <option value="ノーザンテースト" ${horseData.damSire === 'ノーザンテースト' ? 'selected' : ''}>ノーザンテースト</option>
+                        <option value="ミスタープロスペクター" ${horseData.damSire === 'ミスタープロスペクター' ? 'selected' : ''}>ミスタープロスペクター</option>
+                        <option value="ストームキャット" ${horseData.damSire === 'ストームキャット' ? 'selected' : ''}>ストームキャット</option>
+                        <option value="Bellamy Road" ${horseData.damSire === 'Bellamy Road' ? 'selected' : ''}>Bellamy Road</option>
+                        <option value="More Than Ready" ${horseData.damSire === 'More Than Ready' ? 'selected' : ''}>More Than Ready</option>
+                        <option value="ハービンジャー" ${horseData.damSire === 'ハービンジャー' ? 'selected' : ''}>ハービンジャー</option>
+                        <option value="custom" ${horseData.damSire && !['サンデーサイレンス', 'ノーザンテースト', 'ミスタープロスペクター', 'ストームキャット', 'Bellamy Road', 'More Than Ready', 'ハービンジャー'].includes(horseData.damSire) ? 'selected' : ''}>その他（入力）</option>
+                    </select>
+                    <input type="text" name="damSireCustom" placeholder="母父名を入力" value="${horseData.damSire && !['サンデーサイレンス', 'ノーザンテースト', 'ミスタープロスペクター', 'ストームキャット', 'Bellamy Road', 'More Than Ready', 'ハービンジャー'].includes(horseData.damSire) ? horseData.damSire : ''}" style="display: ${horseData.damSire && !['サンデーサイレンス', 'ノーザンテースト', 'ミスタープロスペクター', 'ストームキャット', 'Bellamy Road', 'More Than Ready', 'ハービンジャー'].includes(horseData.damSire) ? 'block' : 'none'}; margin-top: 5px;">
                 </div>
             </div>
             <div class="horse-section">
@@ -725,62 +1480,353 @@ class HorseManager {
                             <option value="56" ${restDaysValue === 56 ? 'selected' : ''}>50日以上</option>
                         </select>
                     </div>
+                    <div class="form-group">
+                        <label>今回レースレベル</label>
+                        <select name="raceLevel">
+                            <option value="" ${!horseData.raceLevel ? 'selected' : ''}>選択してください</option>
+                            <option value="G1" ${horseData.raceLevel === 'G1' ? 'selected' : ''}>G1</option>
+                            <option value="G2" ${horseData.raceLevel === 'G2' ? 'selected' : ''}>G2</option>
+                            <option value="G3" ${horseData.raceLevel === 'G3' ? 'selected' : ''}>G3</option>
+                            <option value="L" ${horseData.raceLevel === 'L' ? 'selected' : ''}>Listed（L）</option>
+                            <option value="OP" ${horseData.raceLevel === 'OP' ? 'selected' : ''}>オープン特別</option>
+                            <option value="3勝" ${horseData.raceLevel === '3勝' ? 'selected' : ''}>3勝クラス</option>
+                            <option value="2勝" ${horseData.raceLevel === '2勝' ? 'selected' : ''}>2勝クラス</option>
+                            <option value="1勝" ${horseData.raceLevel === '1勝' ? 'selected' : ''}>1勝クラス</option>
+                            <option value="未勝利" ${horseData.raceLevel === '未勝利' ? 'selected' : ''}>未勝利戦</option>
+                            <option value="新馬" ${horseData.raceLevel === '新馬' ? 'selected' : ''}>新馬戦</option>
+                        </select>
+                    </div>
                 </div>
             </div>
             <div class="horse-section">
-                <h4>📊 前走情報</h4>
+                <h4>📊 過去5走情報</h4>
                 <div class="horse-content">
-                    <div class="form-group">
-                        <label>前走コース</label>
-                        <input type="text" name="lastRaceCourse" value="${horseData.lastRaceCourse || ''}">
+                    <!-- 前走情報 -->
+                    <div style="border: 2px solid #28a745; padding: 15px; margin-bottom: 15px; border-radius: 8px; background: #f8fff8;">
+                        <h5 style="color: #28a745; margin-bottom: 10px;">前走</h5>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+                            <div class="form-group">
+                                <label>前走コース</label>
+                                <input type="text" name="lastRaceCourse" value="${horseData.lastRaceCourse || ''}">
+                            </div>
+                            <div class="form-group">
+                                <label>前走距離</label>
+                                <input type="text" name="lastRaceDistance" value="${horseData.lastRaceDistance || ''}">
+                            </div>
+                            <div class="form-group">
+                                <label>前走馬場</label>
+                                <input type="text" name="lastRaceTrackType" value="${horseData.lastRaceTrackType || ''}">
+                            </div>
+                            <div class="form-group">
+                                <label>前走日</label>
+                                <input type="text" name="lastRaceDate" value="${horseData.lastRaceDate || ''}">
+                            </div>
+                            <div class="form-group">
+                                <label>前走タイム</label>
+                                <input type="text" name="lastRaceTime" placeholder="例: 1:35.2" style="font-family: monospace;" value="${horseData.lastRaceTime || ''}">
+                            </div>
+                            <div class="form-group">
+                                <label>前走馬場状態</label>
+                                <select name="lastRaceTrackCondition">
+                                    <option value="" ${!horseData.lastRaceTrackCondition ? 'selected' : ''}>選択してください</option>
+                                    <option value="良" ${horseData.lastRaceTrackCondition === '良' ? 'selected' : ''}>良</option>
+                                    <option value="稍重" ${horseData.lastRaceTrackCondition === '稍重' ? 'selected' : ''}>稍重</option>
+                                    <option value="重" ${horseData.lastRaceTrackCondition === '重' ? 'selected' : ''}>重</option>
+                                    <option value="不良" ${horseData.lastRaceTrackCondition === '不良' ? 'selected' : ''}>不良</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>前走斤量</label>
+                                <input type="number" name="lastRaceWeight" step="0.5" placeholder="例: 56.0" value="${lastRaceWeight || ''}">
+                            </div>
+                            <div class="form-group">
+                                <label>前走騎手</label>
+                                <input type="text" name="lastRaceJockey" placeholder="前走騎手名" value="${horseData.lastRaceJockey || ''}">
+                            </div>
+                            <div class="form-group">
+                                <label>前走人気</label>
+                                <input type="number" name="lastRacePopularity" placeholder="例: 1" value="${horseData.lastRacePopularity || ''}">
+                            </div>
+                            <div class="form-group">
+                                <label>前走着順</label>
+                                <input type="number" name="lastRaceOrder" placeholder="例: 1" value="${horseData.lastRaceOrder || ''}">
+                            </div>
+                            <div class="form-group">
+                                <label>前走上がり3F</label>
+                                <input type="text" name="lastRaceAgari" placeholder="例: 34.1" value="${horseData.lastRaceAgari || ''}">
+                            </div>
+                            <div class="form-group">
+                                <label>前走レースレベル</label>
+                                <select name="lastRaceLevel">
+                                    <option value="" ${!horseData.lastRaceLevel ? 'selected' : ''}>選択してください</option>
+                                    <option value="G1" ${horseData.lastRaceLevel === 'G1' ? 'selected' : ''}>G1</option>
+                                    <option value="G2" ${horseData.lastRaceLevel === 'G2' ? 'selected' : ''}>G2</option>
+                                    <option value="G3" ${horseData.lastRaceLevel === 'G3' ? 'selected' : ''}>G3</option>
+                                    <option value="L" ${horseData.lastRaceLevel === 'L' ? 'selected' : ''}>Listed（L）</option>
+                                    <option value="OP" ${horseData.lastRaceLevel === 'OP' ? 'selected' : ''}>オープン特別</option>
+                                    <option value="3勝" ${horseData.lastRaceLevel === '3勝' ? 'selected' : ''}>3勝クラス</option>
+                                    <option value="2勝" ${horseData.lastRaceLevel === '2勝' ? 'selected' : ''}>2勝クラス</option>
+                                    <option value="1勝" ${horseData.lastRaceLevel === '1勝' ? 'selected' : ''}>1勝クラス</option>
+                                    <option value="未勝利" ${horseData.lastRaceLevel === '未勝利' ? 'selected' : ''}>未勝利戦</option>
+                                    <option value="新馬" ${horseData.lastRaceLevel === '新馬' ? 'selected' : ''}>新馬戦</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label>前走距離</label>
-                        <input type="text" name="lastRaceDistance" value="${horseData.lastRaceDistance || ''}">
+                    
+                    <!-- 2走前情報 -->
+                    <div style="border: 2px solid #007bff; padding: 15px; margin-bottom: 15px; border-radius: 8px; background: #f8f9ff;">
+                        <h5 style="color: #007bff; margin-bottom: 10px;">2走前</h5>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+                            <div class="form-group">
+                                <label>2走前コース</label>
+                                <input type="text" name="secondLastRaceCourse" value="${horseData.secondLastRaceCourse || ''}">
+                            </div>
+                            <div class="form-group">
+                                <label>2走前距離</label>
+                                <input type="text" name="secondLastRaceDistance" value="${horseData.secondLastRaceDistance || ''}">
+                            </div>
+                            <div class="form-group">
+                                <label>2走前馬場</label>
+                                <input type="text" name="secondLastRaceTrackType" value="${horseData.secondLastRaceTrackType || ''}">
+                            </div>
+                            <div class="form-group">
+                                <label>2走前日</label>
+                                <input type="text" name="secondLastRaceDate" value="${horseData.secondLastRaceDate || ''}">
+                            </div>
+                            <div class="form-group">
+                                <label>2走前タイム</label>
+                                <input type="text" name="secondLastRaceTime" placeholder="例: 1:35.2" style="font-family: monospace;" value="${horseData.secondLastRaceTime || ''}">
+                            </div>
+                            <div class="form-group">
+                                <label>2走前馬場状態</label>
+                                <select name="secondLastRaceTrackCondition">
+                                    <option value="" ${!horseData.secondLastRaceTrackCondition ? 'selected' : ''}>選択してください</option>
+                                    <option value="良" ${horseData.secondLastRaceTrackCondition === '良' ? 'selected' : ''}>良</option>
+                                    <option value="稍重" ${horseData.secondLastRaceTrackCondition === '稍重' ? 'selected' : ''}>稍重</option>
+                                    <option value="重" ${horseData.secondLastRaceTrackCondition === '重' ? 'selected' : ''}>重</option>
+                                    <option value="不良" ${horseData.secondLastRaceTrackCondition === '不良' ? 'selected' : ''}>不良</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>2走前斤量</label>
+                                <input type="number" name="secondLastRaceWeight" step="0.5" placeholder="例: 56.0" value="${horseData.secondLastRaceWeight || ''}">
+                            </div>
+                            <div class="form-group">
+                                <label>2走前騎手</label>
+                                <input type="text" name="secondLastRaceJockey" placeholder="2走前騎手名" value="${horseData.secondLastRaceJockey || ''}">
+                            </div>
+                            <div class="form-group">
+                                <label>2走前人気</label>
+                                <input type="number" name="secondLastRacePopularity" placeholder="例: 1" value="${horseData.secondLastRacePopularity || ''}">
+                            </div>
+                            <div class="form-group">
+                                <label>2走前着順</label>
+                                <input type="number" name="secondLastRaceOrder" placeholder="例: 1" value="${horseData.secondLastRaceOrder || ''}">
+                            </div>
+                            <div class="form-group">
+                                <label>2走前上がり3F</label>
+                                <input type="text" name="secondLastRaceAgari" placeholder="例: 34.1" value="${horseData.secondLastRaceAgari || ''}">
+                            </div>
+                            <div class="form-group">
+                                <label>2走前レースレベル</label>
+                                <select name="secondLastRaceLevel">
+                                    <option value="" ${!horseData.secondLastRaceLevel ? 'selected' : ''}>選択してください</option>
+                                    <option value="G1" ${horseData.secondLastRaceLevel === 'G1' ? 'selected' : ''}>G1</option>
+                                    <option value="G2" ${horseData.secondLastRaceLevel === 'G2' ? 'selected' : ''}>G2</option>
+                                    <option value="G3" ${horseData.secondLastRaceLevel === 'G3' ? 'selected' : ''}>G3</option>
+                                    <option value="L" ${horseData.secondLastRaceLevel === 'L' ? 'selected' : ''}>Listed（L）</option>
+                                    <option value="OP" ${horseData.secondLastRaceLevel === 'OP' ? 'selected' : ''}>オープン特別</option>
+                                    <option value="3勝" ${horseData.secondLastRaceLevel === '3勝' ? 'selected' : ''}>3勝クラス</option>
+                                    <option value="2勝" ${horseData.secondLastRaceLevel === '2勝' ? 'selected' : ''}>2勝クラス</option>
+                                    <option value="1勝" ${horseData.secondLastRaceLevel === '1勝' ? 'selected' : ''}>1勝クラス</option>
+                                    <option value="未勝利" ${horseData.secondLastRaceLevel === '未勝利' ? 'selected' : ''}>未勝利戦</option>
+                                    <option value="新馬" ${horseData.secondLastRaceLevel === '新馬' ? 'selected' : ''}>新馬戦</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label>前走馬場</label>
-                        <input type="text" name="lastRaceTrackType" value="${horseData.lastRaceTrackType || ''}">
-                    </div>
-                    <div class="form-group">
-                        <label>前走日</label>
-                        <input type="text" name="lastRaceDate" value="${horseData.lastRaceDate || ''}">
-                    </div>
-                    <div class="form-group">
-                        <label>前走タイム</label>
-                        <input type="text" name="lastRaceTime" placeholder="例: 1:35.2" style="font-family: monospace;" value="${horseData.lastRaceTime || ''}">
-                    </div>
-                    <div class="form-group">
-                        <label>前走馬場状態</label>
-                        <select name="lastRaceTrackCondition">
-                            <option value="" ${!horseData.lastRaceTrackCondition ? 'selected' : ''}>選択してください</option>
-                            <option value="良" ${horseData.lastRaceTrackCondition === '良' ? 'selected' : ''}>良</option>
-                            <option value="稍重" ${horseData.lastRaceTrackCondition === '稍重' ? 'selected' : ''}>稍重</option>
-                            <option value="重" ${horseData.lastRaceTrackCondition === '重' ? 'selected' : ''}>重</option>
-                            <option value="不良" ${horseData.lastRaceTrackCondition === '不良' ? 'selected' : ''}>不良</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>前走斤量</label>
-                        <input type="number" name="lastRaceWeight" step="0.5" placeholder="例: 56.0" value="${lastRaceWeight || ''}">
-                    </div>
-                    <div class="form-group">
-                        <label>前走騎手</label>
-                        <input type="text" name="lastRaceJockey" placeholder="前走騎手名" value="${horseData.lastRaceJockey || ''}">
-                    </div>
-                    <div class="form-group">
-                        <label>前走人気</label>
-                        <input type="number" name="lastRacePopularity" placeholder="例: 1" value="${horseData.lastRacePopularity || ''}">
-                    </div>
-                    <!--
-                    <div class="form-group">
-                        <label>前走着順</label>
-                        <input type="number" name="lastRaceOrder" placeholder="例: 1" value="${horseData.lastRaceOrder || ''}">
-                    </div>
-                    -->
-                    <div class="form-group">
-                        <label>前走上がり3F</label>
-                        <input type="text" name="lastRaceAgari" placeholder="例: 34.1" value="${horseData.lastRaceAgari || ''}">
+                    
+                    <!-- 3〜5走前情報（折りたたみ） -->
+                    <div style="margin-top: 15px;">
+                        <button type="button" onclick="HorseManager.toggleExtendedRaceHistory(this)" 
+                                style="background: #6c757d; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; width: 100%; text-align: left;">
+                            <span style="float: right;">▼</span>
+                            🗂️ 3〜5走前の詳細データを表示
+                        </button>
+                        <div class="extended-race-history" style="display: none; margin-top: 10px;">
+                            
+                            <!-- 3走前情報 -->
+                            <div style="border: 2px solid #ffc107; padding: 15px; margin-bottom: 15px; border-radius: 8px; background: #fffbf0;">
+                                <h5 style="color: #ffc107; margin-bottom: 10px;">3走前</h5>
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+                                    <div class="form-group">
+                                        <label>3走前コース</label>
+                                        <input type="text" name="thirdLastRaceCourse" value="${horseData.thirdLastRaceCourse || ''}">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>3走前距離</label>
+                                        <input type="text" name="thirdLastRaceDistance" value="${horseData.thirdLastRaceDistance || ''}">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>3走前馬場</label>
+                                        <input type="text" name="thirdLastRaceTrackType" value="${horseData.thirdLastRaceTrackType || ''}">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>3走前日</label>
+                                        <input type="text" name="thirdLastRaceDate" value="${horseData.thirdLastRaceDate || ''}">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>3走前タイム</label>
+                                        <input type="text" name="thirdLastRaceTime" placeholder="例: 1:35.2" style="font-family: monospace;" value="${horseData.thirdLastRaceTime || ''}">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>3走前馬場状態</label>
+                                        <select name="thirdLastRaceTrackCondition">
+                                            <option value="">選択してください</option>
+                                            <option value="良" ${horseData.thirdLastRaceTrackCondition === '良' ? 'selected' : ''}>良</option>
+                                            <option value="稍重" ${horseData.thirdLastRaceTrackCondition === '稍重' ? 'selected' : ''}>稍重</option>
+                                            <option value="重" ${horseData.thirdLastRaceTrackCondition === '重' ? 'selected' : ''}>重</option>
+                                            <option value="不良" ${horseData.thirdLastRaceTrackCondition === '不良' ? 'selected' : ''}>不良</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>3走前斤量</label>
+                                        <input type="number" name="thirdLastRaceWeight" step="0.5" placeholder="例: 56.0" value="${horseData.thirdLastRaceWeight || ''}">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>3走前騎手</label>
+                                        <input type="text" name="thirdLastRaceJockey" placeholder="3走前騎手名" value="${horseData.thirdLastRaceJockey || ''}">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>3走前人気</label>
+                                        <input type="number" name="thirdLastRacePopularity" placeholder="例: 1" value="${horseData.thirdLastRacePopularity || ''}">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>3走前着順</label>
+                                        <input type="number" name="thirdLastRaceOrder" placeholder="例: 1" value="${horseData.thirdLastRaceOrder || ''}">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>3走前上がり3F</label>
+                                        <input type="text" name="thirdLastRaceAgari" placeholder="例: 34.1" value="${horseData.thirdLastRaceAgari || ''}">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- 4走前情報 -->
+                            <div style="border: 2px solid #dc3545; padding: 15px; margin-bottom: 15px; border-radius: 8px; background: #fff5f5;">
+                                <h5 style="color: #dc3545; margin-bottom: 10px;">4走前</h5>
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+                                    <div class="form-group">
+                                        <label>4走前コース</label>
+                                        <input type="text" name="fourthLastRaceCourse" value="${horseData.fourthLastRaceCourse || ''}">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>4走前距離</label>
+                                        <input type="text" name="fourthLastRaceDistance" value="${horseData.fourthLastRaceDistance || ''}">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>4走前馬場</label>
+                                        <input type="text" name="fourthLastRaceTrackType" value="${horseData.fourthLastRaceTrackType || ''}">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>4走前日</label>
+                                        <input type="text" name="fourthLastRaceDate" value="${horseData.fourthLastRaceDate || ''}">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>4走前タイム</label>
+                                        <input type="text" name="fourthLastRaceTime" placeholder="例: 1:35.2" style="font-family: monospace;" value="${horseData.fourthLastRaceTime || ''}">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>4走前馬場状態</label>
+                                        <select name="fourthLastRaceTrackCondition">
+                                            <option value="">選択してください</option>
+                                            <option value="良" ${horseData.fourthLastRaceTrackCondition === '良' ? 'selected' : ''}>良</option>
+                                            <option value="稍重" ${horseData.fourthLastRaceTrackCondition === '稍重' ? 'selected' : ''}>稍重</option>
+                                            <option value="重" ${horseData.fourthLastRaceTrackCondition === '重' ? 'selected' : ''}>重</option>
+                                            <option value="不良" ${horseData.fourthLastRaceTrackCondition === '不良' ? 'selected' : ''}>不良</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>4走前斤量</label>
+                                        <input type="number" name="fourthLastRaceWeight" step="0.5" placeholder="例: 56.0" value="${horseData.fourthLastRaceWeight || ''}">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>4走前騎手</label>
+                                        <input type="text" name="fourthLastRaceJockey" placeholder="4走前騎手名" value="${horseData.fourthLastRaceJockey || ''}">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>4走前人気</label>
+                                        <input type="number" name="fourthLastRacePopularity" placeholder="例: 1" value="${horseData.fourthLastRacePopularity || ''}">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>4走前着順</label>
+                                        <input type="number" name="fourthLastRaceOrder" placeholder="例: 1" value="${horseData.fourthLastRaceOrder || ''}">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>4走前上がり3F</label>
+                                        <input type="text" name="fourthLastRaceAgari" placeholder="例: 34.1" value="${horseData.fourthLastRaceAgari || ''}">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- 5走前情報 -->
+                            <div style="border: 2px solid #6f42c1; padding: 15px; margin-bottom: 15px; border-radius: 8px; background: #f8f5ff;">
+                                <h5 style="color: #6f42c1; margin-bottom: 10px;">5走前</h5>
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+                                    <div class="form-group">
+                                        <label>5走前コース</label>
+                                        <input type="text" name="fifthLastRaceCourse" value="${horseData.fifthLastRaceCourse || ''}">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>5走前距離</label>
+                                        <input type="text" name="fifthLastRaceDistance" value="${horseData.fifthLastRaceDistance || ''}">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>5走前馬場</label>
+                                        <input type="text" name="fifthLastRaceTrackType" value="${horseData.fifthLastRaceTrackType || ''}">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>5走前日</label>
+                                        <input type="text" name="fifthLastRaceDate" value="${horseData.fifthLastRaceDate || ''}">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>5走前タイム</label>
+                                        <input type="text" name="fifthLastRaceTime" placeholder="例: 1:35.2" style="font-family: monospace;" value="${horseData.fifthLastRaceTime || ''}">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>5走前馬場状態</label>
+                                        <select name="fifthLastRaceTrackCondition">
+                                            <option value="">選択してください</option>
+                                            <option value="良" ${horseData.fifthLastRaceTrackCondition === '良' ? 'selected' : ''}>良</option>
+                                            <option value="稍重" ${horseData.fifthLastRaceTrackCondition === '稍重' ? 'selected' : ''}>稍重</option>
+                                            <option value="重" ${horseData.fifthLastRaceTrackCondition === '重' ? 'selected' : ''}>重</option>
+                                            <option value="不良" ${horseData.fifthLastRaceTrackCondition === '不良' ? 'selected' : ''}>不良</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>5走前斤量</label>
+                                        <input type="number" name="fifthLastRaceWeight" step="0.5" placeholder="例: 56.0" value="${horseData.fifthLastRaceWeight || ''}">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>5走前騎手</label>
+                                        <input type="text" name="fifthLastRaceJockey" placeholder="5走前騎手名" value="${horseData.fifthLastRaceJockey || ''}">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>5走前人気</label>
+                                        <input type="number" name="fifthLastRacePopularity" placeholder="例: 1" value="${horseData.fifthLastRacePopularity || ''}">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>5走前着順</label>
+                                        <input type="number" name="fifthLastRaceOrder" placeholder="例: 1" value="${horseData.fifthLastRaceOrder || ''}">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>5走前上がり3F</label>
+                                        <input type="text" name="fifthLastRaceAgari" placeholder="例: 34.1" value="${horseData.fifthLastRaceAgari || ''}">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -797,6 +1843,46 @@ class HorseManager {
         
         //console.log('=== addHorseFromData完了 ===');
     }
+    
+    // カスタム血統入力切り替え関数群
+    static toggleCustomSire(selectElement) {
+        const horseCard = selectElement.closest('.horse-card');
+        const customInput = horseCard.querySelector('input[name="sireCustom"]');
+        
+        if (selectElement.value === 'custom') {
+            customInput.style.display = 'block';
+            customInput.focus();
+        } else {
+            customInput.style.display = 'none';
+            customInput.value = '';
+        }
+    }
+    
+    static toggleCustomDam(selectElement) {
+        const horseCard = selectElement.closest('.horse-card');
+        const customInput = horseCard.querySelector('input[name="damCustom"]');
+        
+        if (selectElement.value === 'custom') {
+            customInput.style.display = 'block';
+            customInput.focus();
+        } else {
+            customInput.style.display = 'none';
+            customInput.value = '';
+        }
+    }
+    
+    static toggleCustomDamSire(selectElement) {
+        const horseCard = selectElement.closest('.horse-card');
+        const customInput = horseCard.querySelector('input[name="damSireCustom"]');
+        
+        if (selectElement.value === 'custom') {
+            customInput.style.display = 'block';
+            customInput.focus();
+        } else {
+            customInput.style.display = 'none';
+            customInput.value = '';
+        }
+    }
 }
 
 // グローバル関数として公開
@@ -805,4 +1891,7 @@ window.removeHorse = HorseManager.removeHorse.bind(HorseManager);
 window.clearAllHorses = HorseManager.clearAllHorses.bind(HorseManager);
 window.addSampleHorses = HorseManager.addSampleHorses.bind(HorseManager);
 window.toggleCustomJockey = HorseManager.toggleCustomJockey.bind(HorseManager);
+window.toggleCustomSire = HorseManager.toggleCustomSire.bind(HorseManager);
+window.toggleCustomDam = HorseManager.toggleCustomDam.bind(HorseManager);
+window.toggleCustomDamSire = HorseManager.toggleCustomDamSire.bind(HorseManager);
 window.addHorseFromData = HorseManager.addHorseFromData.bind(HorseManager);
