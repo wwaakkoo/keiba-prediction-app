@@ -54,6 +54,10 @@ class AIRecommendationService {
             jockey: horse.jockey,
             age: horse.age,
             weightChange: horse.weightChange,
+            // 血統情報を追加
+            sire: horse.sire || '',
+            dam: horse.dam || '',
+            damSire: horse.damSire || '',
             // 統計計算結果は除外（AI独自判断のため）
             // score, winProbability, placeProbability, winExpectedValue, placeExpectedValue は使用しない
             course: horse.course,
@@ -189,10 +193,24 @@ class AIRecommendationService {
         }
     }
     
-    // Claude AIに送信するプロンプトの作成（純粋データ版）
+    // Claude AIに送信するプロンプトの作成（純粋データ版・レース分析統合）
     static formatRaceDataForClaude(horses, raceInfo) {
         const horseList = horses.map((horse, index) => {
             let horseInfo = `${index + 1}. ${horse.name || `${index + 1}番馬`} - オッズ:${horse.odds}倍, 前走:${horse.lastRace || horse.raceHistory?.lastRace?.order || '不明'}着, 騎手:${horse.jockey || '不明'}, 年齢:${horse.age || '不明'}歳`;
+            
+            // 血統情報を追加
+            if (horse.sire || horse.dam || horse.damSire) {
+                horseInfo += ` [血統:`;
+                if (horse.sire) horseInfo += `父${horse.sire}`;
+                if (horse.dam) horseInfo += ` 母${horse.dam}`;
+                if (horse.damSire) horseInfo += ` 母父${horse.damSire}`;
+                horseInfo += `]`;
+            }
+            
+            // レースレベル・脚質情報を追加
+            if (horse.raceLevel) horseInfo += `, 今回レベル:${horse.raceLevel}`;
+            if (horse.runningStyle) horseInfo += `, 基本脚質:${horse.runningStyle}`;
+            if (horse.lastRaceLevel) horseInfo += `, 前走レベル:${horse.lastRaceLevel}`;
             
             // 前走詳細データがあれば追加
             if (horse.raceHistory?.lastRace) {
@@ -259,12 +277,19 @@ ${horseList}
 
 **重視すべき要素（優先順・指数関数的減衰重み）:**
 1. **前5走の成績推移（前走35%→5走前16%）** - 調子の上向き/下降トレンド
-2. **距離・馬場適性** - 今回条件への適応度
-3. **騎手・オッズの妥当性** - 人気と実力の乖離
-4. **年齢・体重変化** - コンディション指標
+2. **レースレベル昇降級** - G1からOP、1勝→2勝等のクラス変化影響
+3. **脚質・展開適性** - 逃げ/先行/差し/追込の距離・ペース適性
+4. **血統・配合適性** - 父系・母系・母父の距離・馬場適性、配合相性
+5. **距離・馬場適性** - 今回条件への適応度
+6. **騎手・オッズの妥当性** - 人気と実力の乖離
+7. **年齢・体重変化** - コンディション指標
 
 **具体的分析ポイント:**
 - 前5走のトレンド分析（向上・安定・悪化パターン）
+- レースレベル変化（昇級ショック・降級プラス効果）
+- 脚質一貫性と距離適性（逃げ→短距離、追込→長距離等）
+- 血統による距離・馬場適性（父系スピード型・スタミナ型、母父の影響）
+- 配合パターン分析（インブリード・アウトブリード・ニックス相性）
 - 上がり3Fの一貫性と好タイム継続性
 - 休養期間とローテーション
 - 騎手変更の影響
