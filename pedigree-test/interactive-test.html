@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>血統抽出インタラクティブテスト</title>
+    <meta charset="UTF-8">
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 20px; 
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section { 
+            margin: 20px 0; 
+            padding: 15px; 
+            border: 1px solid #ddd; 
+            border-radius: 5px; 
+            background-color: #fff;
+        }
+        .input-section {
+            background-color: #f8f9fa;
+            border-color: #dee2e6;
+        }
+        .success { 
+            background-color: #d4edda; 
+            border-color: #c3e6cb; 
+        }
+        .error { 
+            background-color: #f8d7da; 
+            border-color: #f5c6cb; 
+        }
+        .warning {
+            background-color: #fff3cd;
+            border-color: #ffeaa7;
+        }
+        .log { 
+            background-color: #f8f9fa; 
+            padding: 10px; 
+            border-radius: 3px; 
+            font-family: 'Courier New', monospace; 
+            font-size: 12px; 
+            white-space: pre-wrap; 
+            max-height: 400px; 
+            overflow-y: auto; 
+            border: 1px solid #e9ecef;
+        }
+        table { 
+            border-collapse: collapse; 
+            width: 100%; 
+            margin: 10px 0; 
+        }
+        th, td { 
+            border: 1px solid #ddd; 
+            padding: 8px; 
+            text-align: left; 
+        }
+        th { 
+            background-color: #f2f2f2; 
+            font-weight: bold;
+        }
+        .test-data { 
+            background-color: #e9ecef; 
+            padding: 10px; 
+            border-radius: 3px; 
+            margin: 10px 0; 
+        }
+        textarea {
+            width: 100%;
+            height: 200px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            resize: vertical;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button.secondary {
+            background-color: #6c757d;
+        }
+        button.secondary:hover {
+            background-color: #545b62;
+        }
+        .sample-buttons {
+            margin: 10px 0;
+        }
+        .expected-results {
+            margin: 10px 0;
+        }
+        .expected-input {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+        }
+        .horse-row {
+            display: flex;
+            gap: 10px;
+            margin: 5px 0;
+            align-items: center;
+        }
+        .horse-row input {
+            flex: 1;
+        }
+        .horse-row button {
+            padding: 5px 10px;
+            font-size: 12px;
+        }
+        h1, h2, h3 {
+            color: #333;
+        }
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            text-align: center;
+            margin: 15px 0;
+        }
+        .stat-item {
+            flex: 1;
+            padding: 10px;
+        }
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #007bff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🐎 血統抽出インタラクティブテスト</h1>
+        
+        <div class="test-section input-section">
+            <h2>📝 テストデータ入力</h2>
+            
+            <div class="sample-buttons">
+                <h4>サンプルデータ:</h4>
+                <button onclick="loadSample1()">サンプル1: 基本データ</button>
+                <button onclick="loadSample2()">サンプル2: 複雑データ</button>
+                <button onclick="loadSample3()">サンプル3: 問題データ</button>
+                <button class="secondary" onclick="clearInput()">クリア</button>
+            </div>
+            
+            <label for="testDataInput"><strong>競馬データ (netkeiba形式):</strong></label>
+            <textarea id="testDataInput" placeholder="ここに競馬データを入力してください...&#10;&#10;例:&#10;1&#9;1&#9;&#10;消&#10;ロードカナロア&#10;ベラジオオペラ&#10;エアルーティーン&#10;(ハービンジャー)&#10;..."></textarea>
+            
+            <h4>期待結果設定:</h4>
+            <div id="expectedResults">
+                <div class="horse-row">
+                    <input type="text" placeholder="馬名" data-field="name" data-horse="0">
+                    <input type="text" placeholder="父系" data-field="sire" data-horse="0">
+                    <input type="text" placeholder="母系" data-field="dam" data-horse="0">
+                    <input type="text" placeholder="母父" data-field="damSire" data-horse="0">
+                    <button onclick="addHorseRow()">+</button>
+                </div>
+            </div>
+            
+            <div style="margin-top: 15px;">
+                <button onclick="runTest()" style="font-size: 16px; padding: 12px 24px;">🧪 テスト実行</button>
+                <button class="secondary" onclick="resetExpected()">期待結果リセット</button>
+            </div>
+        </div>
+        
+        <div id="testResults"></div>
+        
+        <div class="test-section">
+            <h3>📚 使い方</h3>
+            <ul>
+                <li><strong>サンプルデータ</strong>: ボタンを押すと事前定義されたテストデータが読み込まれます</li>
+                <li><strong>手動入力</strong>: テキストエリアに直接netkeiba形式のデータを入力できます</li>
+                <li><strong>期待結果</strong>: 各馬の期待される抽出結果を設定できます（自動で比較されます）</li>
+                <li><strong>動的追加</strong>: +ボタンで馬の期待結果行を追加できます</li>
+            </ul>
+        </div>
+    </div>
+    
+    <script src="pedigreeExtractor.js"></script>
+    <script>
+        let horseCount = 1;
+        
+        // サンプルデータ1: 基本的なテストデータ
+        function loadSample1() {
+            const sampleData = `1\t1\t
+消
+ロードカナロア
+ベラジオオペラ
+エアルーティーン
+(ハービンジャー)
+栗東・上村  
+先中9週
+510kg(+2)
+4.0 (1人気)
+牡5鹿
+
+横山和
+58.0\t
+1\t2\t
+消
+ドゥラメンテ
+ドゥレッツァ
+モアザンセイクリッド
+(More Than Ready)
+美浦・尾関  
+先中9週
+468kg(前計不)
+6.7 (4人気)
+牡5青鹿
+
+横山武
+58.0\t`;
+            
+            document.getElementById('testDataInput').value = sampleData;
+            
+            // 期待結果も設定
+            resetExpected();
+            setExpectedResult(0, 'ベラジオオペラ', 'ロードカナロア', 'エアルーティーン', 'ハービンジャー');
+            addHorseRow();
+            setExpectedResult(1, 'ドゥレッツァ', 'ドゥラメンテ', 'モアザンセイクリッド', 'More Than Ready');
+        }
+        
+        // サンプルデータ2: より複雑なデータ
+        function loadSample2() {
+            const sampleData = `1\t1\t
+◎
+キタサンブラック
+サトノダイヤモンド
+レディアンバサダー
+(アンバーシャダイ)
+栗東・音無  
+中2週
+520kg(+4)
+3.2 (1人気)
+牡4鹿
+
+M.デムーロ
+57.0\t
+2\t2\t
+○
+ディープインパクト
+ジェンティルドンナ
+シンハライト
+(Storm Cat)
+美浦・国枝  
+中3週
+468kg(-2)
+5.1 (2人気)
+牝4青鹿
+
+C.ルメール
+55.0\t`;
+            
+            document.getElementById('testDataInput').value = sampleData;
+            
+            // 期待結果設定
+            resetExpected();
+            setExpectedResult(0, 'サトノダイヤモンド', 'キタサンブラック', 'レディアンバサダー', 'アンバーシャダイ');
+            addHorseRow();
+            setExpectedResult(1, 'ジェンティルドンナ', 'ディープインパクト', 'シンハライト', 'Storm Cat');
+        }
+        
+        // サンプルデータ3: 問題のあるデータ（テスト用）
+        function loadSample3() {
+            const sampleData = `1\t1\t
+消
+ロードカナロア
+ロードカナロア
+エアルーティーン
+(ハービンジャー)
+栗東・上村  
+1\t2\t
+△
+ドゥラメンテ
+テストホース
+(More Than Ready)
+美浦・尾関`;
+            
+            document.getElementById('testDataInput').value = sampleData;
+            
+            // 期待結果設定
+            resetExpected();
+            setExpectedResult(0, 'ロードカナロア', 'ロードカナロア', 'エアルーティーン', 'ハービンジャー');
+            addHorseRow();
+            setExpectedResult(1, 'テストホース', 'ドゥラメンテ', '', 'More Than Ready');
+        }
+        
+        function clearInput() {
+            document.getElementById('testDataInput').value = '';
+            resetExpected();
+        }
+        
+        function addHorseRow() {
+            const container = document.getElementById('expectedResults');
+            const newRow = document.createElement('div');
+            newRow.className = 'horse-row';
+            newRow.innerHTML = `
+                <input type="text" placeholder="馬名" data-field="name" data-horse="${horseCount}">
+                <input type="text" placeholder="父系" data-field="sire" data-horse="${horseCount}">
+                <input type="text" placeholder="母系" data-field="dam" data-horse="${horseCount}">
+                <input type="text" placeholder="母父" data-field="damSire" data-horse="${horseCount}">
+                <button onclick="removeHorseRow(this)">-</button>
+            `;
+            container.appendChild(newRow);
+            horseCount++;
+        }
+        
+        function removeHorseRow(button) {
+            const container = document.getElementById('expectedResults');
+            if (container.children.length > 1) {
+                button.parentElement.remove();
+            }
+        }
+        
+        function resetExpected() {
+            const container = document.getElementById('expectedResults');
+            container.innerHTML = `
+                <div class="horse-row">
+                    <input type="text" placeholder="馬名" data-field="name" data-horse="0">
+                    <input type="text" placeholder="父系" data-field="sire" data-horse="0">
+                    <input type="text" placeholder="母系" data-field="dam" data-horse="0">
+                    <input type="text" placeholder="母父" data-field="damSire" data-horse="0">
+                    <button onclick="addHorseRow()">+</button>
+                </div>
+            `;
+            horseCount = 1;
+        }
+        
+        function setExpectedResult(horseIndex, name, sire, dam, damSire) {
+            const inputs = document.querySelectorAll(`input[data-horse="${horseIndex}"]`);
+            inputs.forEach(input => {
+                const field = input.getAttribute('data-field');
+                switch(field) {
+                    case 'name': input.value = name; break;
+                    case 'sire': input.value = sire; break;
+                    case 'dam': input.value = dam; break;
+                    case 'damSire': input.value = damSire; break;
+                }
+            });
+        }
+        
+        function getExpectedResults() {
+            const expected = [];
+            const rows = document.querySelectorAll('.horse-row');
+            
+            rows.forEach((row, index) => {
+                const inputs = row.querySelectorAll('input');
+                if (inputs.length === 4) {
+                    const horse = {
+                        name: inputs[0].value.trim(),
+                        sire: inputs[1].value.trim(),
+                        dam: inputs[2].value.trim(),
+                        damSire: inputs[3].value.trim()
+                    };
+                    
+                    // 空でない行のみ追加
+                    if (horse.name || horse.sire || horse.dam || horse.damSire) {
+                        expected.push(horse);
+                    }
+                }
+            });
+            
+            return expected;
+        }
+        
+        function runTest() {
+            const testData = document.getElementById('testDataInput').value;
+            const expected = getExpectedResults();
+            
+            if (!testData.trim()) {
+                alert('テストデータを入力してください');
+                return;
+            }
+            
+            console.log('=== インタラクティブテスト開始 ===');
+            console.log('入力データ:', testData);
+            console.log('期待結果:', expected);
+            
+            try {
+                // 血統抽出実行
+                const results = PedigreeExtractor.parseAllHorses(testData);
+                
+                console.log('抽出結果:', results);
+                
+                // 結果評価
+                let successCount = 0;
+                let totalTests = 0;
+                let testResults = [];
+                
+                // 期待結果が設定されている場合の比較
+                if (expected.length > 0) {
+                    expected.forEach((exp, index) => {
+                        const actual = results[index];
+                        const horseResult = {
+                            index: index + 1,
+                            expected: exp,
+                            actual: actual || {},
+                            tests: []
+                        };
+                        
+                        // 各項目をテスト
+                        ['name', 'sire', 'dam', 'damSire'].forEach(field => {
+                            // 期待値が空の場合はテストをスキップ
+                            if (exp[field]) {
+                                totalTests++;
+                                const success = actual && actual[field] === exp[field];
+                                if (success) successCount++;
+                                
+                                horseResult.tests.push({
+                                    field,
+                                    expected: exp[field],
+                                    actual: actual ? actual[field] : '未抽出',
+                                    success
+                                });
+                            }
+                        });
+                        
+                        testResults.push(horseResult);
+                    });
+                } else {
+                    // 期待結果なしの場合は抽出結果のみ表示
+                    results.forEach((actual, index) => {
+                        testResults.push({
+                            index: index + 1,
+                            expected: null,
+                            actual: actual,
+                            tests: []
+                        });
+                    });
+                }
+                
+                // 結果を表示
+                displayResults(testResults, successCount, totalTests, results);
+                
+            } catch (error) {
+                console.error('テスト実行エラー:', error);
+                document.getElementById('testResults').innerHTML = `
+                    <div class="test-section error">
+                        <h2>❌ エラー発生</h2>
+                        <p>テスト実行中にエラーが発生しました:</p>
+                        <div class="log">${error.message}\n\n${error.stack}</div>
+                    </div>
+                `;
+            }
+        }
+        
+        function displayResults(testResults, successCount, totalTests, rawResults) {
+            const hasExpected = totalTests > 0;
+            const successRate = hasExpected ? Math.round((successCount / totalTests) * 100) : 0;
+            const overallSuccess = hasExpected ? (successCount === totalTests) : true;
+            
+            let html = `
+                <div class="test-section ${overallSuccess ? 'success' : 'error'}">
+                    <h2>📊 テスト結果</h2>
+                    <div class="stats">
+                        <div class="stat-item">
+                            <div class="stat-number">${rawResults.length}</div>
+                            <div>抽出馬数</div>
+                        </div>
+                        ${hasExpected ? `
+                            <div class="stat-item">
+                                <div class="stat-number">${successCount}/${totalTests}</div>
+                                <div>成功テスト</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-number">${successRate}%</div>
+                                <div>成功率</div>
+                            </div>
+                        ` : ''}
+                        <div class="stat-item">
+                            <div class="stat-number">${overallSuccess ? '✅' : '❌'}</div>
+                            <div>総合判定</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // 各馬の詳細結果
+            testResults.forEach(horseResult => {
+                const horseSuccess = horseResult.tests.length === 0 || horseResult.tests.every(test => test.success);
+                html += `
+                    <div class="test-section ${horseSuccess ? 'success' : 'error'}">
+                        <h3>🐎 馬 ${horseResult.index}${horseResult.expected ? ` - ${horseResult.expected.name || '未設定'}` : ''}</h3>
+                        
+                        <table>
+                            <tr><th>項目</th><th>抽出値</th>${horseResult.expected ? '<th>期待値</th><th>結果</th>' : ''}</tr>
+                            <tr>
+                                <td>馬名</td>
+                                <td>${horseResult.actual.name || '未抽出'}</td>
+                                ${horseResult.expected ? `
+                                    <td>${horseResult.expected.name || '-'}</td>
+                                    <td>${getTestResult('name', horseResult)}</td>
+                                ` : ''}
+                            </tr>
+                            <tr>
+                                <td>父系</td>
+                                <td>${horseResult.actual.sire || '未抽出'}</td>
+                                ${horseResult.expected ? `
+                                    <td>${horseResult.expected.sire || '-'}</td>
+                                    <td>${getTestResult('sire', horseResult)}</td>
+                                ` : ''}
+                            </tr>
+                            <tr>
+                                <td>母系</td>
+                                <td>${horseResult.actual.dam || '未抽出'}</td>
+                                ${horseResult.expected ? `
+                                    <td>${horseResult.expected.dam || '-'}</td>
+                                    <td>${getTestResult('dam', horseResult)}</td>
+                                ` : ''}
+                            </tr>
+                            <tr>
+                                <td>母父</td>
+                                <td>${horseResult.actual.damSire || '未抽出'}</td>
+                                ${horseResult.expected ? `
+                                    <td>${horseResult.expected.damSire || '-'}</td>
+                                    <td>${getTestResult('damSire', horseResult)}</td>
+                                ` : ''}
+                            </tr>
+                        </table>
+                        
+                        ${horseResult.actual.processLog ? `
+                            <h4>🔍 処理ログ</h4>
+                            <div class="log">${horseResult.actual.processLog.join('\n')}</div>
+                        ` : ''}
+                    </div>
+                `;
+            });
+            
+            // 生データ
+            html += `
+                <div class="test-section">
+                    <h3>🔧 生データ出力</h3>
+                    <div class="log">${JSON.stringify(rawResults, null, 2)}</div>
+                </div>
+            `;
+            
+            document.getElementById('testResults').innerHTML = html;
+        }
+        
+        function getTestResult(field, horseResult) {
+            if (!horseResult.expected || !horseResult.expected[field]) {
+                return '-';
+            }
+            
+            const test = horseResult.tests.find(t => t.field === field);
+            return test ? (test.success ? '✅' : '❌') : '-';
+        }
+        
+        // 初期化
+        document.addEventListener('DOMContentLoaded', function() {
+            loadSample1(); // デフォルトでサンプル1を読み込み
+        });
+    </script>
+</body>
+</html>

@@ -78,6 +78,26 @@ class LearningSystem {
         }
 
         const learningResult = this.updateLearningData(firstHorse, secondHorse, thirdHorse);
+        
+        // 学習システム統合検証用ログ
+        console.log('=== 学習システム統合検証 ===');
+        console.log(`🏆 実際の結果: 1着=${firstHorse?.name}, 2着=${secondHorse?.name}, 3着=${thirdHorse?.name}`);
+        console.log(`📊 学習結果: 的中=${learningResult.winCorrect ? '成功' : '失敗'}, 複勝=${learningResult.placeCorrect ? '成功' : '失敗'}`);
+        console.log('🔧 調整項目:', learningResult.adjustments);
+        
+        // レース分析結果の学習反映確認
+        if (firstHorse && typeof RaceAnalysisEngine !== 'undefined') {
+            const currentRaceLevel = document.getElementById('raceDistance') ? 
+                document.querySelector('select') ? document.querySelector('select').value || '1勝' : '1勝' : '1勝';
+            const raceDistance = document.getElementById('raceDistance') ? 
+                parseInt(document.getElementById('raceDistance').value) || 1600 : 1600;
+            const analysis = RaceAnalysisEngine.generateRaceAnalysisReport(firstHorse, currentRaceLevel, raceDistance, '芝');
+            console.log(`🎯 勝者のレース分析: ${analysis.classProgression.description}`);
+            if (analysis.runningStyle) {
+                console.log(`🏃 勝者の脚質分析: ${analysis.runningStyle.analysis} (効果: ${analysis.runningStyle.effectiveness}点)`);
+            }
+        }
+        
         this.displayLearningFeedback(learningResult, firstHorse, secondHorse, thirdHorse);
 
         // 買い目推奨の結果も記録

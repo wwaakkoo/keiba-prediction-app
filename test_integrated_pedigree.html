@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>統合血統抽出テスト</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        .result { background: #f0f0f0; padding: 10px; margin: 10px 0; border-radius: 3px; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+        .success { color: green; }
+        .error { color: red; }
+        .warning { color: orange; }
+    </style>
+</head>
+<body>
+    <h1>🧬 統合血統抽出テスト - 修正版DataConverter確認</h1>
+    
+    <div class="test-section">
+        <h2>1. DataConverter血統抽出テスト</h2>
+        <button onclick="testDataConverterPedigree()">血統抽出テスト実行</button>
+        <div id="dataConverterResults" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>2. PedigreeDatabase分析テスト</h2>
+        <button onclick="testPedigreeAnalysis()">血統分析テスト実行</button>
+        <div id="pedigreeAnalysisResults" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>3. 統合テスト（抽出→分析）</h2>
+        <button onclick="testIntegratedFlow()">統合フローテスト実行</button>
+        <div id="integratedResults" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>4. 実データテスト</h2>
+        <textarea id="realTestData" style="width: 100%; height: 120px; font-family: monospace;" placeholder="実際のnetkeiba形式データを貼り付け">1	1	
+消
+ロードカナロア
+ベラジオオペラ
+エアルーティーン
+(ハービンジャー)
+栗東・上村  
+先中9週
+510kg(+2)
+4.0 (1人気)
+牡5鹿
+
+横山和
+58.0	
+1	2	
+消
+ドゥラメンテ
+ドゥレッツァ
+モアザンセイクリッド
+(More Than Ready)
+美浦・尾関  
+先中9週
+468kg(前計不)
+6.7 (4人気)
+牡5青鹿
+
+横山武
+58.0</textarea>
+        <button onclick="testRealData()">実データテスト実行</button>
+        <div id="realDataResults" class="result"></div>
+    </div>
+
+    <script src="js/dataConverter.js"></script>
+    <script src="js/pedigreeDatabase.js"></script>
+    <script>
+        function testDataConverterPedigree() {
+            const resultsDiv = document.getElementById('dataConverterResults');
+            resultsDiv.innerHTML = '<h3>📊 改善されたDataConverter血統抽出テスト結果:</h3>';
+            
+            console.log('=== 改善されたDataConverter血統抽出テスト開始 ===');
+            
+            // テストデータ
+            const testData = `1\t1\t
+消
+ロードカナロア
+ベラジオオペラ
+エアルーティーン
+(ハービンジャー)
+栗東・上村  
+先中9週
+510kg(+2)
+4.0 (1人気)
+牡5鹿
+
+横山和
+58.0\t
+1\t2\t
+消
+ドゥラメンテ
+ドゥレッツァ
+モアザンセイクリッド
+(More Than Ready)
+美浦・尾関  
+先中9週
+468kg(前計不)
+6.7 (4人気)
+牡5青鹿
+
+横山武
+58.0\t`;
+
+            try {
+                const result = DataConverter.parseNetkeibaData(testData);
+                console.log('改善されたDataConverter結果:', result);
+                
+                let html = '<div class="success">✅ 改善されたDataConverter実行成功</div>';
+                html += `<p><strong>解析された馬数:</strong> ${result.horses.length}頭</p>`;
+                
+                // 期待値との比較
+                const expected = [
+                    { name: 'ベラジオオペラ', sire: 'ロードカナロア', dam: 'エアルーティーン', damSire: 'ハービンジャー' },
+                    { name: 'ドゥレッツァ', sire: 'ドゥラメンテ', dam: 'モアザンセイクリッド', damSire: 'More Than Ready' }
+                ];
+                
+                let totalSuccess = 0;
+                let totalTests = 0;
+                
+                result.horses.forEach((horse, index) => {
+                    const pedigreeCount = [horse.sire, horse.dam, horse.damSire].filter(x => x).length;
+                    const rate = ((pedigreeCount / 3) * 100).toFixed(1);
+                    
+                    const exp = expected[index];
+                    let successCount = 0;
+                    let tests = 0;
+                    
+                    if (exp) {
+                        if (horse.name === exp.name) successCount++;
+                        if (horse.sire === exp.sire) successCount++;
+                        if (horse.dam === exp.dam) successCount++;
+                        if (horse.damSire === exp.damSire) successCount++;
+                        tests = 4;
+                        totalSuccess += successCount;
+                        totalTests += tests;
+                    }
+                    
+                    html += `
+                        <div style="border: 1px solid #ddd; padding: 10px; margin: 10px 0;">
+                            <h4>馬${index + 1}: ${horse.name || '未抽出'}</h4>
+                            <p><strong>父:</strong> ${horse.sire || '未抽出'} ${exp && horse.sire === exp.sire ? '✅' : exp ? '❌' : ''}</p>
+                            <p><strong>母:</strong> ${horse.dam || '未抽出'} ${exp && horse.dam === exp.dam ? '✅' : exp ? '❌' : ''}</p>
+                            <p><strong>母父:</strong> ${horse.damSire || '未抽出'} ${exp && horse.damSire === exp.damSire ? '✅' : exp ? '❌' : ''}</p>
+                            <p><strong>血統抽出率:</strong> ${pedigreeCount}/3 (${rate}%)</p>
+                            ${exp ? `<p><strong>精度:</strong> ${successCount}/${tests} (${Math.round(successCount/tests*100)}%)</p>` : ''}
+                            <p class="${rate >= 80 ? 'success' : rate >= 50 ? 'warning' : 'error'}">
+                                ${rate >= 80 ? '✅ 抽出良好' : rate >= 50 ? '⚠️ 抽出不完全' : '❌ 抽出失敗'}
+                            </p>
+                        </div>
+                    `;
+                });
+                
+                const overallRate = totalTests > 0 ? Math.round((totalSuccess / totalTests) * 100) : 0;
+                html += `
+                    <div style="background: #e6f3ff; padding: 15px; margin: 20px 0; border-radius: 5px;">
+                        <h4>📈 総合結果</h4>
+                        <p><strong>総合精度:</strong> ${totalSuccess}/${totalTests} (${overallRate}%)</p>
+                        <p><strong>判定:</strong> ${overallRate >= 80 ? '✅ 大幅改善成功' : overallRate >= 50 ? '⚠️ 部分的改善' : '❌ 改善要'}</p>
+                    </div>
+                `;
+                
+                resultsDiv.innerHTML = html;
+                
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="error">❌ エラー: ${error.message}</div>`;
+                console.error('改善されたDataConverter血統抽出テストエラー:', error);
+            }
+        }
+        
+        function testPedigreeAnalysis() {
+            const resultsDiv = document.getElementById('pedigreeAnalysisResults');
+            resultsDiv.innerHTML = '<h3>🧬 PedigreeDatabase分析テスト結果:</h3>';
+            
+            console.log('=== PedigreeDatabase分析テスト開始 ===');
+            
+            try {
+                // テスト1: ロードカナロア産駒の分析
+                const analysis1 = PedigreeDatabase.analyzePedigree('ロードカナロア', 'エアルーティーン', 'ハービンジャー');
+                console.log('テスト1結果:', analysis1);
+                
+                // テスト2: ドゥラメンテ産駒の分析
+                const analysis2 = PedigreeDatabase.analyzePedigree('ドゥラメンテ', 'モアザンセイクリッド', 'More Than Ready');
+                console.log('テスト2結果:', analysis2);
+                
+                let html = '<div class="success">✅ PedigreeDatabase実行成功</div>';
+                html += `
+                    <div style="border: 1px solid #ddd; padding: 10px; margin: 10px 0;">
+                        <h4>分析1: ロードカナロア × エアルーティーン (母父: ハービンジャー)</h4>
+                        <p><strong>総合評価:</strong> ${analysis1.overallRating.grade}級 (${analysis1.overallRating.totalScore}点)</p>
+                        <p><strong>父系分析:</strong> ${analysis1.sireAnalysis.analysis}</p>
+                        <p><strong>配合相性:</strong> ${analysis1.matingAnalysis.compatibility}点</p>
+                    </div>
+                    <div style="border: 1px solid #ddd; padding: 10px; margin: 10px 0;">
+                        <h4>分析2: ドゥラメンテ × モアザンセイクリッド (母父: More Than Ready)</h4>
+                        <p><strong>総合評価:</strong> ${analysis2.overallRating.grade}級 (${analysis2.overallRating.totalScore}点)</p>
+                        <p><strong>父系分析:</strong> ${analysis2.sireAnalysis.analysis}</p>
+                        <p><strong>配合相性:</strong> ${analysis2.matingAnalysis.compatibility}点</p>
+                    </div>
+                `;
+                
+                resultsDiv.innerHTML = html;
+                
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="error">❌ エラー: ${error.message}</div>`;
+                console.error('PedigreeDatabase分析テストエラー:', error);
+            }
+        }
+        
+        function testIntegratedFlow() {
+            const resultsDiv = document.getElementById('integratedResults');
+            resultsDiv.innerHTML = '<h3>🔗 統合フローテスト結果:</h3>';
+            
+            console.log('=== 統合フローテスト開始 ===');
+            
+            // テストデータ
+            const testData = `1\t1\t
+消
+ロードカナロア
+ベラジオオペラ
+エアルーティーン
+(ハービンジャー)
+栗東・上村  
+先中9週
+510kg(+2)
+4.0 (1人気)
+牡5鹿
+
+横山和
+58.0\t`;
+
+            try {
+                // Step 1: DataConverterで血統抽出
+                const extractionResult = DataConverter.parseNetkeibaData(testData);
+                console.log('抽出結果:', extractionResult);
+                
+                if (extractionResult.horses.length === 0) {
+                    throw new Error('馬データが抽出できませんでした');
+                }
+                
+                const horse = extractionResult.horses[0];
+                console.log('抽出された馬:', horse);
+                
+                // Step 2: PedigreeDatabaseで血統分析
+                const analysis = PedigreeDatabase.analyzePedigree(horse.sire, horse.dam, horse.damSire);
+                console.log('血統分析結果:', analysis);
+                
+                let html = '<div class="success">✅ 統合フロー実行成功</div>';
+                html += `
+                    <div style="border: 1px solid #ddd; padding: 10px; margin: 10px 0;">
+                        <h4>Step 1: 血統抽出結果</h4>
+                        <p><strong>馬名:</strong> ${horse.name || '未抽出'}</p>
+                        <p><strong>父:</strong> ${horse.sire || '未抽出'}</p>
+                        <p><strong>母:</strong> ${horse.dam || '未抽出'}</p>
+                        <p><strong>母父:</strong> ${horse.damSire || '未抽出'}</p>
+                    </div>
+                    <div style="border: 1px solid #ddd; padding: 10px; margin: 10px 0;">
+                        <h4>Step 2: 血統分析結果</h4>
+                        <p><strong>総合評価:</strong> ${analysis.overallRating.grade}級 (${analysis.overallRating.totalScore}点)</p>
+                        <p><strong>父系分析:</strong> ${analysis.sireAnalysis.analysis}</p>
+                        <p><strong>配合相性:</strong> ${analysis.matingAnalysis.compatibility}点 - ${analysis.matingAnalysis.analysis}</p>
+                        <p><strong>推奨事項:</strong> ${analysis.recommendations.join('、')}</p>
+                    </div>
+                `;
+                
+                resultsDiv.innerHTML = html;
+                
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="error">❌ エラー: ${error.message}</div>`;
+                console.error('統合フローテストエラー:', error);
+            }
+        }
+        
+        function testRealData() {
+            const testData = document.getElementById('realTestData').value;
+            const resultsDiv = document.getElementById('realDataResults');
+            
+            if (!testData.trim()) {
+                resultsDiv.innerHTML = '<div class="error">❌ テストデータを入力してください</div>';
+                return;
+            }
+            
+            resultsDiv.innerHTML = '<h3>🚀 実データテスト結果:</h3>';
+            
+            console.log('=== 実データテスト開始 ===');
+            console.log('入力データ:', testData);
+            
+            try {
+                const result = DataConverter.parseNetkeibaData(testData);
+                console.log('実データ結果:', result);
+                
+                let html = '<div class="success">✅ 実データ処理成功</div>';
+                html += `<p><strong>解析された馬数:</strong> ${result.horses.length}頭</p>`;
+                
+                // 各馬に対して抽出→分析を実行
+                result.horses.forEach((horse, index) => {
+                    const pedigreeCount = [horse.sire, horse.dam, horse.damSire].filter(x => x).length;
+                    const rate = ((pedigreeCount / 3) * 100).toFixed(1);
+                    
+                    html += `
+                        <div style="border: 1px solid #ddd; padding: 10px; margin: 10px 0;">
+                            <h4>馬${index + 1}: ${horse.name || '未抽出'}</h4>
+                            <p><strong>父:</strong> ${horse.sire || '未抽出'}</p>
+                            <p><strong>母:</strong> ${horse.dam || '未抽出'}</p>
+                            <p><strong>母父:</strong> ${horse.damSire || '未抽出'}</p>
+                            <p><strong>血統抽出率:</strong> ${pedigreeCount}/3 (${rate}%)</p>
+                    `;
+                    
+                    // 血統分析を実行（3つとも抽出できた場合のみ）
+                    if (pedigreeCount === 3) {
+                        try {
+                            const analysis = PedigreeDatabase.analyzePedigree(horse.sire, horse.dam, horse.damSire);
+                            html += `
+                                <p><strong>血統分析:</strong> ${analysis.overallRating.grade}級 (${analysis.overallRating.totalScore}点)</p>
+                                <p><strong>父系評価:</strong> ${analysis.sireAnalysis.analysis}</p>
+                                <p><strong>配合相性:</strong> ${analysis.matingAnalysis.compatibility}点</p>
+                            `;
+                        } catch (analysisError) {
+                            html += `<p class="warning">⚠️ 血統分析エラー: ${analysisError.message}</p>`;
+                        }
+                    }
+                    
+                    html += `
+                            <p class="${rate >= 80 ? 'success' : rate >= 50 ? 'warning' : 'error'}">
+                                ${rate >= 80 ? '✅ 抽出良好' : rate >= 50 ? '⚠️ 抽出不完全' : '❌ 抽出失敗'}
+                            </p>
+                        </div>
+                    `;
+                });
+                
+                resultsDiv.innerHTML = html;
+                
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="error">❌ エラー: ${error.message}</div>`;
+                console.error('実データテストエラー:', error);
+            }
+        }
+        
+        // 初期化時にコンソールにヘルプを表示
+        console.log('=== 統合血統抽出テスト環境 ===');
+        console.log('利用可能なテスト関数:');
+        console.log('- testDataConverterPedigree() : DataConverter血統抽出テスト');
+        console.log('- testPedigreeAnalysis() : PedigreeDatabase分析テスト');
+        console.log('- testIntegratedFlow() : 統合フローテスト');
+        console.log('- testRealData() : 実データテスト');
+    </script>
+</body>
+</html>

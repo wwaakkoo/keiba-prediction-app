@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>デバッグ統合テスト</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .result { background: #f0f0f0; padding: 10px; margin: 10px 0; border-radius: 3px; }
+        .success { color: green; }
+        .error { color: red; }
+        .warning { color: orange; }
+        .log { 
+            background: #f8f9fa; 
+            padding: 10px; 
+            border-radius: 3px; 
+            font-family: monospace; 
+            font-size: 12px; 
+            white-space: pre-wrap; 
+            max-height: 400px; 
+            overflow-y: auto; 
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 デバッグ統合テスト</h1>
+    
+    <button onclick="testDataConverter()">DataConverter詳細テスト実行</button>
+    <div id="results" class="result"></div>
+
+    <script src="js/dataConverter.js"></script>
+    <script>
+        function testDataConverter() {
+            const resultsDiv = document.getElementById('results');
+            
+            console.log('=== DataConverterデバッグテスト開始 ===');
+            
+            // テストデータ
+            const testData = `1\t1\t
+消
+ロードカナロア
+ベラジオオペラ
+エアルーティーン
+(ハービンジャー)
+栗東・上村  
+先中9週
+510kg(+2)
+4.0 (1人気)
+牡5鹿
+
+横山和
+58.0\t
+1\t2\t
+消
+ドゥラメンテ
+ドゥレッツァ
+モアザンセイクリッド
+(More Than Ready)
+美浦・尾関  
+先中9週
+468kg(前計不)
+6.7 (4人気)
+牡5青鹿
+
+横山武
+58.0\t`;
+
+            console.log('テストデータ:');
+            console.log(testData);
+            console.log('データ長:', testData.length);
+            
+            try {
+                console.log('DataConverter.parseNetkeibaData()を呼び出し中...');
+                const result = DataConverter.parseNetkeibaData(testData);
+                console.log('parseNetkeibaData結果:', result);
+                
+                let html = '<h3>📊 DataConverterデバッグ結果</h3>';
+                html += `<p><strong>解析された馬数:</strong> ${result.horses ? result.horses.length : 0}頭</p>`;
+                
+                if (result.horses && result.horses.length > 0) {
+                    result.horses.forEach((horse, index) => {
+                        html += `
+                            <div style="border: 1px solid #ddd; padding: 10px; margin: 10px 0;">
+                                <h4>馬${index + 1}</h4>
+                                <p><strong>馬名:</strong> ${horse.name || '未抽出'}</p>
+                                <p><strong>父:</strong> ${horse.sire || '未抽出'}</p>
+                                <p><strong>母:</strong> ${horse.dam || '未抽出'}</p>
+                                <p><strong>母父:</strong> ${horse.damSire || '未抽出'}</p>
+                                <p><strong>bloodlineStep:</strong> ${horse.bloodlineStep || 'なし'}</p>
+                                <p><strong>nextIndex:</strong> ${horse.nextIndex || 'なし'}</p>
+                            </div>
+                        `;
+                    });
+                } else {
+                    html += '<p class="error">❌ 馬データが抽出されませんでした</p>';
+                }
+                
+                // 生データ出力
+                html += '<h4>🔧 生データ</h4>';
+                html += `<div class="log">${JSON.stringify(result, null, 2)}</div>`;
+                
+                resultsDiv.innerHTML = html;
+                
+            } catch (error) {
+                console.error('DataConverterテストエラー:', error);
+                resultsDiv.innerHTML = `
+                    <div class="error">
+                        <h3>❌ エラー発生</h3>
+                        <p>${error.message}</p>
+                        <div class="log">${error.stack}</div>
+                    </div>
+                `;
+            }
+        }
+        
+        // ページ読み込み時にコンソールの情報を表示
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('=== デバッグ環境の確認 ===');
+            console.log('DataConverter:', typeof DataConverter);
+            console.log('DataConverter.parseNetkeibaData:', typeof DataConverter?.parseNetkeibaData);
+            console.log('DataConverter.isSireName:', typeof DataConverter?.isSireName);
+            console.log('DataConverter.isPotentialSire:', typeof DataConverter?.isPotentialSire);
+            console.log('DataConverter.isPotentialHorseName:', typeof DataConverter?.isPotentialHorseName);
+            console.log('DataConverter.isPotentialMare:', typeof DataConverter?.isPotentialMare);
+        });
+    </script>
+</body>
+</html>

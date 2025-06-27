@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>血統抽出比較テスト</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        .result { background: #f0f0f0; padding: 10px; margin: 10px 0; border-radius: 3px; }
+        .success { color: green; }
+        .error { color: red; }
+        .warning { color: orange; }
+        .comparison { display: flex; gap: 20px; }
+        .comparison > div { flex: 1; border: 1px solid #ddd; padding: 10px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>🔬 血統抽出比較テスト</h1>
+    <p>元の成功テスト (PedigreeExtractor) vs 統合テスト (DataConverter) の詳細比較</p>
+    
+    <button onclick="runComparisonTest()">比較テスト実行</button>
+    <div id="results" class="result"></div>
+
+    <script src="pedigree-test/pedigreeExtractor.js"></script>
+    <script src="js/dataConverter.js"></script>
+    <script>
+        function runComparisonTest() {
+            const resultsDiv = document.getElementById('results');
+            
+            console.log('=== 血統抽出比較テスト開始 ===');
+            
+            // 同じテストデータを使用
+            const testData = `1\t1\t
+消
+ロードカナロア
+ベラジオオペラ
+エアルーティーン
+(ハービンジャー)
+栗東・上村  
+先中9週
+510kg(+2)
+4.0 (1人気)
+牡5鹿
+
+横山和
+58.0\t
+1\t2\t
+消
+ドゥラメンテ
+ドゥレッツァ
+モアザンセイクリッド
+(More Than Ready)
+美浦・尾関  
+先中9週
+468kg(前計不)
+6.7 (4人気)
+牡5青鹿
+
+横山武
+58.0\t`;
+
+            let html = '<h3>📊 血統抽出比較結果</h3>';
+            
+            try {
+                // 1. 元の成功テスト (PedigreeExtractor)
+                console.log('=== PedigreeExtractor テスト ===');
+                const pedigreeResults = PedigreeExtractor.parseAllHorses(testData);
+                console.log('PedigreeExtractor結果:', pedigreeResults);
+                
+                // 2. 統合テスト (DataConverter)
+                console.log('=== DataConverter テスト ===');
+                const dataConverterResult = DataConverter.parseNetkeibaData(testData);
+                console.log('DataConverter結果:', dataConverterResult);
+                
+                // 3. 比較分析
+                const dataConverterHorses = dataConverterResult.horses || [];
+                
+                html += '<div class="comparison">';
+                
+                // PedigreeExtractor結果
+                html += '<div>';
+                html += '<h4>🎯 PedigreeExtractor (成功テスト)</h4>';
+                html += `<p><strong>抽出馬数:</strong> ${pedigreeResults.length}頭</p>`;
+                html += `<p><strong>データ型:</strong> ${Array.isArray(pedigreeResults) ? 'Array' : 'Object'}</p>`;
+                
+                pedigreeResults.forEach((horse, index) => {
+                    const pedigreeCount = [horse.sire, horse.dam, horse.damSire].filter(x => x).length;
+                    const rate = ((pedigreeCount / 3) * 100).toFixed(1);
+                    
+                    html += `
+                        <div style="border: 1px solid #ddd; padding: 8px; margin: 5px 0; font-size: 12px;">
+                            <strong>馬${index + 1}:</strong> ${horse.name || '未抽出'}<br>
+                            <strong>父:</strong> ${horse.sire || '未抽出'}<br>
+                            <strong>母:</strong> ${horse.dam || '未抽出'}<br>
+                            <strong>母父:</strong> ${horse.damSire || '未抽出'}<br>
+                            <strong>抽出率:</strong> ${rate}%
+                        </div>
+                    `;
+                });
+                html += '</div>';
+                
+                // DataConverter結果
+                html += '<div>';
+                html += '<h4>🔧 DataConverter (統合テスト)</h4>';
+                html += `<p><strong>抽出馬数:</strong> ${dataConverterHorses.length}頭</p>`;
+                html += `<p><strong>データ型:</strong> ${Array.isArray(dataConverterResult) ? 'Array' : 'Object'}</p>`;
+                html += `<p><strong>構造:</strong> { raceInfo: ${dataConverterResult.raceInfo ? 'あり' : 'なし'}, horses: Array }</p>`;
+                
+                dataConverterHorses.forEach((horse, index) => {
+                    const pedigreeCount = [horse.sire, horse.dam, horse.damSire].filter(x => x).length;
+                    const rate = ((pedigreeCount / 3) * 100).toFixed(1);
+                    
+                    html += `
+                        <div style="border: 1px solid #ddd; padding: 8px; margin: 5px 0; font-size: 12px;">
+                            <strong>馬${index + 1}:</strong> ${horse.name || '未抽出'}<br>
+                            <strong>父:</strong> ${horse.sire || '未抽出'}<br>
+                            <strong>母:</strong> ${horse.dam || '未抽出'}<br>
+                            <strong>母父:</strong> ${horse.damSire || '未抽出'}<br>
+                            <strong>抽出率:</strong> ${rate}%
+                        </div>
+                    `;
+                });
+                html += '</div>';
+                
+                html += '</div>'; // comparison終了
+                
+                // 4. 差分分析
+                html += '<h4>🔍 差分分析</h4>';
+                const differences = [];
+                
+                // 馬数比較
+                if (pedigreeResults.length !== dataConverterHorses.length) {
+                    differences.push(`馬数の違い: PedigreeExtractor=${pedigreeResults.length}頭 vs DataConverter=${dataConverterHorses.length}頭`);
+                }
+                
+                // 各馬の詳細比較
+                const maxHorses = Math.max(pedigreeResults.length, dataConverterHorses.length);
+                for (let i = 0; i < maxHorses; i++) {
+                    const pHorse = pedigreeResults[i];
+                    const dHorse = dataConverterHorses[i];
+                    
+                    if (!pHorse && dHorse) {
+                        differences.push(`馬${i + 1}: PedigreeExtractorに存在しない馬がDataConverterにあり`);
+                    } else if (pHorse && !dHorse) {
+                        differences.push(`馬${i + 1}: DataConverterに存在しない馬がPedigreeExtractorにあり`);
+                    } else if (pHorse && dHorse) {
+                        ['name', 'sire', 'dam', 'damSire'].forEach(field => {
+                            if (pHorse[field] !== dHorse[field]) {
+                                differences.push(`馬${i + 1}の${field}: PedigreeExtractor="${pHorse[field] || 'なし'}" vs DataConverter="${dHorse[field] || 'なし'}"`);
+                            }
+                        });
+                    }
+                }
+                
+                if (differences.length === 0) {
+                    html += '<p class="success">✅ 両方の結果が完全に一致しています！</p>';
+                } else {
+                    html += '<div class="error">';
+                    html += '<p>❌ 以下の違いが見つかりました:</p>';
+                    html += '<ul>';
+                    differences.forEach(diff => {
+                        html += `<li>${diff}</li>`;
+                    });
+                    html += '</ul>';
+                    html += '</div>';
+                }
+                
+                // 5. 関数呼び出し情報
+                html += '<h4>📋 関数呼び出し情報</h4>';
+                html += '<ul>';
+                html += '<li><strong>PedigreeExtractor:</strong> PedigreeExtractor.parseAllHorses(testData) → Array</li>';
+                html += '<li><strong>DataConverter:</strong> DataConverter.parseNetkeibaData(testData) → { raceInfo, horses }</li>';
+                html += '</ul>';
+                
+                resultsDiv.innerHTML = html;
+                
+            } catch (error) {
+                resultsDiv.innerHTML = `
+                    <div class="error">
+                        <h3>❌ エラー発生</h3>
+                        <p>${error.message}</p>
+                        <pre>${error.stack}</pre>
+                    </div>
+                `;
+                console.error('比較テストエラー:', error);
+            }
+        }
+        
+        // ページ読み込み時に利用可能な関数を確認
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('=== 利用可能な関数確認 ===');
+            console.log('PedigreeExtractor:', typeof PedigreeExtractor);
+            console.log('PedigreeExtractor.parseAllHorses:', typeof PedigreeExtractor?.parseAllHorses);
+            console.log('DataConverter:', typeof DataConverter);
+            console.log('DataConverter.parseNetkeibaData:', typeof DataConverter?.parseNetkeibaData);
+        });
+    </script>
+</body>
+</html>

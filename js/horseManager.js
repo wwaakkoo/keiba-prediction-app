@@ -38,6 +38,24 @@ class HorseManager {
                     <label>馬名</label>
                     <input type="text" name="horseName" placeholder="馬名を入力">
                 </div>
+                <!-- 血統情報セクション -->
+                <div class="horse-section">
+                    <h4>🧬 血統情報</h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+                        <div class="form-group">
+                            <label>父系（種牡馬）</label>
+                            <input type="text" name="sire" placeholder="例: ロードカナロア">
+                        </div>
+                        <div class="form-group">
+                            <label>母系（繁殖牝馬）</label>
+                            <input type="text" name="dam" placeholder="例: ベラジオオペラ">
+                        </div>
+                        <div class="form-group">
+                            <label>母父（母の父）</label>
+                            <input type="text" name="damSire" placeholder="例: ハービンジャー">
+                        </div>
+                    </div>
+                </div>
                 <div class="form-group">
                     <label>オッズ</label>
                     <input type="number" name="odds" step="0.1" placeholder="10.0">
@@ -236,6 +254,22 @@ class HorseManager {
                             <option value="56">50日以上</option>
                         </select>
                     </div>
+                    <div class="form-group">
+                        <label>今回レースレベル</label>
+                        <select name="raceLevel">
+                            <option value="">選択してください</option>
+                            <option value="G1">G1</option>
+                            <option value="G2">G2</option>
+                            <option value="G3">G3</option>
+                            <option value="L">Listed（L）</option>
+                            <option value="OP">オープン特別</option>
+                            <option value="3勝">3勝クラス</option>
+                            <option value="2勝">2勝クラス</option>
+                            <option value="1勝" selected>1勝クラス</option>
+                            <option value="未勝利">未勝利戦</option>
+                            <option value="新馬">新馬戦</option>
+                        </select>
+                    </div>
                 </div>
             </div>
             <div class="horse-section">
@@ -295,6 +329,22 @@ class HorseManager {
                                 <label>前走上がり3F</label>
                                 <input type="text" name="lastRaceAgari" placeholder="例: 34.1">
                             </div>
+                            <div class="form-group">
+                                <label>前走レースレベル</label>
+                                <select name="lastRaceLevel">
+                                    <option value="">選択してください</option>
+                                    <option value="G1">G1</option>
+                                    <option value="G2">G2</option>
+                                    <option value="G3">G3</option>
+                                    <option value="L">Listed（L）</option>
+                                    <option value="OP">オープン特別</option>
+                                    <option value="3勝">3勝クラス</option>
+                                    <option value="2勝">2勝クラス</option>
+                                    <option value="1勝">1勝クラス</option>
+                                    <option value="未勝利">未勝利戦</option>
+                                    <option value="新馬">新馬戦</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
                     
@@ -351,6 +401,22 @@ class HorseManager {
                             <div class="form-group">
                                 <label>2走前上がり3F</label>
                                 <input type="text" name="secondLastRaceAgari" placeholder="例: 34.1">
+                            </div>
+                            <div class="form-group">
+                                <label>2走前レースレベル</label>
+                                <select name="secondLastRaceLevel">
+                                    <option value="">選択してください</option>
+                                    <option value="G1">G1</option>
+                                    <option value="G2">G2</option>
+                                    <option value="G3">G3</option>
+                                    <option value="L">Listed（L）</option>
+                                    <option value="OP">オープン特別</option>
+                                    <option value="3勝">3勝クラス</option>
+                                    <option value="2勝">2勝クラス</option>
+                                    <option value="1勝">1勝クラス</option>
+                                    <option value="未勝利">未勝利戦</option>
+                                    <option value="新馬">新馬戦</option>
+                                </select>
                             </div>
                         </div>
                     </div>
@@ -629,10 +695,10 @@ class HorseManager {
         this.clearAllHorses();
         
         const sampleData = [
-            {name: 'ベラジオオペラ', odds: 4.0, lastRace: 1, jockey: '横山和生'},
-            {name: 'ドゥレッツァ', odds: 6.7, lastRace: 3, jockey: '横山武史'},
-            {name: 'レガレイラ', odds: 4.9, lastRace: 1, jockey: '戸崎圭太'},
-            {name: 'チャックネイト', odds: 104.2, lastRace: 2, jockey: 'D.レーン'}
+            {name: 'ベラジオオペラ', odds: 4.0, lastRace: 1, jockey: '横山和生', sire: 'ロードカナロア', dam: 'エアルーティーン', damSire: 'ハービンジャー'},
+            {name: 'ドゥレッツァ', odds: 6.7, lastRace: 3, jockey: '横山武史', sire: 'ドゥラメンテ', dam: 'モアザンセイクリッド', damSire: 'More Than Ready'},
+            {name: 'レガレイラ', odds: 4.9, lastRace: 1, jockey: '戸崎圭太', sire: 'ディープインパクト', dam: 'レディアンバサダー', damSire: 'キングカメハメハ'},
+            {name: 'チャックネイト', odds: 104.2, lastRace: 2, jockey: 'D.レーン', sire: 'ハーツクライ', dam: 'シンハライト', damSire: 'サンデーサイレンス'}
         ];
 
         sampleData.forEach(data => {
@@ -643,6 +709,11 @@ class HorseManager {
             lastCard.querySelector('input[name="horseName"]').value = data.name;
             lastCard.querySelector('input[name="odds"]').value = data.odds;
             lastCard.querySelector('select[name="lastRace"]').value = data.lastRace;
+            
+            // 血統情報を設定
+            if (data.sire) lastCard.querySelector('input[name="sire"]').value = data.sire;
+            if (data.dam) lastCard.querySelector('input[name="dam"]').value = data.dam;
+            if (data.damSire) lastCard.querySelector('input[name="damSire"]').value = data.damSire;
             
             const jockeySelect = lastCard.querySelector('select[name="jockey"]');
             const jockeyCustom = lastCard.querySelector('input[name="jockeyCustom"]');
@@ -705,6 +776,22 @@ class HorseManager {
             const weightChangeSelect = card.querySelector('select[name="weightChange"]');
             const weightChange = weightChangeSelect ? parseInt(weightChangeSelect.value) : 0;
 
+            // レースレベルと脚質情報
+            const raceLevelSelect = card.querySelector('select[name="raceLevel"]');
+            const raceLevel = raceLevelSelect ? raceLevelSelect.value : '';
+            const runningStyleSelect = card.querySelector('select[name="runningStyle"]');
+            const runningStyle = runningStyleSelect ? runningStyleSelect.value : '先行';
+            
+            // 血統情報（直接入力）
+            const sireInput = card.querySelector('input[name="sire"]');
+            const sire = sireInput ? sireInput.value || '' : '';
+            
+            const damInput = card.querySelector('input[name="dam"]');
+            const dam = damInput ? damInput.value || '' : '';
+            
+            const damSireInput = card.querySelector('input[name="damSire"]');
+            const damSire = damSireInput ? damSireInput.value || '' : '';
+
             // 今回のレース情報
             const courseSelect = card.querySelector('select[name="course"]');
             const course = courseSelect ? courseSelect.value : '東京';
@@ -749,6 +836,10 @@ class HorseManager {
             const lastRaceAgariInput = card.querySelector('input[name="lastRaceAgari"]');
             const lastRaceAgari = lastRaceAgariInput ? lastRaceAgariInput.value : '';
 
+            // 前走レースレベル
+            const lastRaceLevelSelect = card.querySelector('select[name="lastRaceLevel"]');
+            const lastRaceLevel = lastRaceLevelSelect ? lastRaceLevelSelect.value : '';
+
             // 2走前情報の抽出
             const secondLastRaceCourseInput = card.querySelector('input[name="secondLastRaceCourse"]');
             const secondLastRaceCourse = secondLastRaceCourseInput ? secondLastRaceCourseInput.value : '';
@@ -772,6 +863,9 @@ class HorseManager {
             const secondLastRaceOrder = secondLastRaceOrderInput ? this.parseRaceOrder(secondLastRaceOrderInput.value) : 0;
             const secondLastRaceAgariInput = card.querySelector('input[name="secondLastRaceAgari"]');
             const secondLastRaceAgari = secondLastRaceAgariInput ? secondLastRaceAgariInput.value : '';
+            // 2走前レースレベル
+            const secondLastRaceLevelSelect = card.querySelector('select[name="secondLastRaceLevel"]');
+            const secondLastRaceLevel = secondLastRaceLevelSelect ? secondLastRaceLevelSelect.value : '';
 
             // 3走前情報の抽出
             const thirdLastRaceCourseInput = card.querySelector('input[name="thirdLastRaceCourse"]');
@@ -860,6 +954,13 @@ class HorseManager {
                 jockey: jockey,
                 age: age,
                 weightChange: weightChange,
+                // レースレベルと脚質情報
+                raceLevel: raceLevel,
+                runningStyle: runningStyle,
+                // 血統情報
+                sire: sire,
+                dam: dam,
+                damSire: damSire,
                 course: course,
                 distance: distance,
                 trackType: trackType,
@@ -881,6 +982,7 @@ class HorseManager {
                 lastRacePopularity: lastRacePopularity,
                 lastRaceOrder: lastRaceOrder,
                 lastRaceAgari: lastRaceAgari,
+                lastRaceLevel: lastRaceLevel,
                 // 2走前情報
                 secondLastRaceCourse: secondLastRaceCourse,
                 secondLastRaceDistance: secondLastRaceDistance,
@@ -893,6 +995,7 @@ class HorseManager {
                 secondLastRacePopularity: secondLastRacePopularity,
                 secondLastRaceOrder: secondLastRaceOrder,
                 secondLastRaceAgari: secondLastRaceAgari,
+                secondLastRaceLevel: secondLastRaceLevel,
                 // 3走前情報
                 thirdLastRaceCourse: thirdLastRaceCourse,
                 thirdLastRaceDistance: thirdLastRaceDistance,
@@ -936,6 +1039,19 @@ class HorseManager {
                 horseNumber: horseNumber,
                 frameNumber: frameNumber
             });
+        });
+
+        // 検証用デバッグログ（レースレベル・基本脚質抽出確認）
+        console.log('=== 入力・抽出システム検証 ===');
+        horses.forEach((horse, index) => {
+            console.log(`🐎 ${horse.name || `馬${index + 1}`}:`);
+            console.log(`  基本情報: オッズ=${horse.odds}倍 / 脚質=${horse.runningStyle || '未設定'} / 騎手=${horse.jockey || '未設定'}`);
+            console.log(`  今回: レベル=${horse.raceLevel || '未設定'}`);
+            console.log(`  1走前: レベル=${horse.lastRaceLevel || '未設定'}`);
+            console.log(`  2走前: レベル=${horse.secondLastRaceLevel || '未設定'}`);
+            console.log(`  3走前: レベル=${horse.thirdLastRaceLevel || '未設定'}`);
+            console.log(`  4走前: レベル=${horse.fourthLastRaceLevel || '未設定'}`);
+            console.log(`  5走前: レベル=${horse.fifthLastRaceLevel || '未設定'}`);
         });
 
         return horses;
@@ -1074,13 +1190,31 @@ class HorseManager {
                     <label>馬名</label>
                     <input type="text" name="horseName" value="${horseData.name || ''}" required>
                 </div>
+                <!-- 血統情報セクション -->
+                <div class="horse-section">
+                    <h4>🧬 血統情報</h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+                        <div class="form-group">
+                            <label>父系（種牡馬）</label>
+                            <input type="text" name="sire" value="${horseData.sire || ''}" placeholder="例: ロードカナロア">
+                        </div>
+                        <div class="form-group">
+                            <label>母系（繁殖牝馬）</label>
+                            <input type="text" name="dam" value="${horseData.dam || ''}" placeholder="例: ベラジオオペラ">
+                        </div>
+                        <div class="form-group">
+                            <label>母父（母の父）</label>
+                            <input type="text" name="damSire" value="${horseData.damSire || ''}" placeholder="例: ハービンジャー">
+                        </div>
+                    </div>
+                </div>
                 <div class="form-group">
                     <label>オッズ</label>
                     <input type="number" name="odds" step="0.1" placeholder="例: 3.5" value="${horseData.odds || ''}">
                 </div>
                 <div class="form-group">
                     <label>前走着順</label>
-                    <input type="number" name="lastRaceOrder" placeholder="例: 1" value="${horseData.lastRaceOrder || ''}">
+                    <input type="text" name="lastRaceOrder" placeholder="例: 1, DNS, 取消" value="${horseData.lastRaceOrder || ''}">
                 </div>
                 <!--
                 <div class="form-group">
@@ -1265,6 +1399,22 @@ class HorseManager {
                             <option value="42" ${restDaysValue === 42 ? 'selected' : ''}>36-42日</option>
                             <option value="49" ${restDaysValue === 49 ? 'selected' : ''}>43-49日</option>
                             <option value="56" ${restDaysValue === 56 ? 'selected' : ''}>50日以上</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>今回レースレベル</label>
+                        <select name="raceLevel">
+                            <option value="" ${!horseData.raceLevel ? 'selected' : ''}>選択してください</option>
+                            <option value="G1" ${horseData.raceLevel === 'G1' ? 'selected' : ''}>G1</option>
+                            <option value="G2" ${horseData.raceLevel === 'G2' ? 'selected' : ''}>G2</option>
+                            <option value="G3" ${horseData.raceLevel === 'G3' ? 'selected' : ''}>G3</option>
+                            <option value="L" ${horseData.raceLevel === 'L' ? 'selected' : ''}>Listed（L）</option>
+                            <option value="OP" ${horseData.raceLevel === 'OP' ? 'selected' : ''}>オープン特別</option>
+                            <option value="3勝" ${horseData.raceLevel === '3勝' ? 'selected' : ''}>3勝クラス</option>
+                            <option value="2勝" ${horseData.raceLevel === '2勝' ? 'selected' : ''}>2勝クラス</option>
+                            <option value="1勝" ${horseData.raceLevel === '1勝' ? 'selected' : ''}>1勝クラス</option>
+                            <option value="未勝利" ${horseData.raceLevel === '未勝利' ? 'selected' : ''}>未勝利戦</option>
+                            <option value="新馬" ${horseData.raceLevel === '新馬' ? 'selected' : ''}>新馬戦</option>
                         </select>
                     </div>
                 </div>
@@ -1662,6 +1812,46 @@ class HorseManager {
         
         //console.log('=== addHorseFromData完了 ===');
     }
+    
+    // カスタム血統入力切り替え関数群
+    static toggleCustomSire(selectElement) {
+        const horseCard = selectElement.closest('.horse-card');
+        const customInput = horseCard.querySelector('input[name="sireCustom"]');
+        
+        if (selectElement.value === 'custom') {
+            customInput.style.display = 'block';
+            customInput.focus();
+        } else {
+            customInput.style.display = 'none';
+            customInput.value = '';
+        }
+    }
+    
+    static toggleCustomDam(selectElement) {
+        const horseCard = selectElement.closest('.horse-card');
+        const customInput = horseCard.querySelector('input[name="damCustom"]');
+        
+        if (selectElement.value === 'custom') {
+            customInput.style.display = 'block';
+            customInput.focus();
+        } else {
+            customInput.style.display = 'none';
+            customInput.value = '';
+        }
+    }
+    
+    static toggleCustomDamSire(selectElement) {
+        const horseCard = selectElement.closest('.horse-card');
+        const customInput = horseCard.querySelector('input[name="damSireCustom"]');
+        
+        if (selectElement.value === 'custom') {
+            customInput.style.display = 'block';
+            customInput.focus();
+        } else {
+            customInput.style.display = 'none';
+            customInput.value = '';
+        }
+    }
 }
 
 // グローバル関数として公開
@@ -1670,4 +1860,7 @@ window.removeHorse = HorseManager.removeHorse.bind(HorseManager);
 window.clearAllHorses = HorseManager.clearAllHorses.bind(HorseManager);
 window.addSampleHorses = HorseManager.addSampleHorses.bind(HorseManager);
 window.toggleCustomJockey = HorseManager.toggleCustomJockey.bind(HorseManager);
+window.toggleCustomSire = HorseManager.toggleCustomSire.bind(HorseManager);
+window.toggleCustomDam = HorseManager.toggleCustomDam.bind(HorseManager);
+window.toggleCustomDamSire = HorseManager.toggleCustomDamSire.bind(HorseManager);
 window.addHorseFromData = HorseManager.addHorseFromData.bind(HorseManager);

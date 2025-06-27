@@ -593,12 +593,18 @@ class RaceAnalysisEngine {
         return squaredDiffs.reduce((sum, sqDiff) => sum + sqDiff, 0) / numbers.length;
     }
     
-    // 包括的なレース分析レポート生成（タイム指数分析追加）
+    // 包括的なレース分析レポート生成（タイム指数・血統分析追加）
     static generateRaceAnalysisReport(horse, currentRaceLevel, raceDistance, trackType) {
         const classProgression = this.analyzeClassProgression(currentRaceLevel, horse.lastRaceLevel);
         const levelHistory = this.analyzeRaceLevelHistory(horse);
         const runningStyle = this.analyzeRunningStyle(horse, raceDistance, trackType);
         const timeIndexHistory = this.analyzeTimeIndexHistory(horse);
+        
+        // 血統分析（血統情報が利用可能な場合）
+        let pedigreeAnalysis = null;
+        if (typeof PedigreeDatabase !== 'undefined' && horse.sire && horse.dam) {
+            pedigreeAnalysis = PedigreeDatabase.analyzePedigree(horse.sire, horse.dam, horse.damSire);
+        }
         
         return {
             horseName: horse.name || '不明',
@@ -606,13 +612,14 @@ class RaceAnalysisEngine {
             levelHistory,
             runningStyle,
             timeIndexHistory,
-            overallScore: this.calculateOverallAnalysisScore(classProgression, levelHistory, runningStyle, timeIndexHistory),
-            recommendations: this.generateRecommendations(classProgression, levelHistory, runningStyle, timeIndexHistory)
+            pedigreeAnalysis,
+            overallScore: this.calculateOverallAnalysisScore(classProgression, levelHistory, runningStyle, timeIndexHistory, pedigreeAnalysis),
+            recommendations: this.generateRecommendations(classProgression, levelHistory, runningStyle, timeIndexHistory, pedigreeAnalysis)
         };
     }
     
-    // 総合分析スコア計算（タイム指数分析追加）
-    static calculateOverallAnalysisScore(classProgression, levelHistory, runningStyle, timeIndexHistory) {
+    // 総合分析スコア計算（タイム指数・血統分析追加）
+    static calculateOverallAnalysisScore(classProgression, levelHistory, runningStyle, timeIndexHistory, pedigreeAnalysis) {
         let score = 0;
         
         // クラス昇降級の影響
@@ -642,11 +649,31 @@ class RaceAnalysisEngine {
             if (timeIndexHistory.bestTimeIndex >= 100) score += 5;
         }
         
+        // 血統の影響
+        if (pedigreeAnalysis && pedigreeAnalysis.overallRating) {
+            const pedigreeBonus = (pedigreeAnalysis.overallRating.totalScore - 75) * 0.25; // 基準値75からの差を0.25倍で加算
+            score += pedigreeBonus;
+            
+            // 血統グレードボーナス
+            switch (pedigreeAnalysis.overallRating.grade) {
+                case 'S': score += 6; break;
+                case 'A+': score += 4; break;
+                case 'A': score += 3; break;
+                case 'B+': score += 2; break;
+                case 'B': score += 1; break;
+            }
+            
+            // 優秀配合ボーナス
+            if (pedigreeAnalysis.matingAnalysis.compatibility >= 90) {
+                score += 4;
+            }
+        }
+        
         return Math.max(0, Math.min(100, 50 + score)); // 0-100の範囲に正規化
     }
     
-    // 推奨事項生成（タイム指数分析追加）
-    static generateRecommendations(classProgression, levelHistory, runningStyle, timeIndexHistory) {
+    // 推奨事項生成（タイム指数・血統分析追加）
+    static generateRecommendations(classProgression, levelHistory, runningStyle, timeIndexHistory, pedigreeAnalysis) {
         const recommendations = [];
         
         if (classProgression.progression === 'major_upgrade') {
@@ -698,6 +725,47 @@ class RaceAnalysisEngine {
                 recommendations.push('最近タイム指数向上傾向で好調');
             } else if (timeIndexHistory.recentTrend === 'declining') {
                 recommendations.push('最近タイム指数悪化傾向で注意');
+            }
+        }
+        
+        // 血統分析の推奨事項
+        if (pedigreeAnalysis) {
+            const grade = pedigreeAnalysis.overallRating.grade;
+            const totalScore = pedigreeAnalysis.overallRating.totalScore;
+            
+            if (grade === 'S') {
+                recommendations.push('最高級血統で大きなポテンシャルを秘める');
+            } else if (grade === 'A+' || grade === 'A') {
+                recommendations.push('優良血統で安定した能力が期待される');
+            } else if (grade === 'D' || totalScore < 65) {
+                recommendations.push('血統面で課題があり能力に限界の可能性');
+            }
+            
+            if (pedigreeAnalysis.matingAnalysis.compatibility >= 90) {
+                recommendations.push('配合相性抜群で相乗効果が期待される');
+            }
+            
+            // 父系特徴からの推奨
+            if (pedigreeAnalysis.sireAnalysis.class === 'S') {
+                recommendations.push('トップクラス種牡馬産駒で実績の裏付けあり');
+            }
+            
+            // 配合パターンからの推奨
+            switch (pedigreeAnalysis.matingAnalysis.pattern) {
+                case 'speed_stamina':
+                    recommendations.push('スピードとスタミナの理想的融合');
+                    break;
+                case 'power_sprint':
+                    recommendations.push('パワーと瞬発力の爆発的組み合わせ');
+                    break;
+                case 'turf_dirt':
+                    recommendations.push('芝ダート両用の万能血統');
+                    break;
+            }
+            
+            // リスク要因の指摘
+            if (pedigreeAnalysis.matingAnalysis.riskFactors.length > 0) {
+                recommendations.push(`血統リスク: ${pedigreeAnalysis.matingAnalysis.riskFactors.join('、')}`);
             }
         }
         
@@ -755,6 +823,25 @@ class RaceAnalysisIntegrator {
             if (analysis.timeIndexHistory.bestTimeIndex >= 110) bonus += 2; // 110超は追加ボーナス
         }
         
-        return Math.max(-30, Math.min(30, bonus)); // ±30点の範囲で制限（タイム指数追加で範囲拡大）
+        // 血統ボーナス
+        if (analysis.pedigreeAnalysis && analysis.pedigreeAnalysis.overallRating) {
+            const pedigreeBonus = (analysis.pedigreeAnalysis.overallRating.totalScore - 75) * 0.2; // 基準値75からの差を0.2倍で加算
+            bonus += pedigreeBonus;
+            
+            // 血統グレードボーナス
+            switch (analysis.pedigreeAnalysis.overallRating.grade) {
+                case 'S': bonus += 5; break;
+                case 'A+': bonus += 3; break;
+                case 'A': bonus += 2; break;
+                case 'B+': bonus += 1; break;
+            }
+            
+            // 特殊配合ボーナス
+            if (analysis.pedigreeAnalysis.matingAnalysis.compatibility >= 90) {
+                bonus += 3;
+            }
+        }
+        
+        return Math.max(-35, Math.min(35, bonus)); // ±35点の範囲で制限（血統分析追加で範囲拡大）
     }
 }
