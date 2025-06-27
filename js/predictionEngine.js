@@ -99,6 +99,11 @@ class PredictionEngine {
                     console.log(`⏱️ タイム指数分析: ${raceAnalysisResult.raceAnalysis.timeIndexHistory.analysis}`);
                     console.log(`🎯 平均指数: ${raceAnalysisResult.raceAnalysis.timeIndexHistory.averageTimeIndex} / 最高指数: ${raceAnalysisResult.raceAnalysis.timeIndexHistory.bestTimeIndex}`);
                 }
+                if (raceAnalysisResult.raceAnalysis.pedigreeAnalysis) {
+                    console.log(`🧬 血統分析: ${raceAnalysisResult.raceAnalysis.pedigreeAnalysis.sireAnalysis.analysis}`);
+                    console.log(`⭐ 血統評価: ${raceAnalysisResult.raceAnalysis.pedigreeAnalysis.overallRating.grade}級 (${raceAnalysisResult.raceAnalysis.pedigreeAnalysis.overallRating.totalScore}点)`);
+                    console.log(`🤝 配合相性: ${raceAnalysisResult.raceAnalysis.pedigreeAnalysis.matingAnalysis.compatibility}点 - ${raceAnalysisResult.raceAnalysis.pedigreeAnalysis.matingAnalysis.analysis}`);
+                }
                 console.log(`🔧 現在レース条件: ${currentRaceLevel} / ${raceDistance}m / ${trackType}`);
             }
 
@@ -132,6 +137,19 @@ class PredictionEngine {
                 weightChangeScore = -15; // 大幅減少は不利
             }
             score += weightChangeScore * (adj.weightChangeWeight || 1.0);
+
+            // 血統分析評価（PedigreeDatabaseが利用可能な場合）
+            let pedigreeScore = 0;
+            if (typeof PedigreeDatabase !== 'undefined' && horse.sire) {
+                const pedigreeAnalysis = PedigreeDatabase.analyzePedigree(horse.sire, horse.dam || '', horse.damSire || '');
+                pedigreeScore = this.calculatePedigreeScore(pedigreeAnalysis, horse);
+                score += pedigreeScore;
+                
+                console.log(`🧬 血統分析 (${horse.name}): ${pedigreeAnalysis.overallRating.grade}級 (${pedigreeAnalysis.overallRating.totalScore}点) → スコア: ${pedigreeScore}点`);
+                console.log(`   父: ${pedigreeAnalysis.sireAnalysis.name} (${pedigreeAnalysis.sireAnalysis.rating}点)`);
+                console.log(`   母父: ${pedigreeAnalysis.damSireAnalysis.name} (${pedigreeAnalysis.damSireAnalysis.effect}点)`);
+                console.log(`   配合: ${pedigreeAnalysis.matingAnalysis.compatibility}点 - ${pedigreeAnalysis.matingAnalysis.analysis}`);
+            }
 
             // コース適性評価
             let courseScore = 0;
@@ -1047,6 +1065,63 @@ class PredictionEngine {
         }
         
         return '芝'; // デフォルト値
+    }
+
+    // 血統分析からスコアを計算
+    static calculatePedigreeScore(pedigreeAnalysis, horse) {
+        let pedigreeScore = 0;
+        
+        // 血統総合評価をスコアに変換（0-20点）
+        const overallRating = pedigreeAnalysis.overallRating.totalScore;
+        pedigreeScore += Math.min((overallRating - 60) * 0.25, 20); // 60点基準で変換
+        
+        // 距離適性による補正（血統による距離適性）
+        const currentDistance = parseInt(this.getCurrentRaceDistance());
+        if (currentDistance && pedigreeAnalysis.sireAnalysis.distanceAptitude) {
+            const distanceAptitude = pedigreeAnalysis.sireAnalysis.distanceAptitude[currentDistance] || 70;
+            pedigreeScore += (distanceAptitude - 70) * 0.1; // 距離適性による補正
+        }
+        
+        // 馬場適性による補正
+        const currentTrackType = this.getCurrentTrackType();
+        if (currentTrackType && pedigreeAnalysis.sireAnalysis.trackAptitude) {
+            const trackAptitude = pedigreeAnalysis.sireAnalysis.trackAptitude[currentTrackType] || 70;
+            pedigreeScore += (trackAptitude - 70) * 0.15; // 馬場適性による補正
+        }
+        
+        // 配合相性による補正
+        const matingCompatibility = pedigreeAnalysis.matingAnalysis.compatibility;
+        if (matingCompatibility >= 90) {
+            pedigreeScore += 8; // 優秀配合
+        } else if (matingCompatibility >= 80) {
+            pedigreeScore += 5; // 良配合
+        } else if (matingCompatibility < 70) {
+            pedigreeScore -= 3; // 配合に課題
+        }
+        
+        // グレード補正
+        const grade = pedigreeAnalysis.overallRating.grade;
+        switch (grade) {
+            case 'S':
+                pedigreeScore += 10;
+                break;
+            case 'A+':
+                pedigreeScore += 8;
+                break;
+            case 'A':
+                pedigreeScore += 5;
+                break;
+            case 'B+':
+                pedigreeScore += 2;
+                break;
+            case 'B':
+                pedigreeScore += 0;
+                break;
+            default:
+                pedigreeScore -= 2;
+        }
+        
+        return Math.round(pedigreeScore * 10) / 10; // 小数点1桁で丸める
     }
 }
 

@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>血統抽出修正確認テスト</title>
+    <meta charset="UTF-8">
+</head>
+<body>
+    <h1>血統抽出修正確認テスト</h1>
+    
+    <div id="testResult"></div>
+    
+    <script src="js/dataConverter.js"></script>
+    <script>
+        console.log('=== 血統抽出修正確認テスト開始 ===');
+        
+        // テストデータ
+        const testData = `1\t1\t
+消
+ロードカナロア
+ベラジオオペラ
+エアルーティーン
+(ハービンジャー)
+栗東・上村  
+先中9週
+510kg(+2)
+4.0 (1人気)
+牡5鹿
+
+横山和
+58.0\t
+2025.04.06 阪神1
+大阪杯 GI
+芝2000 1:56.2 良
+15頭 5番 2人 横山和生 58.0
+4-4-3-3 (34.1) 508(-4)
+ロードデルレイ(-0.2)
+
+1\t2\t
+消
+ドゥラメンテ
+ドゥレッツァ
+モアザンセイクリッド
+(More Than Ready)
+美浦・尾関  
+先中9週
+468kg(前計不)
+6.7 (4人気)
+牡5青鹿
+
+横山武
+58.0\t
+2025.04.05 メイダン3
+ドバイシー GI
+芝2410 良
+9頭 2番 5人 スミヨン 57.5
+(0.0) 
+(0.0)`;
+
+        try {
+            console.log('🧪 テストデータを解析中...');
+            
+            const result = DataConverter.parseNetkeibaData(testData);
+            
+            console.log('✅ 解析結果:', result);
+            console.log(`📊 解析された馬の数: ${result.horses.length}`);
+            
+            result.horses.forEach((horse, index) => {
+                console.log(`=== 馬 ${index + 1}: ${horse.name} ===`);
+                console.log(`🐎 父系: ${horse.sire || '未抽出'}`);
+                console.log(`🐎 母系: ${horse.dam || '未抽出'}`);
+                console.log(`🐎 母父: ${horse.damSire || '未抽出'}`);
+                console.log('---');
+            });
+            
+            // 血統抽出成功チェック
+            const horse1 = result.horses[0];
+            const horse2 = result.horses[1];
+            
+            let successMessages = [];
+            let errorMessages = [];
+            
+            if (horse1 && horse1.sire === 'ロードカナロア') {
+                successMessages.push('✅ 1頭目の父系（ロードカナロア）抽出成功');
+            } else {
+                errorMessages.push('❌ 1頭目の父系（ロードカナロア）抽出失敗');
+            }
+            
+            if (horse2 && horse2.sire === 'ドゥラメンテ') {
+                successMessages.push('✅ 2頭目の父系（ドゥラメンテ）抽出成功');
+            } else {
+                errorMessages.push('❌ 2頭目の父系（ドゥラメンテ）抽出失敗');
+            }
+            
+            if (horse1 && horse1.damSire === 'ハービンジャー') {
+                successMessages.push('✅ 1頭目の母父（ハービンジャー）抽出成功');
+            } else {
+                errorMessages.push('❌ 1頭目の母父（ハービンジャー）抽出失敗');
+            }
+            
+            if (horse2 && horse2.damSire === 'More Than Ready') {
+                successMessages.push('✅ 2頭目の母父（More Than Ready）抽出成功');
+            } else {
+                errorMessages.push('❌ 2頭目の母父（More Than Ready）抽出失敗');
+            }
+            
+            const testResultDiv = document.getElementById('testResult');
+            testResultDiv.innerHTML = `
+                <h2>テスト結果</h2>
+                <div style="color: green;">
+                    ${successMessages.map(msg => `<p>${msg}</p>`).join('')}
+                </div>
+                <div style="color: red;">
+                    ${errorMessages.map(msg => `<p>${msg}</p>`).join('')}
+                </div>
+                <h3>詳細結果</h3>
+                <pre>${JSON.stringify(result, null, 2)}</pre>
+            `;
+            
+            // 修正が成功したかの最終判定
+            if (errorMessages.length === 0) {
+                console.log('🎉 修正成功！すべての血統データが正常に抽出されました');
+            } else {
+                console.log('⚠️ まだ問題があります:', errorMessages);
+            }
+            
+        } catch (error) {
+            console.error('❌ テスト実行エラー:', error);
+            document.getElementById('testResult').innerHTML = `<p style="color: red;">エラー: ${error.message}</p>`;
+        }
+    </script>
+</body>
+</html>

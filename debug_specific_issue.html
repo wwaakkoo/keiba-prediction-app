@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>具体的問題デバッグ</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        .result { background: #f0f0f0; padding: 10px; margin: 10px 0; border-radius: 3px; }
+        .success { color: green; }
+        .error { color: red; }
+        .warning { color: orange; }
+        .log { 
+            background: #f8f9fa; 
+            padding: 10px; 
+            border-radius: 3px; 
+            font-family: monospace; 
+            font-size: 11px; 
+            white-space: pre-wrap; 
+            max-height: 400px; 
+            overflow-y: auto; 
+            border: 1px solid #ddd;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 具体的問題デバッグ</h1>
+    <p>提供された問題のあるデータで詳細分析</p>
+    
+    <div class="test-section">
+        <h2>テスト1: サトノアラジン（母系未抽出問題）</h2>
+        <button onclick="testCase1()">実行</button>
+        <div id="result1" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>テスト2: ダノンキラウェア（馬名誤認問題）</h2>
+        <button onclick="testCase2()">実行</button>
+        <div id="result2" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>テスト3: 両方のデータを統合テスト</h2>
+        <button onclick="testBothCases()">実行</button>
+        <div id="result3" class="result"></div>
+    </div>
+
+    <script src="js/dataConverter.js"></script>
+    <script>
+        function testCase1() {
+            const resultsDiv = document.getElementById('result1');
+            
+            // 問題のあるデータ1: サトノアラジン
+            const testData1 = `1\t1\t
+--
+サトノアラジン
+ビップジーニー
+ムーンライトダンス
+(Sinndar)
+栗東・松下  
+差中2週
+486kg(0)
+25.3 (7人気)
+牡5栗
+
+騎手名
+58.0\t`;
+
+            console.log('=== テストケース1: サトノアラジン ===');
+            console.log('入力データ:', testData1);
+            
+            try {
+                const result = DataConverter.parseNetkeibaData(testData1);
+                console.log('抽出結果:', result);
+                
+                let html = '<h4>📊 サトノアラジン抽出結果</h4>';
+                html += `<p><strong>解析された馬数:</strong> ${result.horses.length}頭</p>`;
+                
+                if (result.horses.length > 0) {
+                    const horse = result.horses[0];
+                    html += `
+                        <div style="border: 1px solid #ddd; padding: 10px; margin: 10px 0;">
+                            <h5>抽出結果</h5>
+                            <p><strong>馬名:</strong> ${horse.name || '❌未抽出'}</p>
+                            <p><strong>父系:</strong> ${horse.sire || '❌未抽出'}</p>
+                            <p><strong>母系:</strong> ${horse.dam || '❌未抽出'}</p>
+                            <p><strong>母父:</strong> ${horse.damSire || '❌未抽出'}</p>
+                        </div>
+                        
+                        <h5>期待結果</h5>
+                        <div style="border: 1px solid #28a745; padding: 10px; margin: 10px 0; background: #d4edda;">
+                            <p><strong>馬名:</strong> ビップジーニー</p>
+                            <p><strong>父系:</strong> サトノアラジン</p>
+                            <p><strong>母系:</strong> ムーンライトダンス</p>
+                            <p><strong>母父:</strong> Sinndar</p>
+                        </div>
+                        
+                        <h5>判定結果</h5>
+                        <ul>
+                            <li class="${horse.name === 'ビップジーニー' ? 'success' : 'error'}">
+                                馬名: ${horse.name === 'ビップジーニー' ? '✅正確' : '❌不正確 (期待: ビップジーニー, 実際: ' + (horse.name || '未抽出') + ')'}
+                            </li>
+                            <li class="${horse.sire === 'サトノアラジン' ? 'success' : 'error'}">
+                                父系: ${horse.sire === 'サトノアラジン' ? '✅正確' : '❌不正確 (期待: サトノアラジン, 実際: ' + (horse.sire || '未抽出') + ')'}
+                            </li>
+                            <li class="${horse.dam === 'ムーンライトダンス' ? 'success' : 'error'}">
+                                母系: ${horse.dam === 'ムーンライトダンス' ? '✅正確' : '❌不正確 (期待: ムーンライトダンス, 実際: ' + (horse.dam || '未抽出') + ')'}
+                            </li>
+                            <li class="${horse.damSire === 'Sinndar' ? 'success' : 'error'}">
+                                母父: ${horse.damSire === 'Sinndar' ? '✅正確' : '❌不正確 (期待: Sinndar, 実際: ' + (horse.damSire || '未抽出') + ')'}
+                            </li>
+                        </ul>
+                    `;
+                    
+                    if (horse.processLog) {
+                        html += '<h5>詳細ログ</h5>';
+                        html += `<div class="log">${horse.processLog.join('\\n')}</div>`;
+                    }
+                } else {
+                    html += '<p class="error">❌ 馬データが抽出されませんでした</p>';
+                }
+                
+                resultsDiv.innerHTML = html;
+                
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="error">❌ エラー: ${error.message}</div>`;
+                console.error('テストケース1エラー:', error);
+            }
+        }
+        
+        function testCase2() {
+            const resultsDiv = document.getElementById('result2');
+            
+            // 問題のあるデータ2: ダノンキラウェア
+            const testData2 = `5\t8\t
+--
+ロードカナロア
+ダノンキラウェア
+レキシールー
+(Sligo Bay)
+栗東・中内田  
+先中46週
+474kg(+16)
+20.1 (6人気)
+牝4黒鹿
+
+騎手名
+55.0\t`;
+
+            console.log('=== テストケース2: ダノンキラウェア ===');
+            console.log('入力データ:', testData2);
+            
+            try {
+                const result = DataConverter.parseNetkeibaData(testData2);
+                console.log('抽出結果:', result);
+                
+                let html = '<h4>📊 ダノンキラウェア抽出結果</h4>';
+                html += `<p><strong>解析された馬数:</strong> ${result.horses.length}頭</p>`;
+                
+                if (result.horses.length > 0) {
+                    const horse = result.horses[0];
+                    html += `
+                        <div style="border: 1px solid #ddd; padding: 10px; margin: 10px 0;">
+                            <h5>抽出結果</h5>
+                            <p><strong>馬名:</strong> ${horse.name || '❌未抽出'}</p>
+                            <p><strong>父系:</strong> ${horse.sire || '❌未抽出'}</p>
+                            <p><strong>母系:</strong> ${horse.dam || '❌未抽出'}</p>
+                            <p><strong>母父:</strong> ${horse.damSire || '❌未抽出'}</p>
+                        </div>
+                        
+                        <h5>期待結果</h5>
+                        <div style="border: 1px solid #28a745; padding: 10px; margin: 10px 0; background: #d4edda;">
+                            <p><strong>馬名:</strong> ダノンキラウェア</p>
+                            <p><strong>父系:</strong> ロードカナロア</p>
+                            <p><strong>母系:</strong> レキシールー</p>
+                            <p><strong>母父:</strong> Sligo Bay</p>
+                        </div>
+                        
+                        <h5>判定結果</h5>
+                        <ul>
+                            <li class="${horse.name === 'ダノンキラウェア' ? 'success' : 'error'}">
+                                馬名: ${horse.name === 'ダノンキラウェア' ? '✅正確' : '❌不正確 (期待: ダノンキラウェア, 実際: ' + (horse.name || '未抽出') + ')'}
+                            </li>
+                            <li class="${horse.sire === 'ロードカナロア' ? 'success' : 'error'}">
+                                父系: ${horse.sire === 'ロードカナロア' ? '✅正確' : '❌不正確 (期待: ロードカナロア, 実際: ' + (horse.sire || '未抽出') + ')'}
+                            </li>
+                            <li class="${horse.dam === 'レキシールー' ? 'success' : 'error'}">
+                                母系: ${horse.dam === 'レキシールー' ? '✅正確' : '❌不正確 (期待: レキシールー, 実際: ' + (horse.dam || '未抽出') + ')'}
+                            </li>
+                            <li class="${horse.damSire === 'Sligo Bay' ? 'success' : 'error'}">
+                                母父: ${horse.damSire === 'Sligo Bay' ? '✅正確' : '❌不正確 (期待: Sligo Bay, 実際: ' + (horse.damSire || '未抽出') + ')'}
+                            </li>
+                        </ul>
+                    `;
+                    
+                    if (horse.processLog) {
+                        html += '<h5>詳細ログ</h5>';
+                        html += `<div class="log">${horse.processLog.join('\\n')}</div>`;
+                    }
+                } else {
+                    html += '<p class="error">❌ 馬データが抽出されませんでした</p>';
+                }
+                
+                resultsDiv.innerHTML = html;
+                
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="error">❌ エラー: ${error.message}</div>`;
+                console.error('テストケース2エラー:', error);
+            }
+        }
+        
+        function testBothCases() {
+            const resultsDiv = document.getElementById('result3');
+            
+            // 両方のデータを統合
+            const combinedData = `1\t1\t
+--
+サトノアラジン
+ビップジーニー
+ムーンライトダンス
+(Sinndar)
+栗東・松下  
+差中2週
+486kg(0)
+25.3 (7人気)
+牡5栗
+
+騎手名
+58.0\t
+5\t8\t
+--
+ロードカナロア
+ダノンキラウェア
+レキシールー
+(Sligo Bay)
+栗東・中内田  
+先中46週
+474kg(+16)
+20.1 (6人気)
+牝4黒鹿
+
+騎手名
+55.0\t`;
+
+            console.log('=== 統合テスト: 両方のケース ===');
+            console.log('入力データ:', combinedData);
+            
+            try {
+                const result = DataConverter.parseNetkeibaData(combinedData);
+                console.log('統合抽出結果:', result);
+                
+                let html = '<h4>📊 統合テスト抽出結果</h4>';
+                html += `<p><strong>解析された馬数:</strong> ${result.horses.length}頭</p>`;
+                
+                const expectedResults = [
+                    { name: 'ビップジーニー', sire: 'サトノアラジン', dam: 'ムーンライトダンス', damSire: 'Sinndar' },
+                    { name: 'ダノンキラウェア', sire: 'ロードカナロア', dam: 'レキシールー', damSire: 'Sligo Bay' }
+                ];
+                
+                result.horses.forEach((horse, index) => {
+                    const expected = expectedResults[index];
+                    if (expected) {
+                        html += `
+                            <div style="border: 1px solid #ddd; padding: 10px; margin: 10px 0;">
+                                <h5>馬${index + 1}</h5>
+                                <p><strong>馬名:</strong> ${horse.name || '❌未抽出'} ${horse.name === expected.name ? '✅' : '❌'}</p>
+                                <p><strong>父系:</strong> ${horse.sire || '❌未抽出'} ${horse.sire === expected.sire ? '✅' : '❌'}</p>
+                                <p><strong>母系:</strong> ${horse.dam || '❌未抽出'} ${horse.dam === expected.dam ? '✅' : '❌'}</p>
+                                <p><strong>母父:</strong> ${horse.damSire || '❌未抽出'} ${horse.damSire === expected.damSire ? '✅' : '❌'}</p>
+                            </div>
+                        `;
+                    }
+                });
+                
+                resultsDiv.innerHTML = html;
+                
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="error">❌ エラー: ${error.message}</div>`;
+                console.error('統合テストエラー:', error);
+            }
+        }
+    </script>
+</body>
+</html>

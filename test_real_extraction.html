@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>実際の血統抽出テスト</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; max-width: 1200px; margin: 0 auto; }
+        .section { background: #f5f5f5; padding: 20px; margin: 20px 0; border-radius: 8px; }
+        .form-group { margin: 15px 0; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        textarea { width: 100%; padding: 10px; font-family: monospace; font-size: 12px; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+        .result { background: #e3f2fd; padding: 15px; margin: 10px 0; border-radius: 5px; }
+        .error { background: #ffebee; color: #c62828; }
+        .success { background: #e8f5e8; color: #2e7d32; }
+    </style>
+</head>
+<body>
+    <h1>🧪 血統抽出実機テスト</h1>
+    
+    <div class="section">
+        <h2>テストデータ入力</h2>
+        <div class="form-group">
+            <label>netkeiba形式データ:</label>
+            <textarea id="testInput" rows="15">1    1    
+--
+キタサンブラック
+サトノエピック
+ランドオーバーシー
+(Bellamy Road)
+美浦・国枝  
+差中13週
+536kg(+8)
+25.5 (7人気)
+牡4鹿
+
+ディー
+57.0
+
+2    2    
+◎
+ディープインパクト
+リアルスティール
+プリンセスオリビア
+(Storm Cat)
+栗東・池江  
+先中8週
+498kg(-2)
+3.2 (1人気)
+牡5黒鹿
+
+武豊
+58.0</textarea>
+        </div>
+        <button onclick="testExtraction()">🚀 抽出テスト実行</button>
+        <button onclick="clearResults()">🗑️ 結果クリア</button>
+    </div>
+    
+    <div id="results" class="section" style="display: none;">
+        <h2>📊 抽出結果</h2>
+        <div id="resultContent"></div>
+    </div>
+    
+    <script>
+        // メッセージ表示関数
+        function showMessage(msg, type = 'info') {
+            console.log(`${type}: ${msg}`);
+        }
+        
+        // HorseManagerのモック
+        window.HorseManager = {
+            addHorseFromData: function(horse) {
+                console.log('馬データ受信:', horse);
+            }
+        };
+    </script>
+    
+    <script src="js/dataConverter.js"></script>
+    
+    <script>
+        function testExtraction() {
+            const testData = document.getElementById('testInput').value;
+            const resultsDiv = document.getElementById('results');
+            const contentDiv = document.getElementById('resultContent');
+            
+            console.log('=== 血統抽出テスト開始 ===');
+            console.log('入力データ:', testData);
+            
+            try {
+                // DataConverterで抽出実行
+                const result = DataConverter.parseNetkeibaData(testData);
+                console.log('抽出結果:', result);
+                
+                let html = '<h3>📊 血統抽出結果</h3>';
+                
+                result.horses.forEach((horse, index) => {
+                    const pedigreeCount = [horse.sire, horse.dam, horse.damSire].filter(x => x).length;
+                    const rate = ((pedigreeCount / 3) * 100).toFixed(1);
+                    const status = rate >= 80 ? 'success' : rate >= 50 ? 'warning' : 'error';
+                    
+                    html += `
+                        <div class="result ${status}">
+                            <h4>馬${index + 1}: ${horse.name || '未抽出'}</h4>
+                            <p><strong>父:</strong> ${horse.sire || '未抽出'}</p>
+                            <p><strong>母:</strong> ${horse.dam || '未抽出'}</p>
+                            <p><strong>母父:</strong> ${horse.damSire || '未抽出'}</p>
+                            <p><strong>オッズ:</strong> ${horse.odds || '未抽出'}倍</p>
+                            <p><strong>脚質:</strong> ${horse.runningStyle || '未抽出'}</p>
+                            <p><strong>体重変化:</strong> ${horse.weightChange || 0}kg</p>
+                            <p><strong>血統抽出率:</strong> ${pedigreeCount}/3 (${rate}%)</p>
+                            <p><strong>判定:</strong> ${rate >= 80 ? '✅ 抽出良好' : rate >= 50 ? '⚠️ 抽出不完全' : '❌ 抽出失敗'}</p>
+                        </div>
+                    `;
+                });
+                
+                // 期待結果との比較
+                const horse1 = result.horses[0];
+                html += `
+                    <div class="result">
+                        <h4>🔍 期待結果との比較</h4>
+                        <p>馬名: ${horse1?.name === 'サトノエピック' ? '✅' : '❌'} (期待: サトノエピック, 実際: ${horse1?.name})</p>
+                        <p>父: ${horse1?.sire === 'キタサンブラック' ? '✅' : '❌'} (期待: キタサンブラック, 実際: ${horse1?.sire})</p>
+                        <p>母: ${horse1?.dam === 'ランドオーバーシー' ? '✅' : '❌'} (期待: ランドオーバーシー, 実際: ${horse1?.dam})</p>
+                        <p>母父: ${horse1?.damSire === 'Bellamy Road' ? '✅' : '❌'} (期待: Bellamy Road, 実際: ${horse1?.damSire})</p>
+                    </div>
+                `;
+                
+                // 全体統計
+                const totalPedigree = result.horses.reduce((sum, horse) => {
+                    return sum + [horse.sire, horse.dam, horse.damSire].filter(x => x).length;
+                }, 0);
+                const maxPedigree = result.horses.length * 3;
+                const overallRate = ((totalPedigree / maxPedigree) * 100).toFixed(1);
+                
+                html += `
+                    <div class="result ${overallRate >= 80 ? 'success' : 'error'}">
+                        <h4>📈 全体統計</h4>
+                        <p><strong>総合血統抽出率:</strong> ${totalPedigree}/${maxPedigree} (${overallRate}%)</p>
+                        <p><strong>抽出された馬数:</strong> ${result.horses.length}頭</p>
+                        <p><strong>最終判定:</strong> ${overallRate >= 80 ? '✅ 血統抽出成功！' : '⚠️ 改善が必要'}</p>
+                    </div>
+                `;
+                
+                contentDiv.innerHTML = html;
+                resultsDiv.style.display = 'block';
+                
+            } catch (error) {
+                contentDiv.innerHTML = `<div class="result error">❌ エラー: ${error.message}</div>`;
+                resultsDiv.style.display = 'block';
+                console.error('抽出エラー:', error);
+            }
+        }
+        
+        function clearResults() {
+            document.getElementById('results').style.display = 'none';
+        }
+        
+        // 初期化メッセージ
+        console.log('✅ 血統抽出テスト環境準備完了');
+        console.log('「抽出テスト実行」ボタンを押してテストしてください');
+    </script>
+</body>
+</html>
