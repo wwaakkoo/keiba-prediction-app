@@ -1,7 +1,8 @@
-// AI推奨サービス - Claude Code直接統合版（APIキー不要）
+// AI推奨サービス - Claude API統合版
 class AIRecommendationService {
     static isLoading = false;
     static lastRecommendation = null;
+    static API_KEY_STORAGE_KEY = 'claude_api_key';
 
     // AI推奨を取得する（API/手動モード対応）
     static async getAIRecommendation(predictions, raceInfo = null) {
@@ -13,8 +14,28 @@ class AIRecommendationService {
         // AI推奨モードをチェック
         const manualMode = document.getElementById('manualMode');
         if (manualMode && manualMode.checked) {
-            // 手動モードの場合、プロンプトを生成して表示
-            showMessage('手動モードが選択されています。下のプロンプト生成ボタンを使用してください。', 'info');
+            // 手動モードの場合、プロンプトを自動生成して表示
+            this.generatePromptForUser(predictions, raceInfo);
+            showMessage('プロンプトを生成しました。Claude AIにコピー&ペーストして分析を依頼してください。', 'info', 4000);
+            return null;
+        }
+
+        // GitHub Pages環境の検出とCORS問題の説明
+        const isGitHubPages = window.location.hostname.includes('github.io');
+        const isLocalhost = window.location.hostname === 'localhost';
+        
+        if (isGitHubPages || (!isLocalhost && !this.hasAPIKey())) {
+            const message = isGitHubPages ? 
+                'GitHub Pages環境では手動モードをご利用ください。プロンプトを生成してClaude AIに直接貼り付けてください。' :
+                'ブラウザのCORS制限により、直接API呼び出しができません。手動モードをご利用ください。';
+            showMessage(message, 'info', 6000);
+            
+            // 自動的に手動モードに切り替え
+            const manualMode = document.getElementById('manualMode');
+            if (manualMode) {
+                manualMode.checked = true;
+                manualMode.dispatchEvent(new Event('change'));
+            }
             return null;
         }
 
@@ -54,6 +75,8 @@ class AIRecommendationService {
             jockey: horse.jockey,
             age: horse.age,
             weightChange: horse.weightChange,
+            runningStyle: horse.runningStyle, // 脚質情報を追加
+            currentRaceLevel: horse.currentRaceLevel, // 今回レースレベルを追加
             // 統計計算結果は除外（AI独自判断のため）
             // score, winProbability, placeProbability, winExpectedValue, placeExpectedValue は使用しない
             course: horse.course,
@@ -91,6 +114,7 @@ class AIRecommendationService {
                     agari: horse.thirdLastRaceAgari,
                     date: horse.thirdLastRaceDate,
                     popularity: horse.thirdLastRacePopularity,
+                    raceLevel: horse.thirdLastRaceLevel, // レースレベル追加
                     weight: 0.67 // 24%重み
                 } : null,
                 fourthLastRace: (horse.fourthLastRaceOrder || horse.fourthLastRaceCourse || horse.fourthLastRaceAgari) ? {
@@ -101,6 +125,7 @@ class AIRecommendationService {
                     agari: horse.fourthLastRaceAgari,
                     date: horse.fourthLastRaceDate,
                     popularity: horse.fourthLastRacePopularity,
+                    raceLevel: horse.fourthLastRaceLevel, // レースレベル追加
                     weight: 0.55 // 19%重み
                 } : null,
                 fifthLastRace: (horse.fifthLastRaceOrder || horse.fifthLastRaceCourse || horse.fifthLastRaceAgari) ? {
@@ -111,6 +136,7 @@ class AIRecommendationService {
                     agari: horse.fifthLastRaceAgari,
                     date: horse.fifthLastRaceDate,
                     popularity: horse.fifthLastRacePopularity,
+                    raceLevel: horse.fifthLastRaceLevel, // レースレベル追加
                     weight: 0.45 // 16%重み
                 } : null
             }
@@ -164,17 +190,26 @@ class AIRecommendationService {
             // サーバーAPIを通じてClaude AIを呼び出し
             const apiResult = await this.callClaudeAPI(horses, raceInfo);
             
-            if (apiResult && apiResult.success && apiResult.recommendation) {
-                // サーバーから正常にレスポンスを受信
+            if (apiResult && apiResult.success && apiResult.content) {
+                // Claude APIからの生のJSONレスポンスを解析
+                let parsedResponse;
+                try {
+                    parsedResponse = JSON.parse(apiResult.content);
+                } catch (parseError) {
+                    console.error('Claude AIレスポンス解析エラー:', parseError);
+                    return { success: false, error: 'Claude AIのレスポンス形式が無効です' };
+                }
+                
+                // 解析されたレスポンスを返却
                 return {
                     success: true,
-                    analysis: apiResult.recommendation.analysis,
-                    topPicks: apiResult.recommendation.topPicks || [],
-                    bettingStrategy: apiResult.recommendation.bettingStrategy || [],
-                    summary: apiResult.recommendation.summary,
-                    confidence: apiResult.recommendation.confidence || 'medium',
-                    sourceType: apiResult.sourceType || 'real_claude_ai',
-                    generatedAt: apiResult.generatedAt
+                    analysis: parsedResponse.analysis,
+                    topPicks: parsedResponse.topPicks || [],
+                    bettingStrategy: parsedResponse.bettingStrategy || [],
+                    summary: parsedResponse.riskAnalysis || parsedResponse.summary,
+                    confidence: parsedResponse.confidence || 'medium',
+                    sourceType: 'real_claude_ai',
+                    generatedAt: apiResult.timestamp
                 };
             } else if (apiResult && apiResult.fallback) {
                 // フォールバックが推奨される場合
@@ -336,30 +371,52 @@ ${horseList}
         };
     }
     
-    // サーバーAPIを通じてClaude AIを呼び出し（修正版）
+    // Claude APIをプロキシサーバー経由で呼び出し（CORS対策版）
     static async callClaudeAPI(horses, raceInfo) {
         try {
-            console.log('Claude AI API呼び出し開始...');
+            console.log('Claude AI API呼び出し開始（プロキシ経由）...');
             
-            const response = await fetch('/api/ai-recommendation', {
+            // APIキーを取得
+            const apiKey = this.getAPIKey();
+            if (!apiKey) {
+                throw new Error('APIキーが設定されていません。設定画面からAPIキーを入力してください。');
+            }
+            
+            // プロンプトを生成
+            const prompt = this.generatePromptForAPI(horses, raceInfo);
+            
+            // プロキシサーバーのエンドポイントを使用
+            const proxyUrl = window.location.origin.includes('localhost:3001') ? 
+                '/api/claude' : 'http://localhost:3001/api/claude';
+            
+            const response = await fetch(proxyUrl, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
+                    'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ 
-                    horses: horses,
-                    raceInfo: raceInfo 
+                body: JSON.stringify({
+                    prompt: prompt,
+                    apiKey: apiKey
                 })
             });
             
             if (!response.ok) {
-                throw new Error(`HTTP エラー: ${response.status}`);
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(`プロキシサーバーエラー: ${response.status} - ${errorData.error || 'Unknown error'}`);
             }
             
             const result = await response.json();
-            console.log('Claude AI API呼び出し完了:', result);
+            console.log('Claude AI API呼び出し完了（プロキシ経由）:', result);
             
-            return result;
+            if (!result.success) {
+                throw new Error(`Claude APIエラー: ${result.error || 'Unknown error'}`);
+            }
+            
+            return {
+                success: true,
+                content: result.content,
+                usage: result.usage
+            };
             
         } catch (error) {
             console.error('Claude API呼び出しエラー:', error);
@@ -3070,6 +3127,69 @@ ${horseList}
         }
     }
 
+    // API用プロンプト生成
+    static generatePromptForAPI(horses, raceInfo) {
+        return this.formatRaceDataForClaude(horses, raceInfo);
+    }
+
+    // APIキー管理メソッド
+    static getAPIKey() {
+        return localStorage.getItem(this.API_KEY_STORAGE_KEY);
+    }
+    
+    static setAPIKey(apiKey) {
+        if (apiKey && apiKey.trim()) {
+            localStorage.setItem(this.API_KEY_STORAGE_KEY, apiKey.trim());
+            console.log('APIキーが保存されました');
+        } else {
+            this.removeAPIKey();
+        }
+    }
+    
+    static removeAPIKey() {
+        localStorage.removeItem(this.API_KEY_STORAGE_KEY);
+        console.log('APIキーが削除されました');
+    }
+    
+    static hasAPIKey() {
+        const apiKey = this.getAPIKey();
+        return apiKey && apiKey.length > 0;
+    }
+    
+    // APIキー設定画面を表示
+    static showAPIKeySettings() {
+        const currentKey = this.getAPIKey() || '';
+        const maskedKey = currentKey ? '●●●●●●●●' + currentKey.slice(-4) : '未設定';
+        
+        const newKey = prompt(
+            `Claude API キーを入力してください:\n\n現在の設定: ${maskedKey}\n\n※APIキーは安全にブラウザのローカルストレージに保存されます`,
+            ''
+        );
+        
+        if (newKey !== null) {
+            if (newKey.trim() === '') {
+                if (confirm('APIキーを削除しますか？')) {
+                    this.removeAPIKey();
+                    alert('APIキーが削除されました');
+                }
+            } else {
+                this.setAPIKey(newKey);
+                alert('APIキーが保存されました');
+            }
+            this.updateAPIKeyStatus();
+        }
+    }
+    
+    // APIキー状態を画面に反映
+    static updateAPIKeyStatus() {
+        const hasKey = this.hasAPIKey();
+        const statusElement = document.getElementById('apiKeyStatus');
+        if (statusElement) {
+            statusElement.textContent = hasKey ? '✅ APIキー設定済み' : '❌ APIキー未設定';
+            statusElement.style.color = hasKey ? '#28a745' : '#dc3545';
+        }
+    }
+
     // 初期化
     static initialize() {
         console.log('AI推奨サービス（学習統合版）を初期化しました');
@@ -3078,6 +3198,9 @@ ${horseList}
         if (typeof LearningSystem !== 'undefined') {
             console.log('学習システムとの統合が完了しました');
         }
+        
+        // APIキー状態を更新
+        this.updateAPIKeyStatus();
     }
 }
 

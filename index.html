@@ -110,6 +110,24 @@
                         <option value="不良">不良</option>
                     </select>
                 </div>
+                <div class="form-group">
+                    <label>レースレベル</label>
+                    <select id="raceLevel">
+                        <option value="G1">G1</option>
+                        <option value="G2">G2</option>
+                        <option value="G3">G3</option>
+                        <option value="重賞（オープン）">重賞（オープン）</option>
+                        <option value="3勝" selected>3勝</option>
+                        <option value="2勝">2勝</option>
+                        <option value="1勝">1勝</option>
+                        <option value="未勝利">未勝利</option>
+                        <option value="新馬">新馬</option>
+                        <option value="障害重賞">障害重賞</option>
+                        <option value="障害オープン">障害オープン</option>
+                        <option value="障害3勝">障害3勝</option>
+                        <option value="障害未勝利">障害未勝利</option>
+                    </select>
+                </div>
             </div>
             <div class="button-group">
                 <button class="btn" onclick="DataConverter.applyRaceInfoToAllHorses()">📋 全馬に適用</button>
@@ -165,21 +183,36 @@
             <!-- AI推奨モード切り替え -->
             <div class="section" style="background: #e3f2fd; border-left: 4px solid #2196f3; margin-top: 15px;">
                 <h4 style="color: #1976d2; margin-bottom: 10px;">🔧 AI推奨モード設定</h4>
+                
+                <!-- APIキー設定とCORS説明 -->
+                <div style="background: #fff3cd; padding: 12px; border-radius: 8px; margin-bottom: 15px;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="font-weight: bold; color: #856404;">🔑 Claude APIキー設定</span>
+                        <span id="apiKeyStatus" style="font-size: 0.9em;">❌ APIキー未設定</span>
+                    </div>
+                    <p style="font-size: 0.85em; color: #856404; margin-bottom: 10px;">
+                        ⚠️ <strong>注意</strong>: ブラウザのCORS制限により、直接API呼び出しは制限されています。<br>
+                        GitHub Pagesなどの静的ホスティングでは<strong>手動モード</strong>をご利用ください。<br>
+                        ローカル環境（localhost:3001）では自動取得モードが利用可能です。
+                    </p>
+                    <button class="btn" style="background: linear-gradient(45deg, #ffc107, #e0a800);" onclick="AIRecommendationService.showAPIKeySettings()">🔧 APIキーを設定</button>
+                </div>
+                
                 <div style="margin-bottom: 15px;">
                     <label style="display: flex; align-items: center; margin-bottom: 8px;">
-                        <input type="radio" name="aiMode" value="api" id="apiMode" checked style="margin-right: 8px;">
-                        <span style="font-weight: bold;">🔗 API自動取得</span>
-                        <span style="margin-left: 10px; font-size: 0.9em; color: #666;">（APIキーを使用してClaude AIから自動取得）</span>
-                    </label>
-                    <label style="display: flex; align-items: center;">
-                        <input type="radio" name="aiMode" value="manual" id="manualMode" style="margin-right: 8px;">
+                        <input type="radio" name="aiMode" value="manual" id="manualMode" checked style="margin-right: 8px;">
                         <span style="font-weight: bold;">✍️ 手動入力</span>
                         <span style="margin-left: 10px; font-size: 0.9em; color: #666;">（プロンプトを取得してAI回答を手動入力）</span>
+                    </label>
+                    <label style="display: flex; align-items: center;">
+                        <input type="radio" name="aiMode" value="api" id="apiMode" style="margin-right: 8px;">
+                        <span style="font-weight: bold;">🔗 API自動取得</span>
+                        <span style="margin-left: 10px; font-size: 0.9em; color: #666;">（APIキーを使用してClaude AIから自動取得）</span>
                     </label>
                 </div>
                 
                 <!-- プロンプト取得ボタン -->
-                <div id="promptSection" style="display: none; background: #fff3cd; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                <div id="promptSection" style="display: block; background: #fff3cd; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
                     <h5 style="color: #856404; margin-bottom: 10px;">📋 AIプロンプト取得</h5>
                     <div style="margin-bottom: 10px;">
                         <button class="btn" style="background: linear-gradient(45deg, #ffc107, #e0a800);" onclick="AIRecommendationService.generatePromptForUser()">📤 プロンプトを生成</button>
@@ -190,7 +223,7 @@
                 </div>
                 
                 <!-- 手動AI回答入力 -->
-                <div id="manualInputSection" style="display: none; background: #d1ecf1; padding: 15px; border-radius: 8px;">
+                <div id="manualInputSection" style="display: block; background: #d1ecf1; padding: 15px; border-radius: 8px;">
                     <h5 style="color: #0c5460; margin-bottom: 10px;">🤖 AI回答を入力</h5>
                     <textarea id="manualAIResponse" placeholder="Claude AIからの回答をここに貼り付けてください..." style="width: 100%; height: 200px; padding: 10px; border: 1px solid #bee5eb; border-radius: 5px; font-family: monospace; font-size: 12px;"></textarea>
                     <div class="btn-grid" style="margin-top: 10px;">

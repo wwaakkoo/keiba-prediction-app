@@ -126,6 +126,17 @@ class HorseManager {
                         <option value="新馬">新馬戦</option>
                     </select>
                 </div>
+                <div class="form-group">
+                    <label>脚質</label>
+                    <select name="runningStyle">
+                        <option value="" selected>未選択</option>
+                        <option value="逃げ">逃げ</option>
+                        <option value="先行">先行</option>
+                        <option value="差し">差し</option>
+                        <option value="追込">追込</option>
+                        <option value="自在">自在</option>
+                    </select>
+                </div>
             </div>
             <div class="horse-section">
                 <h4>🏁 今回のレース情報</h4>
@@ -407,6 +418,22 @@ class HorseManager {
                                         <label>3走前上がり3F</label>
                                         <input type="text" name="thirdLastRaceAgari" placeholder="例: 34.1">
                                     </div>
+                                    <div class="form-group">
+                                        <label>3走前レースレベル</label>
+                                        <select name="thirdLastRaceLevel">
+                                            <option value="">選択してください</option>
+                                            <option value="G1">G1</option>
+                                            <option value="G2">G2</option>
+                                            <option value="G3">G3</option>
+                                            <option value="L">Listed（L）</option>
+                                            <option value="OP">オープン特別</option>
+                                            <option value="3勝">3勝クラス</option>
+                                            <option value="2勝">2勝クラス</option>
+                                            <option value="1勝">1勝クラス</option>
+                                            <option value="未勝利">未勝利戦</option>
+                                            <option value="新馬">新馬戦</option>
+                                        </select>
+                                    </div>
                                 </div>
                             </div>
                             
@@ -464,6 +491,22 @@ class HorseManager {
                                         <label>4走前上がり3F</label>
                                         <input type="text" name="fourthLastRaceAgari" placeholder="例: 34.1">
                                     </div>
+                                    <div class="form-group">
+                                        <label>4走前レースレベル</label>
+                                        <select name="fourthLastRaceLevel">
+                                            <option value="">選択してください</option>
+                                            <option value="G1">G1</option>
+                                            <option value="G2">G2</option>
+                                            <option value="G3">G3</option>
+                                            <option value="L">Listed（L）</option>
+                                            <option value="OP">オープン特別</option>
+                                            <option value="3勝">3勝クラス</option>
+                                            <option value="2勝">2勝クラス</option>
+                                            <option value="1勝">1勝クラス</option>
+                                            <option value="未勝利">未勝利戦</option>
+                                            <option value="新馬">新馬戦</option>
+                                        </select>
+                                    </div>
                                 </div>
                             </div>
                             
@@ -520,6 +563,22 @@ class HorseManager {
                                     <div class="form-group">
                                         <label>5走前上がり3F</label>
                                         <input type="text" name="fifthLastRaceAgari" placeholder="例: 34.1">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>5走前レースレベル</label>
+                                        <select name="fifthLastRaceLevel">
+                                            <option value="">選択してください</option>
+                                            <option value="G1">G1</option>
+                                            <option value="G2">G2</option>
+                                            <option value="G3">G3</option>
+                                            <option value="L">Listed（L）</option>
+                                            <option value="OP">オープン特別</option>
+                                            <option value="3勝">3勝クラス</option>
+                                            <option value="2勝">2勝クラス</option>
+                                            <option value="1勝">1勝クラス</option>
+                                            <option value="未勝利">未勝利戦</option>
+                                            <option value="新馬">新馬戦</option>
+                                        </select>
                                     </div>
                                 </div>
                             </div>
@@ -659,6 +718,12 @@ class HorseManager {
             const trackCondition = trackConditionSelect ? trackConditionSelect.value : '良';
             const restDaysSelect = card.querySelector('select[name="restDays"]');
             const restDays = restDaysSelect ? parseInt(restDaysSelect.value) : 14;
+            
+            // レースレベルと脚質情報
+            const raceLevelSelect = card.querySelector('select[name="raceLevel"]');
+            const raceLevel = raceLevelSelect ? raceLevelSelect.value : '1勝';
+            const runningStyleSelect = card.querySelector('select[name="runningStyle"]');
+            const runningStyle = runningStyleSelect ? runningStyleSelect.value : '';
 
             // 前走情報（自動抽出）
             const lastRaceCourseInput = card.querySelector('input[name="lastRaceCourse"]');
@@ -731,6 +796,8 @@ class HorseManager {
             const thirdLastRaceOrder = thirdLastRaceOrderInput ? this.parseRaceOrder(thirdLastRaceOrderInput.value) : 0;
             const thirdLastRaceAgariInput = card.querySelector('input[name="thirdLastRaceAgari"]');
             const thirdLastRaceAgari = thirdLastRaceAgariInput ? thirdLastRaceAgariInput.value : '';
+            const thirdLastRaceLevelSelect = card.querySelector('select[name="thirdLastRaceLevel"]');
+            const thirdLastRaceLevel = thirdLastRaceLevelSelect ? thirdLastRaceLevelSelect.value : '';
 
             // 4走前情報の抽出
             const fourthLastRaceCourseInput = card.querySelector('input[name="fourthLastRaceCourse"]');
@@ -755,6 +822,8 @@ class HorseManager {
             const fourthLastRaceOrder = fourthLastRaceOrderInput ? this.parseRaceOrder(fourthLastRaceOrderInput.value) : 0;
             const fourthLastRaceAgariInput = card.querySelector('input[name="fourthLastRaceAgari"]');
             const fourthLastRaceAgari = fourthLastRaceAgariInput ? fourthLastRaceAgariInput.value : '';
+            const fourthLastRaceLevelSelect = card.querySelector('select[name="fourthLastRaceLevel"]');
+            const fourthLastRaceLevel = fourthLastRaceLevelSelect ? fourthLastRaceLevelSelect.value : '';
 
             // 5走前情報の抽出
             const fifthLastRaceCourseInput = card.querySelector('input[name="fifthLastRaceCourse"]');
@@ -779,6 +848,8 @@ class HorseManager {
             const fifthLastRaceOrder = fifthLastRaceOrderInput ? this.parseRaceOrder(fifthLastRaceOrderInput.value) : 0;
             const fifthLastRaceAgariInput = card.querySelector('input[name="fifthLastRaceAgari"]');
             const fifthLastRaceAgari = fifthLastRaceAgariInput ? fifthLastRaceAgariInput.value : '';
+            const fifthLastRaceLevelSelect = card.querySelector('select[name="fifthLastRaceLevel"]');
+            const fifthLastRaceLevel = fifthLastRaceLevelSelect ? fifthLastRaceLevelSelect.value : '';
 
             horses.push({
                 name: horseName,
@@ -795,6 +866,8 @@ class HorseManager {
                 weather: weather,
                 trackCondition: trackCondition,
                 restDays: restDays,
+                raceLevel: raceLevel,
+                runningStyle: runningStyle,
                 // 前走情報
                 lastRaceCourse: lastRaceCourse,
                 lastRaceDistance: lastRaceDistance,
@@ -832,6 +905,7 @@ class HorseManager {
                 thirdLastRacePopularity: thirdLastRacePopularity,
                 thirdLastRaceOrder: thirdLastRaceOrder,
                 thirdLastRaceAgari: thirdLastRaceAgari,
+                thirdLastRaceLevel: thirdLastRaceLevel,
                 // 4走前情報
                 fourthLastRaceCourse: fourthLastRaceCourse,
                 fourthLastRaceDistance: fourthLastRaceDistance,
@@ -844,6 +918,7 @@ class HorseManager {
                 fourthLastRacePopularity: fourthLastRacePopularity,
                 fourthLastRaceOrder: fourthLastRaceOrder,
                 fourthLastRaceAgari: fourthLastRaceAgari,
+                fourthLastRaceLevel: fourthLastRaceLevel,
                 // 5走前情報
                 fifthLastRaceCourse: fifthLastRaceCourse,
                 fifthLastRaceDistance: fifthLastRaceDistance,
@@ -856,6 +931,7 @@ class HorseManager {
                 fifthLastRacePopularity: fifthLastRacePopularity,
                 fifthLastRaceOrder: fifthLastRaceOrder,
                 fifthLastRaceAgari: fifthLastRaceAgari,
+                fifthLastRaceLevel: fifthLastRaceLevel,
                 // 馬番・枠番情報
                 horseNumber: horseNumber,
                 frameNumber: frameNumber
@@ -1064,6 +1140,32 @@ class HorseManager {
                         <option value="0" ${weightChangeValue === 0 ? 'selected' : ''}>変化なし</option>
                         <option value="1" ${weightChangeValue === 1 ? 'selected' : ''}>増加</option>
                         <option value="-1" ${weightChangeValue === -1 ? 'selected' : ''}>減少</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>今回レースレベル</label>
+                    <select name="raceLevel">
+                        <option value="G1" ${horseData.raceLevel === 'G1' ? 'selected' : ''}>G1</option>
+                        <option value="G2" ${horseData.raceLevel === 'G2' ? 'selected' : ''}>G2</option>
+                        <option value="G3" ${horseData.raceLevel === 'G3' ? 'selected' : ''}>G3</option>
+                        <option value="L" ${horseData.raceLevel === 'L' ? 'selected' : ''}>Listed（L）</option>
+                        <option value="OP" ${horseData.raceLevel === 'OP' ? 'selected' : ''}>オープン特別</option>
+                        <option value="3勝" ${horseData.raceLevel === '3勝' ? 'selected' : ''}>3勝クラス（1600万下）</option>
+                        <option value="2勝" ${horseData.raceLevel === '2勝' ? 'selected' : ''}>2勝クラス（1000万下）</option>
+                        <option value="1勝" ${horseData.raceLevel === '1勝' || !horseData.raceLevel ? 'selected' : ''}>1勝クラス（500万下）</option>
+                        <option value="未勝利" ${horseData.raceLevel === '未勝利' ? 'selected' : ''}>未勝利戦</option>
+                        <option value="新馬" ${horseData.raceLevel === '新馬' ? 'selected' : ''}>新馬戦</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>脚質</label>
+                    <select name="runningStyle">
+                        <option value="" ${!horseData.runningStyle ? 'selected' : ''}>未選択</option>
+                        <option value="逃げ" ${horseData.runningStyle === '逃げ' ? 'selected' : ''}>逃げ</option>
+                        <option value="先行" ${horseData.runningStyle === '先行' ? 'selected' : ''}>先行</option>
+                        <option value="差し" ${horseData.runningStyle === '差し' ? 'selected' : ''}>差し</option>
+                        <option value="追込" ${horseData.runningStyle === '追込' ? 'selected' : ''}>追込</option>
+                        <option value="自在" ${horseData.runningStyle === '自在' ? 'selected' : ''}>自在</option>
                     </select>
                 </div>
             </div>
@@ -1379,6 +1481,22 @@ class HorseManager {
                                         <label>3走前上がり3F</label>
                                         <input type="text" name="thirdLastRaceAgari" placeholder="例: 34.1" value="${horseData.thirdLastRaceAgari || ''}">
                                     </div>
+                                    <div class="form-group">
+                                        <label>3走前レースレベル</label>
+                                        <select name="thirdLastRaceLevel">
+                                            <option value="">選択してください</option>
+                                            <option value="G1" ${horseData.thirdLastRaceLevel === 'G1' ? 'selected' : ''}>G1</option>
+                                            <option value="G2" ${horseData.thirdLastRaceLevel === 'G2' ? 'selected' : ''}>G2</option>
+                                            <option value="G3" ${horseData.thirdLastRaceLevel === 'G3' ? 'selected' : ''}>G3</option>
+                                            <option value="L" ${horseData.thirdLastRaceLevel === 'L' ? 'selected' : ''}>Listed（L）</option>
+                                            <option value="OP" ${horseData.thirdLastRaceLevel === 'OP' ? 'selected' : ''}>オープン特別</option>
+                                            <option value="3勝" ${horseData.thirdLastRaceLevel === '3勝' ? 'selected' : ''}>3勝クラス</option>
+                                            <option value="2勝" ${horseData.thirdLastRaceLevel === '2勝' ? 'selected' : ''}>2勝クラス</option>
+                                            <option value="1勝" ${horseData.thirdLastRaceLevel === '1勝' ? 'selected' : ''}>1勝クラス</option>
+                                            <option value="未勝利" ${horseData.thirdLastRaceLevel === '未勝利' ? 'selected' : ''}>未勝利戦</option>
+                                            <option value="新馬" ${horseData.thirdLastRaceLevel === '新馬' ? 'selected' : ''}>新馬戦</option>
+                                        </select>
+                                    </div>
                                 </div>
                             </div>
                             
@@ -1436,6 +1554,22 @@ class HorseManager {
                                         <label>4走前上がり3F</label>
                                         <input type="text" name="fourthLastRaceAgari" placeholder="例: 34.1" value="${horseData.fourthLastRaceAgari || ''}">
                                     </div>
+                                    <div class="form-group">
+                                        <label>4走前レースレベル</label>
+                                        <select name="fourthLastRaceLevel">
+                                            <option value="">選択してください</option>
+                                            <option value="G1" ${horseData.fourthLastRaceLevel === 'G1' ? 'selected' : ''}>G1</option>
+                                            <option value="G2" ${horseData.fourthLastRaceLevel === 'G2' ? 'selected' : ''}>G2</option>
+                                            <option value="G3" ${horseData.fourthLastRaceLevel === 'G3' ? 'selected' : ''}>G3</option>
+                                            <option value="L" ${horseData.fourthLastRaceLevel === 'L' ? 'selected' : ''}>Listed（L）</option>
+                                            <option value="OP" ${horseData.fourthLastRaceLevel === 'OP' ? 'selected' : ''}>オープン特別</option>
+                                            <option value="3勝" ${horseData.fourthLastRaceLevel === '3勝' ? 'selected' : ''}>3勝クラス</option>
+                                            <option value="2勝" ${horseData.fourthLastRaceLevel === '2勝' ? 'selected' : ''}>2勝クラス</option>
+                                            <option value="1勝" ${horseData.fourthLastRaceLevel === '1勝' ? 'selected' : ''}>1勝クラス</option>
+                                            <option value="未勝利" ${horseData.fourthLastRaceLevel === '未勝利' ? 'selected' : ''}>未勝利戦</option>
+                                            <option value="新馬" ${horseData.fourthLastRaceLevel === '新馬' ? 'selected' : ''}>新馬戦</option>
+                                        </select>
+                                    </div>
                                 </div>
                             </div>
                             
@@ -1492,6 +1626,22 @@ class HorseManager {
                                     <div class="form-group">
                                         <label>5走前上がり3F</label>
                                         <input type="text" name="fifthLastRaceAgari" placeholder="例: 34.1" value="${horseData.fifthLastRaceAgari || ''}">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>5走前レースレベル</label>
+                                        <select name="fifthLastRaceLevel">
+                                            <option value="">選択してください</option>
+                                            <option value="G1" ${horseData.fifthLastRaceLevel === 'G1' ? 'selected' : ''}>G1</option>
+                                            <option value="G2" ${horseData.fifthLastRaceLevel === 'G2' ? 'selected' : ''}>G2</option>
+                                            <option value="G3" ${horseData.fifthLastRaceLevel === 'G3' ? 'selected' : ''}>G3</option>
+                                            <option value="L" ${horseData.fifthLastRaceLevel === 'L' ? 'selected' : ''}>Listed（L）</option>
+                                            <option value="OP" ${horseData.fifthLastRaceLevel === 'OP' ? 'selected' : ''}>オープン特別</option>
+                                            <option value="3勝" ${horseData.fifthLastRaceLevel === '3勝' ? 'selected' : ''}>3勝クラス</option>
+                                            <option value="2勝" ${horseData.fifthLastRaceLevel === '2勝' ? 'selected' : ''}>2勝クラス</option>
+                                            <option value="1勝" ${horseData.fifthLastRaceLevel === '1勝' ? 'selected' : ''}>1勝クラス</option>
+                                            <option value="未勝利" ${horseData.fifthLastRaceLevel === '未勝利' ? 'selected' : ''}>未勝利戦</option>
+                                            <option value="新馬" ${horseData.fifthLastRaceLevel === '新馬' ? 'selected' : ''}>新馬戦</option>
+                                        </select>
                                     </div>
                                 </div>
                             </div>

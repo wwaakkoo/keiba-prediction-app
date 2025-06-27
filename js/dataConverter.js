@@ -288,6 +288,12 @@ class DataConverter {
                 }
             }
             
+            // 脚質の抽出（netkeiba形式から）
+            if (!horse.runningStyle && DataConverter.isRunningStyleInfo(line)) {
+                horse.runningStyle = DataConverter.extractRunningStyle(line);
+                console.log(`脚質抽出: ${horse.runningStyle}`);
+            }
+
             // 過去5走情報の抽出
             if (!foundLastRace && line.match(/\d{4}\.\d{2}\.\d{2}/)) {
                 const raceHistoryData = DataConverter.parseNetkeibaRaceHistory(lines, i, 5); // 5走分抽出
@@ -1044,6 +1050,23 @@ class DataConverter {
             console.error('一括入力エラー:', error);
             showMessage('一括入力中にエラーが発生しました。', 'error');
         }
+    }
+    
+    // 脚質情報の検出
+    static isRunningStyleInfo(line) {
+        const runningStyleKeywords = ['逃げ', '先行', '差し', '追込', '自在'];
+        return runningStyleKeywords.some(keyword => line.includes(keyword));
+    }
+    
+    // 脚質の抽出
+    static extractRunningStyle(line) {
+        const runningStyles = ['逃げ', '先行', '差し', '追込', '自在'];
+        for (const style of runningStyles) {
+            if (line.includes(style)) {
+                return style;
+            }
+        }
+        return '';
     }
 }
 
