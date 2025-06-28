@@ -1,11 +1,22 @@
-// 画面上にメッセージを表示する共通関数
+// 画面上にメッセージを表示する共通関数（main.jsの高度な実装を使用）
 function showMessage(msg, type = 'info', duration = 2500) {
+    // main.jsのshowMessage関数が存在する場合はそれを使用
+    if (typeof window.mainShowMessage === 'function') {
+        console.log(`dataConverter.js: using main.js showMessage for "${msg}"`);
+        return window.mainShowMessage(msg, type);
+    }
+    
+    // フォールバック：独自のシンプル実装
+    console.log(`dataConverter.js: using fallback showMessage for "${msg}"`);
     const el = document.getElementById('appMessage');
-    if (!el) return;
+    if (!el) {
+        console.warn('showMessage: appMessage element not found');
+        return;
+    }
     el.textContent = msg;
     el.style.display = 'block';
-    el.style.background = type === 'error' ? '#fdd' : '#ffc';
-    el.style.color = type === 'error' ? '#900' : '#333';
+    el.style.background = type === 'error' ? '#fdd' : type === 'success' ? '#dfd' : '#ffc';
+    el.style.color = type === 'error' ? '#900' : type === 'success' ? '#090' : '#333';
     setTimeout(() => { el.style.display = 'none'; }, duration);
 }
 

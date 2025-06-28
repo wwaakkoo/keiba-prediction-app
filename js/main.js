@@ -417,8 +417,11 @@ window.initializeMobileMode = initializeMobileMode;
 window.updateMobileMode = updateMobileMode;
 window.syncSimpleDataToMain = syncSimpleDataToMain;
 
-// メッセージ表示機能
+// メッセージ表示機能（グローバルアクセス可能にするため window.mainShowMessage も作成）
 function showMessage(message, type = 'info') {
+    // デバッグ: 関数が呼ばれたことをコンソールに出力
+    console.log(`showMessage called: "${message}" (type: ${type})`);
+    
     // 既存のメッセージを削除
     const existingMessage = document.querySelector('.message');
     if (existingMessage) {
@@ -524,6 +527,7 @@ document.head.appendChild(style);
 
 // グローバル関数として公開
 window.showMessage = showMessage;
+window.mainShowMessage = showMessage;
 
 // ===== ハイブリッド学習 精度測定・検証機能 =====
 

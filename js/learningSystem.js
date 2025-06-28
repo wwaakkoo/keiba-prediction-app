@@ -375,29 +375,272 @@ class LearningSystem {
         let html = '<div style="background: #e8f5e8; padding: 15px; border-radius: 8px; border-left: 3px solid #4caf50;">';
         html += '<h4 style="color: #2e7d32; margin-bottom: 10px;">🧠 学習結果</h4>';
         
+        // 予測結果と実際の結果を詳しく表示
+        const currentPredictions = PredictionEngine.getCurrentPredictions();
+        const sortedPredictions = [...currentPredictions].sort((a, b) => b.winProbability - a.winProbability);
+        const predictedWinner = sortedPredictions[0];
+        const predictedTop3 = sortedPredictions.slice(0, 3);
+        
         html += '<div style="margin-bottom: 15px;">';
-        html += `<strong>実際の結果:</strong> `;
-        html += `1着: ${firstHorse.name}`;
-        if (secondHorse) html += `, 2着: ${secondHorse.name}`;
-        if (thirdHorse) html += `, 3着: ${thirdHorse.name}`;
+        html += `<strong>予測していた結果:</strong><br>`;
+        html += `・1着予測: ${predictedWinner.name} (勝率${(predictedWinner.winProbability * 100).toFixed(1)}%, オッズ${predictedWinner.odds}倍)<br>`;
+        html += `・複勝予測: `;
+        predictedTop3.forEach((horse, index) => {
+            html += `${index > 0 ? ', ' : ''}${horse.name}`;
+        });
+        html += '<br>';
         html += '</div>';
 
         html += '<div style="margin-bottom: 15px;">';
-        html += '<strong>予測評価:</strong><br>';
-        html += `・勝利予測: ${result.winCorrect ? '✅ 的中' : '❌ 外れ'}<br>`;
-        html += `・複勝予測: ${result.placeCorrect ? '✅ 的中' : '❌ 外れ'}`;
+        html += `<strong>実際の結果:</strong><br>`;
+        html += `・1着: ${firstHorse.name} (オッズ${firstHorse.odds}倍)`;
+        if (secondHorse) html += `<br>・2着: ${secondHorse.name} (オッズ${secondHorse.odds}倍)`;
+        if (thirdHorse) html += `<br>・3着: ${thirdHorse.name} (オッズ${thirdHorse.odds}倍)`;
         html += '</div>';
+
+        // 具体的な学習内容を表示
+        html += '<div style="margin-bottom: 15px;">';
+        html += '<strong>学習した内容:</strong><br>';
+        
+        if (result.winCorrect) {
+            html += `✅ <strong>単勝的中!</strong> 「${predictedWinner.name}」を1着と予測し的中<br>`;
+            html += `・この馬の特徴（オッズ${predictedWinner.odds}倍、前走${predictedWinner.lastRace}着`;
+            if (predictedWinner.runningStyle) html += `、脚質「${predictedWinner.runningStyle}」`;
+            html += `）が成功パターンとして学習されました<br>`;
+        } else {
+            const actualWinnerPredictedPos = sortedPredictions.findIndex(h => h.name === firstHorse.name) + 1;
+            html += `❌ <strong>単勝外れ</strong> 「${predictedWinner.name}」を1着予測 → 実際は「${firstHorse.name}」が1着<br>`;
+            if (actualWinnerPredictedPos <= sortedPredictions.length) {
+                html += `・実際の勝者「${firstHorse.name}」は${actualWinnerPredictedPos}番手予想でした<br>`;
+            } else {
+                html += `・実際の勝者「${firstHorse.name}」は予想圏外でした<br>`;
+            }
+            html += `・予測ミスの原因分析を行い、次回の予測精度向上に活用します<br>`;
+        }
+        
+        // 複勝予測の詳細
+        const actualTop3 = [firstHorse, secondHorse, thirdHorse].filter(h => h);
+        const correctPlacePredictions = predictedTop3.filter(predicted => 
+            actualTop3.some(actual => actual && actual.name === predicted.name)
+        );
+        
+        if (correctPlacePredictions.length > 0) {
+            html += `✅ <strong>複勝${correctPlacePredictions.length}頭的中!</strong> `;
+            correctPlacePredictions.forEach((horse, index) => {
+                const actualPos = actualTop3.findIndex(actual => actual.name === horse.name) + 1;
+                html += `${index > 0 ? ', ' : ''}「${horse.name}」(${actualPos}着)`;
+            });
+            html += 'を3着内と予測し的中<br>';
+        } else {
+            html += `❌ <strong>複勝全外れ</strong> 予測した3頭すべてが3着圏外<br>`;
+            html += `・予測: ${predictedTop3.map(h => h.name).join(', ')}<br>`;
+            html += `・実際: ${actualTop3.map(h => h.name).join(', ')}<br>`;
+        }
+        html += '</div>';
+
+        // 買い目推奨の結果詳細
+        if (window.lastBettingRecommendations) {
+            html += '<div style="margin-bottom: 15px; padding: 10px; background: #fff3cd; border-radius: 5px;">';
+            html += '<strong>🎯 買い目推奨の結果:</strong><br>';
+            
+            const recommendations = window.lastBettingRecommendations;
+            
+            // 本命的中確認
+            if (recommendations.honmei && recommendations.honmei.horse === firstHorse.name) {
+                html += `✅ ◎本命「${recommendations.honmei.horse}」が的中! (単勝推奨)<br>`;
+            } else if (recommendations.honmei) {
+                html += `❌ ◎本命「${recommendations.honmei.horse}」は外れ (実際の1着: ${firstHorse.name})<br>`;
+            }
+            
+            // 対抗的中確認
+            if (recommendations.taikou && actualTop3.some(h => h.name === recommendations.taikou.horse)) {
+                const pos = actualTop3.findIndex(h => h.name === recommendations.taikou.horse) + 1;
+                html += `✅ ○対抗「${recommendations.taikou.horse}」が${pos}着で的中! (複勝推奨)<br>`;
+            } else if (recommendations.taikou) {
+                html += `❌ ○対抗「${recommendations.taikou.horse}」は3着圏外<br>`;
+            }
+            
+            // 単穴的中確認
+            if (recommendations.tanana && actualTop3.some(h => h.name === recommendations.tanana.horse)) {
+                const pos = actualTop3.findIndex(h => h.name === recommendations.tanana.horse) + 1;
+                html += `✅ ▲単穴「${recommendations.tanana.horse}」が${pos}着で的中! (複勝推奨)<br>`;
+            } else if (recommendations.tanana) {
+                html += `❌ ▲単穴「${recommendations.tanana.horse}」は3着圏外<br>`;
+            }
+            
+            // ワイド推奨確認
+            if (recommendations.wide && recommendations.wide.length > 0) {
+                const wideHits = recommendations.wide.filter(w => 
+                    actualTop3.some(h => h.name === w.horse1) && actualTop3.some(h => h.name === w.horse2)
+                );
+                if (wideHits.length > 0) {
+                    html += `✅ ワイド${wideHits.length}点的中! `;
+                    wideHits.forEach((w, index) => {
+                        html += `${index > 0 ? ', ' : ''}「${w.horse1}-${w.horse2}」`;
+                    });
+                    html += '<br>';
+                } else {
+                    html += `❌ ワイド推奨すべて外れ<br>`;
+                }
+            }
+            
+            html += '</div>';
+        }
+
+        // AI分析結果の詳細
+        if (window.lastAIRecommendation) {
+            html += '<div style="margin-bottom: 15px; padding: 10px; background: #e3f2fd; border-radius: 5px;">';
+            html += '<strong>🤖 AI分析の判断根拠と結果:</strong><br>';
+            
+            const aiRec = window.lastAIRecommendation;
+            
+            // AI推奨馬の結果確認
+            if (aiRec.topPicks && aiRec.topPicks.length > 0) {
+                const aiMainPick = aiRec.topPicks[0];
+                
+                if (aiMainPick.horse === firstHorse.name) {
+                    html += `✅ <strong>AI第1推奨が的中!</strong><br>`;
+                    html += `・AIの推奨: 「${aiMainPick.horse}」（信頼度: ${aiMainPick.confidence}）<br>`;
+                    html += `・推奨理由: ${aiMainPick.reason}<br>`;
+                    html += `・AI判断が正確で、統計分析を超えた洞察が有効でした<br>`;
+                } else {
+                    html += `❌ <strong>AI第1推奨は外れ</strong><br>`;
+                    html += `・AI推奨: 「${aiMainPick.horse}」→ 実際の勝者: 「${firstHorse.name}」<br>`;
+                    html += `・推奨理由: ${aiMainPick.reason}<br>`;
+                    
+                    // 実際の勝者がAI推奨に含まれていたかチェック
+                    const winnerInAIRecs = aiRec.topPicks.find(pick => pick.horse === firstHorse.name);
+                    if (winnerInAIRecs) {
+                        const winnerPos = aiRec.topPicks.findIndex(pick => pick.horse === firstHorse.name) + 1;
+                        html += `・実際の勝者「${firstHorse.name}」はAI第${winnerPos}推奨でした<br>`;
+                        html += `・AI分析理由: ${winnerInAIRecs.reason}<br>`;
+                    } else {
+                        html += `・実際の勝者「${firstHorse.name}」はAI推奨圏外でした<br>`;
+                    }
+                }
+            }
+            
+            // AI分析の特徴的な洞察
+            if (aiRec.analysis) {
+                html += `<br><strong>AIの独自分析内容:</strong><br>`;
+                const analysisPoints = aiRec.analysis.split('。').filter(s => s.trim().length > 10).slice(0, 3);
+                analysisPoints.forEach(point => {
+                    html += `・${point.trim()}。<br>`;
+                });
+            }
+            
+            // AI買い目戦略の結果（3パターン対応）
+            if (aiRec.bettingStrategy && aiRec.bettingStrategy.length > 0) {
+                html += `<br><strong>AI買い目戦略の結果（3パターン検証）:</strong><br>`;
+                
+                aiRec.bettingStrategy.forEach((pattern, patternIndex) => {
+                    const patternName = pattern.patternName || `パターン${patternIndex + 1}`;
+                    const patternIcons = ['🛡️', '⚖️', '🚀'];
+                    const currentIcon = patternIcons[patternIndex] || '💡';
+                    
+                    html += `<br><strong>${currentIcon} ${patternName}（予算${pattern.totalBudget || '1000円'}）:</strong><br>`;
+                    
+                    if (pattern.bets && pattern.bets.length > 0) {
+                        let patternHits = 0;
+                        let totalBets = pattern.bets.length;
+                        
+                        pattern.bets.forEach(bet => {
+                            let hitStatus = '❌';
+                            let details = '';
+                            
+                            // 戦略タイプごとの的中判定
+                            if (bet.type === '単勝' && bet.combination.includes(firstHorse.name)) {
+                                hitStatus = '✅';
+                                details = `予想配当${bet.expectedReturn} → 実際オッズ${firstHorse.odds}倍で的中`;
+                                patternHits++;
+                            } else if (bet.type === '複勝' && actualTop3.some(h => bet.combination.includes(h.name))) {
+                                hitStatus = '✅';
+                                const hitHorse = actualTop3.find(h => bet.combination.includes(h.name));
+                                const hitPos = actualTop3.findIndex(h => h.name === hitHorse.name) + 1;
+                                details = `「${hitHorse.name}」が${hitPos}着で的中`;
+                                patternHits++;
+                            } else if (bet.type === 'ワイド' || bet.type.includes('ワイド')) {
+                                // ワイド的中判定（簡易版）
+                                const wideHorses = bet.combination.split('-');
+                                if (wideHorses.length >= 2) {
+                                    const bothIn = wideHorses.every(horseName => 
+                                        actualTop3.some(h => horseName.includes(h.name))
+                                    );
+                                    if (bothIn) {
+                                        hitStatus = '✅';
+                                        details = '組み合わせ両方が3着以内で的中';
+                                        patternHits++;
+                                    }
+                                }
+                            } else if (bet.type.includes('連複') || bet.type.includes('連単')) {
+                                // 3連複・3連単等の的中判定
+                                const horses = bet.combination.split('-');
+                                if (horses.length >= 3) {
+                                    const allIn = horses.every(horseName => 
+                                        actualTop3.some(h => horseName.includes(h.name))
+                                    );
+                                    if (allIn) {
+                                        hitStatus = '✅';
+                                        details = '全ての馬が3着以内で的中';
+                                        patternHits++;
+                                    }
+                                }
+                            }
+                            
+                            html += `　${hitStatus} ${bet.type}: ${bet.combination} (${bet.amount}) ${details}<br>`;
+                            if (bet.reason && bet.reason !== '理由未設定') {
+                                html += `　　📝 選択理由: ${bet.reason}<br>`;
+                            }
+                        });
+                        
+                        // パターン全体の成績
+                        const hitRate = ((patternHits / totalBets) * 100).toFixed(1);
+                        html += `　📊 ${patternName}成績: ${patternHits}/${totalBets}的中 (${hitRate}%)`;
+                        
+                        if (pattern.expectedHitRate && pattern.expectedHitRate !== '未設定') {
+                            html += ` / 予想的中率: ${pattern.expectedHitRate}`;
+                        }
+                        html += `<br>`;
+                        
+                    } else {
+                        html += `　このパターンには買い目が設定されていませんでした<br>`;
+                    }
+                });
+                
+                // 全パターンの総合評価
+                html += `<br><strong>🎯 3パターン戦略の総合評価:</strong><br>`;
+                html += `AIが提案した${aiRec.bettingStrategy.length}つの異なるリスク戦略の有効性を検証しました<br>`;
+            }
+            
+            // AIの信頼度評価
+            if (aiRec.confidence) {
+                const confidenceText = {
+                    'high': '高',
+                    'medium': '中',
+                    'low': '低'
+                }[aiRec.confidence] || aiRec.confidence;
+                
+                html += `<br><strong>AI判断の信頼度:</strong> ${confidenceText}<br>`;
+                if (aiMainPick && aiMainPick.horse === firstHorse.name) {
+                    html += `信頼度「${confidenceText}」の判断が的中し、AI分析の精度を確認できました<br>`;
+                } else {
+                    html += `信頼度「${confidenceText}」でしたが外れたため、AI分析手法の見直しが必要です<br>`;
+                }
+            }
+            
+            html += '</div>';
+        }
 
         if (Object.keys(result.adjustments).length > 0) {
             html += '<div style="margin-bottom: 15px;">';
-            html += '<strong>学習調整:</strong><br>';
+            html += '<strong>次回への改善点:</strong><br>';
             Object.entries(result.adjustments).forEach(([key, value]) => {
                 html += `・${value}<br>`;
             });
             html += '</div>';
         } else {
             html += '<div style="margin-bottom: 15px; color: #666;">';
-            html += '<strong>学習調整:</strong> 今回は調整なし（予測が的中または軽微な誤差）';
+            html += '<strong>改善点:</strong> 予測が的中したため、現在の分析手法を維持します';
             html += '</div>';
         }
 

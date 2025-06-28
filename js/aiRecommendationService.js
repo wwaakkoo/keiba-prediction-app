@@ -89,6 +89,8 @@ class AIRecommendationService {
             const recommendation = await this.generateRecommendation(analysisData);
             
             this.lastRecommendation = recommendation;
+            // AI推奨結果をグローバル変数に保存（学習システムで参照するため）
+            window.lastAIRecommendation = recommendation;
             this.displayAIRecommendation(recommendation);
             return recommendation;
 
@@ -357,49 +359,93 @@ ${horseList}
 ## 🎯 分析要領
 以下の観点から総合的に判断してください：
 
-**重視すべき要素（優先順・指数関数的減衰重み）:**
+**重視すべき要素（統計ロジック＋AI独自分析）:**
+
+**【統計データ分析】**
 1. **前5走の成績推移（前走35%→5走前16%）** - 調子の上向き/下降トレンド
 2. **脚質と距離・馬場適性** - 今回条件への戦法適応度
 3. **レースレベルの昇降級** - クラス変更による影響分析
 4. **騎手・オッズの妥当性** - 人気と実力の乖離
-5. **年齢・体重変化** - コンディション指標
+
+**【AI独自分析（統計では捉えきれない要素）】**
+5. **心理的・精神的要因** - 馬の気性、集中力、プレッシャー対応、大舞台適性
+6. **戦術的・展開要素** - 騎手の戦術選択、ポジション取り、レース運びの巧拙
+7. **複合的相互作用** - 複数要因の組み合わせ効果、非線形な関係性
+8. **質的・直感的判断** - 馬体バランス、気配、調教の質的評価
+9. **レース全体の文脈** - 他馬との相性、レース全体のレベル感、特殊条件
 
 **具体的分析ポイント:**
-- 前5走のトレンド分析（向上・安定・悪化パターン）
-- **脚質適性分析**（逃げ・先行・差し・追込・自在の今回距離での有利性）
-- **レースレベル分析**（G1〜新馬戦のクラス昇降級による影響）
-- 上がり3Fの一貫性と好タイム継続性
-- 休養期間とローテーション
-- 騎手変更の影響
-- 好走頻度（3着以内率）
+- **数値分析**: 前5走トレンド、脚質適性、レースレベル分析、上がり3F一貫性
+- **戦術分析**: 想定ペース、ポジション争い、直線での加速タイミング
+- **心理分析**: 馬の性格（闘争心・臆病さ）、騎手との相性、環境適応力
+- **質的判断**: 調教内容の充実度、馬体の張り・気配、近況の変化
+- **相互作用**: 脚質×展開、騎手×馬の相性、オッズ×実力の総合判断
+- **経験則**: ベテラン的な勘、パターン認識、例外的な好走可能性
 
 ## 📊 回答フォーマット
 以下のJSON形式で必ず回答してください：
 
 {
-  "analysis": "レース全体の流れと展開予想（150文字程度）",
+  "analysis": "レース全体の流れと展開予想（戦術・心理・質的要素を含む150文字程度）",
   "keyFactors": [
-    "注目ポイント1",
-    "注目ポイント2", 
-    "注目ポイント3"
+    "統計的注目ポイント（数値要因）",
+    "AI独自の洞察（戦術・心理・質的要因）", 
+    "複合的相互作用ポイント"
   ],
   "topPicks": [
     {
       "horse": "馬名",
       "horseNumber": 馬番,
-      "reason": "推奨理由（前走比較含む）",
+      "reason": "推奨理由（統計データ＋AI独自の戦術・心理・質的判断を統合）",
       "confidence": "high/medium/low",
       "expectedFinish": "1-3着/4-6着/7着以下"
     }
   ],
   "bettingStrategy": [
     {
-      "type": "単勝/複勝/ワイド/馬連",
-      "combination": "具体的買い目",
-      "amount": "100円-1000円",
-      "expectedReturn": "予想配当",
-      "risk": "high/medium/low",
-      "reason": "根拠（オッズ妥当性含む）"
+      "patternName": "安全重視パターン",
+      "totalBudget": "1000円",
+      "bets": [
+        {
+          "type": "AIが最適と判断する券種（単勝、複勝、ワイド、馬連、馬単、3連複、3連単から選択）",
+          "combination": "具体的買い目",
+          "amount": "金額",
+          "expectedReturn": "予想配当幅",
+          "reason": "選択理由"
+        }
+      ],
+      "expectedHitRate": "的中率見込み",
+      "riskLevel": "high/medium/low"
+    },
+    {
+      "patternName": "バランス重視パターン", 
+      "totalBudget": "1000円",
+      "bets": [
+        {
+          "type": "AIが最適と判断する券種",
+          "combination": "具体的買い目",
+          "amount": "金額",
+          "expectedReturn": "予想配当幅",
+          "reason": "選択理由"
+        }
+      ],
+      "expectedHitRate": "的中率見込み",
+      "riskLevel": "high/medium/low"
+    },
+    {
+      "patternName": "高配当狙いパターン",
+      "totalBudget": "1000円", 
+      "bets": [
+        {
+          "type": "AIが最適と判断する券種",
+          "combination": "具体的買い目",
+          "amount": "金額",
+          "expectedReturn": "予想配当幅",
+          "reason": "選択理由"
+        }
+      ],
+      "expectedHitRate": "的中率見込み",
+      "riskLevel": "high/medium/low"
     }
   ],
   "riskAnalysis": "リスクと対策（80文字程度）",
@@ -407,12 +453,31 @@ ${horseList}
 }
 
 **必須事項:**
+
+**【統計分析】**
 - 前5走データの指数関数的重み付け分析を必ず実施
 - 各馬のトレンド（向上・安定・悪化）を必ず言及
-- オッズの妥当性を評価
-- 具体的な買い目金額を提示
-- リスク要因を明記
-- 日本語で簡潔に回答`;
+- オッズの妥当性を数値的に評価
+
+**【AI独自分析（統計では判断できない要素）】**
+- **戦術分析**: 想定ペース・ポジション争い・直線勝負の展開読み
+- **心理分析**: 馬の性格・気性・プレッシャー対応・大舞台適性
+- **質的判断**: 調教の充実度・馬体の気配・近況変化の評価
+- **相互作用**: 複数要因の組み合わせ効果・非線形関係の洞察
+- **経験則**: 統計に表れない例外的パターン・ベテラン的勘
+
+**【アウトプット】**
+- 予算1000円で3つの異なる戦略パターンを提案
+- 各パターンで最適な券種をAIが選択（単勝、複勝、ワイド、馬連、馬単、3連複、3連単）
+- 的中率とリターンのバランスを考慮した提案
+- **安全重視**：的中率高・配当低（複勝中心等）
+- **バランス重視**：的中率中・配当中（ワイド・馬連等）
+- **高配当狙い**：的中率低・配当高（3連複・3連単等）
+- 各戦略の選択理由とAI独自の洞察を明記
+- 日本語で簡潔に回答
+
+## 🔥 重要：AI独自分析の価値発揮
+統計的予測ロジックでは捉えきれない「戦術・心理・質的・相互作用・経験則」の要素こそが、AIの真価です。数値データを超えた洞察力で、人間の直感と経験を活かした総合判断を行ってください。`;
     }
     
     // 純粋データでのAI推奨生成（学習データ非依存）
@@ -563,14 +628,19 @@ ${horseList}
                 });
             }
             
-            // bettingStrategyの形式を統一
-            const processedBettingStrategy = (claudeData.bettingStrategy || []).map(strategy => ({
-                type: strategy.type || '不明',
-                combination: strategy.combination || strategy.target || 'N/A',
-                amount: strategy.amount || '未設定',
-                expectedReturn: strategy.expectedReturn || 'N/A',
-                risk: strategy.risk || 'medium',
-                reason: strategy.reason || '理由未設定'
+            // bettingStrategyの形式を統一（3パターン対応）
+            const processedBettingStrategy = (claudeData.bettingStrategy || []).map(pattern => ({
+                patternName: pattern.patternName || '戦略パターン',
+                totalBudget: pattern.totalBudget || '1000円',
+                expectedHitRate: pattern.expectedHitRate || '未設定',
+                riskLevel: pattern.riskLevel || 'medium',
+                bets: (pattern.bets || []).map(bet => ({
+                    type: bet.type || '不明',
+                    combination: bet.combination || 'N/A',
+                    amount: bet.amount || '未設定',
+                    expectedReturn: bet.expectedReturn || 'N/A',
+                    reason: bet.reason || '理由未設定'
+                }))
             }));
 
             return {
@@ -1642,52 +1712,99 @@ ${horseList}
             html += '</div>';
         }
 
-        // 買い目戦略
+        // 買い目戦略（3パターン対応）
         if (recommendation.bettingStrategy && recommendation.bettingStrategy.length > 0) {
             html += `
                 <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 10px; margin-bottom: 15px;">
                     <h4 style="margin: 0 0 15px 0; display: flex; align-items: center;">
-                        <span style="margin-right: 8px;">💰</span>AI推奨買い目
+                        <span style="margin-right: 8px;">💰</span>AI推奨買い目（予算1000円・3パターン）
                     </h4>
-                    <div style="display: grid; gap: 10px;">
             `;
             
-            recommendation.bettingStrategy.forEach(strategy => {
-                const riskColor = strategy.risk === 'low' ? '#4caf50' : 
-                                strategy.risk === 'medium' ? '#ff9800' : '#f44336';
+            recommendation.bettingStrategy.forEach((pattern, patternIndex) => {
+                const patternColors = ['#4caf50', '#2196f3', '#ff9800']; // 安全・バランス・高配当
+                const patternIcons = ['🛡️', '⚖️', '🚀'];
+                const currentColor = patternColors[patternIndex] || '#666';
+                const currentIcon = patternIcons[patternIndex] || '💡';
                 
                 // undefinedを防ぐための安全な値取得
-                const strategyType = strategy.type || '不明';
-                const strategyCombination = strategy.combination || strategy.target || 'N/A';
-                const strategyAmount = strategy.amount || '未設定';
-                const strategyReturn = strategy.expectedReturn || 'N/A';
-                const strategyRisk = strategy.risk || 'medium';
-                const riskText = strategyRisk === 'low' ? '低' : strategyRisk === 'medium' ? '中' : '高';
+                const patternName = pattern.patternName || `パターン${patternIndex + 1}`;
+                const totalBudget = pattern.totalBudget || '1000円';
+                const expectedHitRate = pattern.expectedHitRate || '未設定';
+                const riskLevel = pattern.riskLevel || 'medium';
+                const riskText = riskLevel === 'low' ? '低' : riskLevel === 'medium' ? '中' : '高';
                 
                 html += `
-                    <div style="background: rgba(255,255,255,0.05); padding: 12px; border-radius: 8px; display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px; align-items: center;">
-                        <div>
-                            <div style="font-weight: bold; margin-bottom: 4px;">${strategyType}</div>
-                            <div style="font-size: 0.9em; opacity: 0.8;">${strategyCombination}</div>
+                    <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 10px; margin-bottom: 12px; border-left: 4px solid ${currentColor};">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <h5 style="margin: 0; display: flex; align-items: center; color: ${currentColor};">
+                                <span style="margin-right: 8px; font-size: 1.2em;">${currentIcon}</span>
+                                ${patternName}
+                            </h5>
+                            <div style="display: flex; gap: 12px; align-items: center; font-size: 0.9em;">
+                                <span style="background: rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 12px;">
+                                    💰 ${totalBudget}
+                                </span>
+                                <span style="background: rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 12px;">
+                                    📊 的中率${expectedHitRate}
+                                </span>
+                                <span style="background: ${currentColor}; padding: 4px 8px; border-radius: 12px; font-weight: bold;">
+                                    リスク${riskText}
+                                </span>
+                            </div>
                         </div>
-                        <div style="text-align: center;">
-                            <div style="font-weight: bold; color: #ffd700;">${strategyAmount}</div>
-                            <div style="font-size: 0.8em; opacity: 0.7;">推奨金額</div>
+                        
+                        <div style="display: grid; gap: 8px;">
+                `;
+                
+                // 各パターンの買い目リスト
+                if (pattern.bets && pattern.bets.length > 0) {
+                    pattern.bets.forEach(bet => {
+                        const betType = bet.type || '不明';
+                        const betCombination = bet.combination || 'N/A';
+                        const betAmount = bet.amount || '未設定';
+                        const betReturn = bet.expectedReturn || 'N/A';
+                        const betReason = bet.reason || '理由未設定';
+                        
+                        html += `
+                            <div style="background: rgba(255,255,255,0.03); padding: 10px; border-radius: 6px;">
+                                <div style="display: grid; grid-template-columns: auto 1fr auto auto; gap: 12px; align-items: center;">
+                                    <div style="font-weight: bold; color: ${currentColor};">
+                                        ${betType}
+                                    </div>
+                                    <div style="font-size: 0.95em;">
+                                        ${betCombination}
+                                    </div>
+                                    <div style="text-align: center; font-weight: bold; color: #ffd700;">
+                                        ${betAmount}
+                                    </div>
+                                    <div style="text-align: center; font-weight: bold; color: #90ee90;">
+                                        ${betReturn}
+                                    </div>
+                                </div>
+                                ${betReason !== '理由未設定' ? `
+                                    <div style="font-size: 0.85em; opacity: 0.8; margin-top: 6px; padding-left: 12px; border-left: 2px solid rgba(255,255,255,0.2);">
+                                        💡 ${betReason}
+                                    </div>
+                                ` : ''}
+                            </div>
+                        `;
+                    });
+                } else {
+                    html += `
+                        <div style="text-align: center; padding: 20px; opacity: 0.6;">
+                            このパターンには買い目が設定されていません
                         </div>
-                        <div style="text-align: center;">
-                            <div style="font-weight: bold; color: #90ee90;">${strategyReturn}</div>
-                            <div style="font-size: 0.8em; opacity: 0.7;">期待リターン</div>
-                        </div>
-                        <div style="text-align: center;">
-                            <span style="background: ${riskColor}; padding: 4px 8px; border-radius: 15px; font-size: 0.8em; font-weight: bold;">
-                                ${riskText}
-                            </span>
+                    `;
+                }
+                
+                html += `
                         </div>
                     </div>
                 `;
             });
             
-            html += '</div></div>';
+            html += '</div>';
         }
 
         // リスク分析
@@ -2428,6 +2545,8 @@ ${horseList}
             
             if (recommendation.success) {
                 this.lastRecommendation = recommendation;
+                // AI推奨結果をグローバル変数に保存（学習システムで参照するため）
+                window.lastAIRecommendation = recommendation;
                 this.displayAIRecommendation(recommendation);
                 showMessage('手動AI回答を正常に処理しました！', 'success');
                 
@@ -2455,7 +2574,7 @@ ${horseList}
                     analysis: aiResponse.substring(0, 300) + (aiResponse.length > 300 ? '...' : ''),
                     topPicks: this.extractTopPicksFromText(aiResponse, horses),
                     bettingStrategy: this.extractBettingStrategyFromText(aiResponse),
-                    summary: 'Claude AIからの手動回答を処理しました',
+                    summary: this.extractSummaryFromText(aiResponse),
                     confidence: 'medium',
                     sourceType: 'manual_claude_ai',
                     generatedAt: new Date().toLocaleString('ja-JP'),
@@ -2477,22 +2596,48 @@ ${horseList}
                 });
             }
 
-            // bettingStrategyの形式を統一
-            const processedBettingStrategy = (claudeData.bettingStrategy || []).map(strategy => ({
-                type: strategy.type || '不明',
-                combination: strategy.combination || strategy.target || 'N/A',
-                amount: strategy.amount || '未設定',
-                expectedReturn: strategy.expectedReturn || 'N/A',
-                risk: strategy.risk || 'medium',
-                reason: strategy.reason || '理由未設定'
-            }));
+            // bettingStrategyの形式を統一（3パターン対応）
+            const processedBettingStrategy = (claudeData.bettingStrategy || []).map(pattern => {
+                // 新形式（パターン式）の場合
+                if (pattern.patternName || pattern.bets) {
+                    return {
+                        patternName: pattern.patternName || '戦略パターン',
+                        totalBudget: pattern.totalBudget || '1000円',
+                        expectedHitRate: pattern.expectedHitRate || '未設定',
+                        riskLevel: pattern.riskLevel || 'medium',
+                        bets: (pattern.bets || []).map(bet => ({
+                            type: bet.type || '不明',
+                            combination: bet.combination || 'N/A',
+                            amount: bet.amount || '未設定',
+                            expectedReturn: bet.expectedReturn || 'N/A',
+                            reason: bet.reason || '理由未設定'
+                        }))
+                    };
+                }
+                // 旧形式（単一戦略）の場合は新形式に変換
+                else {
+                    return {
+                        patternName: 'AI推奨戦略',
+                        totalBudget: '1000円',
+                        expectedHitRate: '未設定',
+                        riskLevel: pattern.risk || 'medium',
+                        bets: [{
+                            type: pattern.type || '不明',
+                            combination: pattern.combination || pattern.target || 'N/A',
+                            amount: pattern.amount || '未設定',
+                            expectedReturn: pattern.expectedReturn || 'N/A',
+                            reason: pattern.reason || '理由未設定'
+                        }]
+                    };
+                }
+            });
 
             return {
                 success: true,
                 analysis: claudeData.analysis || '分析データがありません',
                 topPicks: claudeData.topPicks || [],
                 bettingStrategy: processedBettingStrategy,
-                summary: claudeData.summary || 'まとめがありません',
+                summary: claudeData.summary || this.generateSummaryFromData(claudeData),
                 confidence: claudeData.confidence || 'medium',
                 sourceType: 'manual_claude_ai',
                 generatedAt: new Date().toLocaleString('ja-JP'),
@@ -2528,27 +2673,53 @@ ${horseList}
         return picks.slice(0, 3);
     }
 
-    // テキストから買い目戦略を抽出
+    // テキストから買い目戦略を抽出（3パターン形式で返す）
     static extractBettingStrategyFromText(text) {
-        const strategy = [];
+        const strategies = [];
         
         // 単勝、複勝、ワイドのキーワードを探す
         const betTypes = ['単勝', '複勝', 'ワイド', '馬連', '3連複'];
+        const foundBets = [];
         
         betTypes.forEach(type => {
             if (text.includes(type)) {
-                strategy.push({
+                foundBets.push({
                     type: type,
                     combination: 'テキストから抽出',
                     amount: '未設定',
                     expectedReturn: 'N/A',
-                    risk: 'medium',
                     reason: 'AI推奨テキストから抽出'
                 });
             }
         });
         
-        return strategy;
+        // 3パターン形式で返す
+        if (foundBets.length > 0) {
+            strategies.push({
+                patternName: 'テキスト抽出パターン',
+                totalBudget: '1000円',
+                expectedHitRate: '未設定',
+                riskLevel: 'medium',
+                bets: foundBets
+            });
+        } else {
+            // 戦略が見つからない場合は空のパターンを作成
+            strategies.push({
+                patternName: 'デフォルトパターン',
+                totalBudget: '1000円',
+                expectedHitRate: '未設定',
+                riskLevel: 'medium',
+                bets: [{
+                    type: '不明',
+                    combination: 'テキストから抽出できませんでした',
+                    amount: '未設定',
+                    expectedReturn: 'N/A',
+                    reason: 'AI推奨テキストから戦略を抽出できませんでした'
+                }]
+            });
+        }
+        
+        return strategies;
     }
 
     // 段階的な予想評価
@@ -3474,6 +3645,140 @@ ${horseList}
             console.log('ネットワーク接続が切断されました');
             this.activateOfflineMode();
         });
+    }
+
+    // JSONデータからサマリーを生成
+    static generateSummaryFromData(claudeData) {
+        try {
+            let summary = '';
+            
+            // 1. 分析内容から要点を抽出
+            if (claudeData.analysis) {
+                const analysisPoints = claudeData.analysis.split('。').filter(s => s.trim().length > 5);
+                if (analysisPoints.length > 0) {
+                    summary += analysisPoints[0].trim() + '。';
+                }
+            }
+            
+            // 2. 推奨馬から要点を抽出
+            if (claudeData.topPicks && claudeData.topPicks.length > 0) {
+                const topPick = claudeData.topPicks[0];
+                if (topPick.horse && topPick.horseNumber) {
+                    summary += `本命は${topPick.horseNumber}番${topPick.horse}`;
+                    if (claudeData.topPicks.length > 1) {
+                        const secondPick = claudeData.topPicks[1];
+                        summary += `、対抗は${secondPick.horseNumber}番${secondPick.horse}`;
+                    }
+                    summary += 'を推奨。';
+                }
+            }
+            
+            // 3. 買い目戦略から要点を抽出
+            if (claudeData.bettingStrategy && claudeData.bettingStrategy.length > 0) {
+                const mainStrategy = claudeData.bettingStrategy[0];
+                if (mainStrategy.type && mainStrategy.combination) {
+                    summary += `主力は${mainStrategy.type}の${mainStrategy.combination}`;
+                    if (mainStrategy.risk === 'low') {
+                        summary += '（堅い投資）';
+                    } else if (mainStrategy.risk === 'high') {
+                        summary += '（高配当狙い）';
+                    }
+                    summary += '。';
+                }
+            }
+            
+            // 4. リスク分析があれば追加
+            if (claudeData.riskAnalysis) {
+                const riskPoints = claudeData.riskAnalysis.split('。')[0];
+                if (riskPoints && riskPoints.length > 10) {
+                    summary += `注意点：${riskPoints.trim()}。`;
+                }
+            }
+            
+            // 5. キーファクターがあれば追加
+            if (claudeData.keyFactors && claudeData.keyFactors.length > 0) {
+                summary += `ポイントは${claudeData.keyFactors[0]}。`;
+            }
+            
+            // 6. 文字数調整
+            if (summary.length > 200) {
+                summary = summary.substring(0, 200) + '...';
+            }
+            
+            return summary || 'Claude AIの詳細な分析結果をご確認ください。';
+            
+        } catch (error) {
+            console.error('サマリー生成エラー:', error);
+            return 'Claude AIからの分析結果を処理しました。';
+        }
+    }
+
+    // テキストからサマリーを抽出
+    static extractSummaryFromText(text) {
+        try {
+            // 1. 「まとめ」「総評」「結論」などのセクションを探す
+            const summaryKeywords = [
+                /(?:まとめ|総評|結論|要約|サマリー?)[:：]?\s*(.+?)(?:\n\n|\n$|$)/i,
+                /(?:総じて|結論として|まとめると|要するに|つまり)(.+?)(?:\n\n|\n$|$)/i,
+                /(?:【まとめ】|＜まとめ＞|\[まとめ\]|■まとめ|▼まとめ)(.+?)(?:\n\n|\n$|$)/is,
+                /(?:最終的に|全体として|総合的に)(.+?)(?:\n\n|\n$|$)/i
+            ];
+
+            for (const pattern of summaryKeywords) {
+                const match = text.match(pattern);
+                if (match && match[1]) {
+                    let summary = match[1].trim();
+                    // 不要な文字を除去
+                    summary = summary.replace(/^[：:\s]+/, '').replace(/[。．.]*$/, '');
+                    if (summary.length > 10) {
+                        return summary.length > 200 ? summary.substring(0, 200) + '...' : summary;
+                    }
+                }
+            }
+
+            // 2. 文章の最後の段落からサマリーを抽出
+            const paragraphs = text.split(/\n\s*\n/).filter(p => p.trim().length > 0);
+            if (paragraphs.length > 0) {
+                const lastParagraph = paragraphs[paragraphs.length - 1].trim();
+                // 最後の段落がサマリーっぽい場合
+                if (lastParagraph.length > 20 && lastParagraph.length < 300) {
+                    // 推奨や結論を示すキーワードが含まれている場合
+                    if (/(?:推奨|おすすめ|注目|狙い目|本命|対抗|期待|有力|見込み)/.test(lastParagraph)) {
+                        return lastParagraph.replace(/[。．.]*$/, '');
+                    }
+                }
+            }
+
+            // 3. 推奨馬や買い目に関する文を抽出
+            const recommendationSentences = text.match(/[^。．.]*(?:本命|対抗|推奨|おすすめ|注目|狙い目)[^。．.]*/g);
+            if (recommendationSentences && recommendationSentences.length > 0) {
+                const summary = recommendationSentences.join('。').trim();
+                if (summary.length > 10) {
+                    return summary.length > 200 ? summary.substring(0, 200) + '...' : summary;
+                }
+            }
+
+            // 4. 文章全体の要約を生成（最初の2-3文）
+            const sentences = text.split(/[。．.]/).filter(s => s.trim().length > 10);
+            if (sentences.length >= 2) {
+                const summary = sentences.slice(0, Math.min(3, sentences.length)).join('。') + '。';
+                if (summary.length > 20) {
+                    return summary.length > 200 ? summary.substring(0, 200) + '...' : summary;
+                }
+            }
+
+            // 5. フォールバック：先頭100文字
+            if (text.length > 20) {
+                const fallback = text.substring(0, 100).trim();
+                return fallback + (text.length > 100 ? '...' : '');
+            }
+
+            return 'Claude AIの分析結果を確認してください';
+
+        } catch (error) {
+            console.error('サマリー抽出エラー:', error);
+            return 'Claude AIからの回答を処理しました';
+        }
     }
 }
 
