@@ -147,6 +147,26 @@ class LearningSystem {
                 adj.restDaysWeight = Math.min(1.5, (adj.restDaysWeight || 1.0) + learningRate * 0.3);
                 result.adjustments.restDaysWeight = '休養日数適性を微強化';
             }
+            
+            // 脚質の成功パターン学習
+            if (predictedWinner.runningStyle) {
+                if (!this.learningData.runningStyleSuccess) {
+                    this.learningData.runningStyleSuccess = {};
+                }
+                const style = predictedWinner.runningStyle;
+                this.learningData.runningStyleSuccess[style] = (this.learningData.runningStyleSuccess[style] || 0) + 1;
+                result.adjustments.runningStyle = `脚質「${style}」の成功例を記録`;
+            }
+            
+            // レースレベルの成功パターン学習
+            if (predictedWinner.currentRaceLevel || firstHorse.raceLevel) {
+                if (!this.learningData.raceLevelSuccess) {
+                    this.learningData.raceLevelSuccess = {};
+                }
+                const level = predictedWinner.currentRaceLevel || firstHorse.raceLevel;
+                this.learningData.raceLevelSuccess[level] = (this.learningData.raceLevelSuccess[level] || 0) + 1;
+                result.adjustments.raceLevel = `レースレベル「${level}」の成功例を記録`;
+            }
         } else {
             // 外れた場合の詳細分析と調整
             
@@ -220,6 +240,35 @@ class LearningSystem {
             } else if (firstHorse.restDays > predictedWinner.restDays) {
                 adj.restDaysWeight = Math.max(0.3, (adj.restDaysWeight || 1.0) - learningRate);
                 result.adjustments.restDaysWeight = '休養日数過信を軽減';
+            }
+            
+            // 脚質の失敗パターン学習
+            if (predictedWinner.runningStyle && firstHorse.runningStyle) {
+                if (!this.learningData.runningStyleFailure) {
+                    this.learningData.runningStyleFailure = {};
+                }
+                const predictedStyle = predictedWinner.runningStyle;
+                const actualStyle = firstHorse.runningStyle;
+                
+                this.learningData.runningStyleFailure[predictedStyle] = (this.learningData.runningStyleFailure[predictedStyle] || 0) + 1;
+                if (predictedStyle !== actualStyle) {
+                    result.adjustments.runningStyleMiss = `脚質「${predictedStyle}」予測失敗、実際は「${actualStyle}」`;
+                } else {
+                    result.adjustments.runningStyleSame = `同脚質「${predictedStyle}」での予測失敗を記録`;
+                }
+            }
+            
+            // レースレベルの失敗パターン学習
+            if ((predictedWinner.currentRaceLevel || predictedWinner.raceLevel) && 
+                (firstHorse.currentRaceLevel || firstHorse.raceLevel)) {
+                if (!this.learningData.raceLevelFailure) {
+                    this.learningData.raceLevelFailure = {};
+                }
+                const predictedLevel = predictedWinner.currentRaceLevel || predictedWinner.raceLevel;
+                const actualLevel = firstHorse.currentRaceLevel || firstHorse.raceLevel;
+                
+                this.learningData.raceLevelFailure[predictedLevel] = (this.learningData.raceLevelFailure[predictedLevel] || 0) + 1;
+                result.adjustments.raceLevelMiss = `レベル「${predictedLevel}」での予測失敗を記録`;
             }
 
             // 5. スコア差による追加調整
@@ -406,7 +455,60 @@ class LearningSystem {
         html += `<p>前走着順重み: ${adj.lastRaceWeight.toFixed(2)} (初期値: 1.0)</p>`;
         html += `<p>騎手評価重み: ${adj.jockeyWeight.toFixed(2)} (初期値: 1.0)</p>`;
         html += `<p>人気度バイアス: ${adj.popularityBias.toFixed(2)} (初期値: 0.0)</p>`;
+        
+        // 新規追加特徴量の重み表示
+        if (adj.ageWeight) {
+            html += `<p>年齢重み: ${adj.ageWeight.toFixed(2)} (初期値: 1.0)</p>`;
+        }
+        if (adj.weightChangeWeight) {
+            html += `<p>馬体重変化重み: ${adj.weightChangeWeight.toFixed(2)} (初期値: 1.0)</p>`;
+        }
+        if (adj.restDaysWeight) {
+            html += `<p>休養日数重み: ${adj.restDaysWeight.toFixed(2)} (初期値: 1.0)</p>`;
+        }
         html += '</div>';
+
+        // 脚質学習データの表示
+        if (this.learningData.runningStyleSuccess || this.learningData.runningStyleFailure) {
+            html += '<div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 15px;">';
+            html += '<h5 style="color: #9c27b0; margin-bottom: 10px;">🏃 脚質学習データ</h5>';
+            
+            if (this.learningData.runningStyleSuccess) {
+                html += '<p><strong>成功パターン:</strong></p>';
+                Object.entries(this.learningData.runningStyleSuccess).forEach(([style, count]) => {
+                    html += `<p>・${style}: ${count}回的中</p>`;
+                });
+            }
+            
+            if (this.learningData.runningStyleFailure) {
+                html += '<p><strong>失敗パターン:</strong></p>';
+                Object.entries(this.learningData.runningStyleFailure).forEach(([style, count]) => {
+                    html += `<p>・${style}: ${count}回外れ</p>`;
+                });
+            }
+            html += '</div>';
+        }
+
+        // レースレベル学習データの表示
+        if (this.learningData.raceLevelSuccess || this.learningData.raceLevelFailure) {
+            html += '<div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 15px;">';
+            html += '<h5 style="color: #673ab7; margin-bottom: 10px;">🏆 レースレベル学習データ</h5>';
+            
+            if (this.learningData.raceLevelSuccess) {
+                html += '<p><strong>成功パターン:</strong></p>';
+                Object.entries(this.learningData.raceLevelSuccess).forEach(([level, count]) => {
+                    html += `<p>・${level}: ${count}回的中</p>`;
+                });
+            }
+            
+            if (this.learningData.raceLevelFailure) {
+                html += '<p><strong>失敗パターン:</strong></p>';
+                Object.entries(this.learningData.raceLevelFailure).forEach(([level, count]) => {
+                    html += `<p>・${level}: ${count}回外れ</p>`;
+                });
+            }
+            html += '</div>';
+        }
 
         // 買い目推奨成績を学習状況詳細にも追加
         const bettingPerformance = BettingRecommender.analyzeBettingPerformance();

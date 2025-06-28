@@ -9,8 +9,13 @@ function showMessage(msg, type = 'info', duration = 2500) {
     setTimeout(() => { el.style.display = 'none'; }, duration);
 }
 
-// データ変換機能
+// データ変換機能（エラーハンドリング強化版）
 class DataConverter {
+    // エラーハンドリング強化用の状態管理
+    static errorHistory = [];
+    static partialResults = null;
+    static maxErrorThreshold = 5; // 連続エラー許容数
+    static consecutiveErrors = 0;
     static loadSampleRawData() {
         const sampleData = `1	1	
 消
@@ -57,40 +62,156 @@ class DataConverter {
         document.getElementById('rawDataInput').value = sampleData;
     }
 
-    // netkeiba形式のデータを解析
+    // netkeiba形式のデータを解析（エラーハンドリング強化版）
     static parseNetkeibaData(rawData) {
+        const parseStartTime = Date.now();
         const lines = rawData.split('\n').filter(line => line.trim());
         const horses = [];
+        const parseErrors = [];
         let currentHorse = null;
         let raceInfo = null;
+        let successfulParses = 0;
         
-        // レース基本情報を抽出
-        raceInfo = DataConverter.extractNetkeibaRaceInfo(lines);
-        
-        // 各馬のデータを解析
-        for (let i = 0; i < lines.length; i++) {
-            const line = lines[i].trim();
-            
-            // 新しい馬の開始を検出（枠番・馬番で始まる行）
-            if (DataConverter.isNetkeibaHorseStart(line)) {
-                if (currentHorse && currentHorse.name) {  // 名前が設定されている場合のみ追加
-                    ////console.log(`馬を追加: ${currentHorse.name}`);
-                    horses.push(currentHorse);
-                }
-                currentHorse = DataConverter.parseNetkeibaHorseData(lines, i);
-                i = currentHorse.nextIndex - 1;  // -1を追加（forループのi++で次の行に進むため）
-                ////console.log(`新しい馬の解析開始 - インデックス: ${i}`);
+        try {
+            // レース基本情報を抽出（エラーハンドリング付き）
+            try {
+                raceInfo = DataConverter.extractNetkeibaRaceInfo(lines);
+                console.log('レース基本情報抽出完了:', raceInfo);
+            } catch (raceInfoError) {
+                console.warn('レース基本情報の抽出でエラー:', raceInfoError);
+                parseErrors.push({ type: 'race_info', error: raceInfoError.message });
+                // デフォルト値で続行
+                raceInfo = {
+                    name: '不明',
+                    date: '',
+                    course: '',
+                    distance: '',
+                    trackType: '芝',
+                    trackCondition: '良'
+                };
             }
+            
+            // 各馬のデータを解析（部分的成功を許可）
+            for (let i = 0; i < lines.length; i++) {
+                try {
+                    const line = lines[i].trim();
+                    
+                    // 新しい馬の開始を検出（枠番・馬番で始まる行）
+                    if (DataConverter.isNetkeibaHorseStart(line)) {
+                        // 前の馬を完了処理
+                        if (currentHorse && currentHorse.name) {
+                            // データ検証を実行
+                            const validationResult = this.validateHorseData(currentHorse);
+                            if (validationResult.isValid) {
+                                horses.push(currentHorse);
+                                successfulParses++;
+                                console.log(`馬データ解析成功: ${currentHorse.name}`);
+                            } else {
+                                console.warn(`馬データ検証失敗: ${currentHorse.name}`, validationResult.errors);
+                                parseErrors.push({ 
+                                    type: 'horse_validation', 
+                                    horse: currentHorse.name, 
+                                    errors: validationResult.errors 
+                                });
+                                
+                                // 修復可能な場合は修復して追加
+                                const repairedHorse = this.repairHorseData(currentHorse, validationResult.errors);
+                                if (repairedHorse) {
+                                    horses.push(repairedHorse);
+                                    successfulParses++;
+                                    console.log(`馬データ修復成功: ${repairedHorse.name}`);
+                                }
+                            }
+                        }
+                        
+                        // 新しい馬の解析
+                        try {
+                            currentHorse = DataConverter.parseNetkeibaHorseData(lines, i);
+                            i = currentHorse.nextIndex - 1;
+                        } catch (horseParseError) {
+                            console.error(`馬データ解析エラー（行${i}）:`, horseParseError);
+                            parseErrors.push({ 
+                                type: 'horse_parse', 
+                                line: i, 
+                                error: horseParseError.message 
+                            });
+                            // エラーが発生した馬をスキップして続行
+                            currentHorse = null;
+                        }
+                    }
+                } catch (lineError) {
+                    console.error(`行解析エラー（行${i}）:`, lineError);
+                    parseErrors.push({ 
+                        type: 'line_parse', 
+                        line: i, 
+                        content: lines[i], 
+                        error: lineError.message 
+                    });
+                    // 個別行のエラーは続行
+                    continue;
+                }
+            }
+            
+            // 最後の馬を処理
+            if (currentHorse && currentHorse.name) {
+                try {
+                    const validationResult = this.validateHorseData(currentHorse);
+                    if (validationResult.isValid) {
+                        horses.push(currentHorse);
+                        successfulParses++;
+                        console.log(`最後の馬データ解析成功: ${currentHorse.name}`);
+                    } else {
+                        const repairedHorse = this.repairHorseData(currentHorse, validationResult.errors);
+                        if (repairedHorse) {
+                            horses.push(repairedHorse);
+                            successfulParses++;
+                            console.log(`最後の馬データ修復成功: ${repairedHorse.name}`);
+                        }
+                    }
+                } catch (lastHorseError) {
+                    console.error('最後の馬の処理でエラー:', lastHorseError);
+                    parseErrors.push({ type: 'last_horse', error: lastHorseError.message });
+                }
+            }
+            
+        } catch (criticalError) {
+            console.error('データ解析で重大なエラー:', criticalError);
+            this.recordParseError(criticalError, rawData);
+            throw new Error(`データ解析が失敗しました: ${criticalError.message}`);
         }
         
-        // 最後の馬を追加
-        if (currentHorse && currentHorse.name) {
-            ////console.log(`最後の馬を追加: ${currentHorse.name}`);
-            horses.push(currentHorse);
+        const parseTime = Date.now() - parseStartTime;
+        
+        // 解析結果の評価
+        const result = {
+            raceInfo,
+            horses,
+            parseStats: {
+                totalTime: parseTime,
+                successfulParses,
+                errorCount: parseErrors.length,
+                successRate: successfulParses > 0 ? (successfulParses / (successfulParses + parseErrors.length)) * 100 : 0
+            },
+            parseErrors
+        };
+        
+        // 結果をキャッシュ
+        this.partialResults = result;
+        
+        // エラー報告
+        if (parseErrors.length > 0) {
+            console.warn(`解析完了: ${successfulParses}頭成功, ${parseErrors.length}件のエラー`);
+            this.showParseWarnings(parseErrors, successfulParses);
+        } else {
+            console.log(`解析完了: ${successfulParses}頭のデータを正常に解析`);
         }
         
-        ////console.log(`合計${horses.length}頭のデータを解析しました`);
-        return { raceInfo, horses };
+        // 最低限の成功が必要
+        if (horses.length === 0) {
+            throw new Error('解析可能な馬データが見つかりませんでした。データ形式を確認してください。');
+        }
+        
+        return result;
     }
     
     // netkeiba形式の馬データ開始を検出
@@ -768,6 +889,27 @@ class DataConverter {
         } catch (error) {
             console.error('convertRawDataメソッド内エラー:', error);
             console.error('エラースタック:', error.stack);
+            
+            // エラーを記録
+            this.recordParseError(error, rawData);
+            
+            // 部分的結果が利用可能か確認
+            if (this.partialResults && this.partialResults.horses.length > 0) {
+                const usePartial = confirm(
+                    `データ変換でエラーが発生しましたが、${this.partialResults.horses.length}頭の馬データは正常に解析されました。\n\n` +
+                    `部分的な結果を使用しますか？\n\n` +
+                    `エラー詳細: ${error.message}`
+                );
+                
+                if (usePartial) {
+                    this.processConvertedData(this.partialResults.raceInfo, this.partialResults.horses);
+                    showMessage(`部分的解析完了: ${this.partialResults.horses.length}頭のデータを使用`, 'info', 4000);
+                    return;
+                }
+            }
+            
+            // エラーハンドリングの提案
+            this.suggestErrorResolution(error, rawData);
             showMessage('データ変換中にエラーが発生しました: ' + error.message, 'error');
         }
         
@@ -781,21 +923,61 @@ class DataConverter {
         return lines.some(line => /^\d+\s+\d+\s*$/.test(line.trim()));
     }
     
-    // 変換されたデータを処理
+    // 変換されたデータを処理（エラーハンドリング強化版）
     static processConvertedData(raceInfo, horses) {
         if (horses.length > 0) {
-            // レース基本情報をUIに反映
-            DataConverter.updateRaceInfoUI(raceInfo);
-            
-            // 馬データを追加
-            horses.forEach(horse => {
-                HorseManager.addHorseFromData(horse);
-            });
-            
-            showMessage(`${horses.length}頭のデータを変換しました！`, 'info');
-            document.getElementById('rawDataInput').value = '';
+            try {
+                // 異常データの検出と警告
+                const anomalies = this.detectAnomalousData(horses);
+                
+                // レース基本情報をUIに反映
+                DataConverter.updateRaceInfoUI(raceInfo);
+                
+                // 馬データを追加（エラーハンドリング付き）
+                let successCount = 0;
+                let errorCount = 0;
+                
+                horses.forEach(horse => {
+                    try {
+                        HorseManager.addHorseFromData(horse);
+                        successCount++;
+                    } catch (addError) {
+                        console.error(`馬データ追加エラー（${horse.name}）:`, addError);
+                        errorCount++;
+                    }
+                });
+                
+                // 結果メッセージ
+                if (errorCount === 0) {
+                    showMessage(`${horses.length}頭のデータを正常に変換しました！`, 'info');
+                } else {
+                    showMessage(`${successCount}頭のデータを変換しました（${errorCount}件のエラー）`, 'warning', 4000);
+                }
+                
+                // 異常データがある場合の追加警告
+                if (anomalies.length > 0) {
+                    setTimeout(() => {
+                        showMessage(`${anomalies.length}件の異常データを検出しました。詳細はコンソールを確認してください。`, 'warning', 5000);
+                    }, 2000);
+                }
+                
+                // 入力フィールドをクリア
+                const rawDataInput = document.getElementById('rawDataInput');
+                if (rawDataInput) {
+                    rawDataInput.value = '';
+                }
+                
+                // 連続エラーカウンターをリセット
+                this.consecutiveErrors = 0;
+                
+            } catch (processError) {
+                console.error('データ処理エラー:', processError);
+                showMessage(`データ処理中にエラーが発生しました: ${processError.message}`, 'error');
+                this.consecutiveErrors++;
+            }
         } else {
             showMessage('データの変換に失敗しました。形式を確認してください。', 'error');
+            this.consecutiveErrors++;
         }
     }
 
@@ -1067,6 +1249,264 @@ class DataConverter {
             }
         }
         return '';
+    }
+    
+    // エラーハンドリング強化機能群
+    
+    // 馬データの検証
+    static validateHorseData(horse) {
+        const errors = [];
+        const warnings = [];
+        
+        // 必須フィールドの検証
+        if (!horse.name || (typeof horse.name === 'string' && horse.name.trim() === '')) {
+            errors.push('馬名が設定されていません');
+        }
+        
+        if (!horse.odds || isNaN(parseFloat(horse.odds))) {
+            errors.push('オッズが不正です');
+        } else if (parseFloat(horse.odds) <= 0) {
+            errors.push('オッズは正の数値である必要があります');
+        } else if (parseFloat(horse.odds) > 999) {
+            warnings.push('オッズが999倍を超えています');
+        }
+        
+        // 騎手名の検証
+        if (!horse.jockey || (typeof horse.jockey === 'string' && horse.jockey.trim() === '')) {
+            warnings.push('騎手名が設定されていません');
+        }
+        
+        // 年齢の検証
+        if (horse.age !== undefined && horse.age !== null) {
+            const ageValue = typeof horse.age === 'number' ? horse.age : parseInt(horse.age);
+            if (isNaN(ageValue)) {
+                warnings.push('年齢の形式が不正です');
+            } else if (ageValue < 2 || ageValue > 12) {
+                warnings.push('年齢が通常の範囲外です（2-12歳）');
+            }
+        }
+        
+        // 前走着順の検証
+        if (horse.lastRace !== undefined && horse.lastRace !== null) {
+            const lastRaceStr = String(horse.lastRace);
+            if (isNaN(parseInt(lastRaceStr)) && !['中', '取', '除', '失', 'DNS'].includes(lastRaceStr)) {
+                warnings.push('前走着順の形式が不正です');
+            }
+        }
+        
+        // 体重変化の検証
+        if (horse.weightChange !== undefined && horse.weightChange !== null) {
+            if (typeof horse.weightChange === 'string' && !horse.weightChange.match(/^[+-]?\d+$/)) {
+                warnings.push('体重変化の形式が不正です');
+            } else if (typeof horse.weightChange === 'number' && (isNaN(horse.weightChange) || horse.weightChange < -50 || horse.weightChange > 50)) {
+                warnings.push('体重変化の値が範囲外です(-50〜+50kg)');
+            }
+        }
+        
+        return {
+            isValid: errors.length === 0,
+            errors,
+            warnings,
+            severity: errors.length > 0 ? 'error' : warnings.length > 0 ? 'warning' : 'ok'
+        };
+    }
+    
+    // 馬データの修復
+    static repairHorseData(horse, errors) {
+        const repairedHorse = { ...horse };
+        let repairSuccessful = true;
+        
+        errors.forEach(error => {
+            switch (error) {
+                case '馬名が設定されていません':
+                    repairedHorse.name = `不明馬_${Date.now()}`;
+                    console.log('馬名を自動設定:', repairedHorse.name);
+                    break;
+                    
+                case 'オッズが不正です':
+                case 'オッズは正の数値である必要があります':
+                    repairedHorse.odds = 99.9; // デフォルトオッズ
+                    console.log('オッズをデフォルト値に設定:', repairedHorse.odds);
+                    break;
+                    
+                default:
+                    // 修復不可能なエラー
+                    console.warn('修復不可能なエラー:', error);
+                    repairSuccessful = false;
+                    break;
+            }
+        });
+        
+        return repairSuccessful ? repairedHorse : null;
+    }
+    
+    // エラーを記録
+    static recordParseError(error, rawData) {
+        const errorRecord = {
+            timestamp: new Date().toISOString(),
+            error: error.message,
+            stack: error.stack,
+            dataLength: rawData ? rawData.length : 0,
+            dataPreview: rawData ? rawData.substring(0, 200) + '...' : 'なし'
+        };
+        
+        this.errorHistory.push(errorRecord);
+        
+        // エラー履歴を最新50件まで保持
+        if (this.errorHistory.length > 50) {
+            this.errorHistory = this.errorHistory.slice(-50);
+        }
+        
+        console.log('データ変換エラーを記録:', errorRecord);
+    }
+    
+    // 解析警告を表示
+    static showParseWarnings(parseErrors, successCount) {
+        const errorTypes = {};
+        parseErrors.forEach(error => {
+            errorTypes[error.type] = (errorTypes[error.type] || 0) + 1;
+        });
+        
+        let warningMessage = `データ解析で${parseErrors.length}件の問題が発生しました。\n\n`;
+        warningMessage += `成功: ${successCount}頭\n`;
+        warningMessage += `問題: ${parseErrors.length}件\n\n`;
+        
+        Object.entries(errorTypes).forEach(([type, count]) => {
+            const typeNames = {
+                'race_info': 'レース情報抽出',
+                'horse_parse': '馬データ解析',
+                'horse_validation': '馬データ検証',
+                'line_parse': '行解析',
+                'last_horse': '最終馬処理'
+            };
+            warningMessage += `${typeNames[type] || type}: ${count}件\n`;
+        });
+        
+        console.warn('解析警告を表示:', warningMessage);
+        
+        // ユーザーに詳細情報を提供
+        if (parseErrors.length < successCount) {
+            showMessage(`部分的に解析成功（${successCount}頭）。詳細はコンソールを確認してください。`, 'info', 5000);
+        } else {
+            showMessage('解析に多くの問題があります。データ形式を確認してください。', 'error', 5000);
+        }
+    }
+    
+    // エラー解決方法の提案
+    static suggestErrorResolution(error, rawData) {
+        const suggestions = [];
+        
+        if (error.message.includes('馬データが見つかりません')) {
+            suggestions.push('データに枠番・馬番の行（例: "1\t1\t"）が含まれているか確認してください');
+            suggestions.push('netkeibaから正しい形式でデータをコピーしているか確認してください');
+        }
+        
+        if (error.message.includes('解析可能な馬データが見つかりません')) {
+            suggestions.push('データが完全にコピーされているか確認してください');
+            suggestions.push('サンプルデータを読み込んで形式を参考にしてください');
+        }
+        
+        if (rawData && rawData.length < 100) {
+            suggestions.push('データが短すぎる可能性があります。完全なレースデータをコピーしてください');
+        }
+        
+        if (rawData && !rawData.includes('\t')) {
+            suggestions.push('タブ区切りのデータが必要です。netkeibaから直接コピーしてください');
+        }
+        
+        if (suggestions.length > 0) {
+            console.log('エラー解決の提案:', suggestions);
+            const suggestionText = suggestions.join('\n• ');
+            setTimeout(() => {
+                if (confirm(`データ変換でエラーが発生しました。\n\n解決方法:\n• ${suggestionText}\n\nサンプルデータを読み込みますか？`)) {
+                    this.loadSampleRawData();
+                }
+            }, 1000);
+        }
+    }
+    
+    // 異常データの検出
+    static detectAnomalousData(horses) {
+        const anomalies = [];
+        
+        horses.forEach((horse, index) => {
+            // 異常なオッズを検出
+            if (horse.odds && parseFloat(horse.odds) === 0) {
+                anomalies.push({
+                    type: 'zero_odds',
+                    horse: horse.name,
+                    message: 'オッズが0倍です'
+                });
+            }
+            
+            if (horse.odds && parseFloat(horse.odds) > 500) {
+                anomalies.push({
+                    type: 'extreme_odds',
+                    horse: horse.name,
+                    message: `オッズが500倍を超えています（${horse.odds}倍）`
+                });
+            }
+            
+            // 異常な年齢を検出
+            if (horse.age && (parseInt(horse.age) < 2 || parseInt(horse.age) > 12)) {
+                anomalies.push({
+                    type: 'unusual_age',
+                    horse: horse.name,
+                    message: `年齢が通常範囲外です（${horse.age}歳）`
+                });
+            }
+            
+            // 重複馬名を検出
+            const duplicates = horses.filter(h => h.name === horse.name);
+            if (duplicates.length > 1) {
+                anomalies.push({
+                    type: 'duplicate_name',
+                    horse: horse.name,
+                    message: '馬名が重複しています'
+                });
+            }
+        });
+        
+        if (anomalies.length > 0) {
+            console.warn('異常データを検出:', anomalies);
+            this.showAnomalyWarnings(anomalies);
+        }
+        
+        return anomalies;
+    }
+    
+    // 異常データ警告を表示
+    static showAnomalyWarnings(anomalies) {
+        const warningMessage = `${anomalies.length}件の異常データを検出しました:\n\n` +
+            anomalies.map(a => `• ${a.horse}: ${a.message}`).join('\n');
+        
+        showMessage(`異常データ検出: ${anomalies.length}件`, 'warning', 5000);
+        console.warn(warningMessage);
+    }
+    
+    // エラー統計を取得
+    static getErrorStats() {
+        const stats = {
+            totalErrors: this.errorHistory.length,
+            recentErrors: this.errorHistory.filter(e => 
+                new Date(e.timestamp) > new Date(Date.now() - 24 * 60 * 60 * 1000)
+            ).length,
+            consecutiveErrors: this.consecutiveErrors
+        };
+        
+        return stats;
+    }
+    
+    // データ変換の健全性をチェック
+    static checkDataHealth() {
+        const stats = this.getErrorStats();
+        
+        if (stats.consecutiveErrors >= this.maxErrorThreshold) {
+            showMessage('データ変換で連続してエラーが発生しています。システムを確認してください。', 'error', 8000);
+            return false;
+        }
+        
+        return true;
     }
 }
 

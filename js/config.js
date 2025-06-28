@@ -133,5 +133,11 @@ const INITIAL_LEARNING_DATA = {
         winPredictions: 0,
         totalPredictions: 0,
         placePredictions: 0
-    }
+    },
+    // 脚質学習データ
+    runningStyleSuccess: {},  // 脚質別成功回数
+    runningStyleFailure: {},  // 脚質別失敗回数
+    // レースレベル学習データ  
+    raceLevelSuccess: {},     // レースレベル別成功回数
+    raceLevelFailure: {}      // レースレベル別失敗回数
 }; 

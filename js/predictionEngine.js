@@ -30,10 +30,32 @@ class PredictionEngine {
 
         const horses = HorseManager.getAllHorses();
         
+        // 予測前のデータ品質チェック
+        const qualityReport = this.validatePredictionData(horses);
+        if (qualityReport.criticalIssues > 0) {
+            showMessage(`予測データに${qualityReport.criticalIssues}件の重大な問題があります。詳細はコンソールを確認してください。`, 'error', 6000);
+            console.error('予測データ品質レポート:', qualityReport);
+        } else if (qualityReport.warnings > 0) {
+            showMessage(`予測データに${qualityReport.warnings}件の警告があります。`, 'warning', 4000);
+            console.warn('予測データ品質レポート:', qualityReport);
+        }
+        
         // データ抽出内容を確認（2走分対応）
         this.logRaceHistoryExtraction(horses);
         
         const predictions = this.calculateHorsePredictions(horses);
+        
+        // 正規化確認のための検証ログ
+        const totalWinAfterCalc = predictions.reduce((sum, p) => sum + p.winProbability, 0);
+        console.log(`calculateHorsePredictions実行後の勝率合計: ${totalWinAfterCalc.toFixed(1)}%`);
+        
+        // 予測結果の検証
+        const predictionValidation = this.validatePredictionResults(predictions);
+        if (!predictionValidation.isValid) {
+            console.warn('予測結果に異常があります:', predictionValidation.issues);
+            showMessage('予測結果に異常が検出されました。詳細はコンソールを確認してください。', 'warning', 5000);
+        }
+        
         this.currentPredictions = predictions;
         this.displayResults(predictions);
         BettingRecommender.generateBettingRecommendations(predictions);
@@ -42,7 +64,11 @@ class PredictionEngine {
     static calculateHorsePredictions(horses) {
         const adj = LearningSystem.getLearningData().adjustments;
         
-        return horses.map(horse => {
+        console.log(`=== 予測計算開始 ===`);
+        console.log(`対象馬数: ${horses.length}頭`);
+        console.log(`入力オッズ: [${horses.map(h => h.odds).join(', ')}]`);
+        
+        const predictions = horses.map(horse => {
             let score = 50;
 
             // オッズ評価（学習調整済み）
@@ -367,6 +393,105 @@ class PredictionEngine {
                 placeExpectedValue: Math.round(placeExpectedValue * 100) / 100
             };
         });
+        
+        // 勝率の正規化処理（合計を100%に調整）
+        const totalWinProbability = predictions.reduce((sum, p) => sum + p.winProbability, 0);
+        console.log(`正規化前の勝率合計: ${totalWinProbability.toFixed(1)}%`);
+        
+        if (totalWinProbability > 0) {
+            const normalizationFactor = 100 / totalWinProbability;
+            console.log(`正規化係数: ${normalizationFactor.toFixed(4)}`);
+            
+            predictions.forEach(prediction => {
+                const originalWinProb = prediction.winProbability;
+                prediction.winProbability = Math.round(prediction.winProbability * normalizationFactor * 10) / 10;
+                
+                // 期待値も再計算
+                prediction.winExpectedValue = Math.round((prediction.winProbability / 100 * prediction.odds - 1) * 100) / 100;
+                
+                console.log(`${prediction.name}: ${originalWinProb.toFixed(1)}% → ${prediction.winProbability}%`);
+            });
+            
+            // 正規化後の合計を確認
+            const normalizedTotal = predictions.reduce((sum, p) => sum + p.winProbability, 0);
+            console.log(`正規化後の勝率合計: ${normalizedTotal.toFixed(1)}%`);
+            
+            // 微調整（丸め誤差の補正）
+            if (Math.abs(normalizedTotal - 100) > 0.1) {
+                const difference = 100 - normalizedTotal;
+                const maxProbHorse = predictions.reduce((max, horse) => 
+                    horse.winProbability > max.winProbability ? horse : max
+                );
+                maxProbHorse.winProbability = Math.round((maxProbHorse.winProbability + difference) * 10) / 10;
+                maxProbHorse.winExpectedValue = Math.round((maxProbHorse.winProbability / 100 * maxProbHorse.odds - 1) * 100) / 100;
+                
+                const finalTotal = predictions.reduce((sum, p) => sum + p.winProbability, 0);
+                console.log(`微調整後の勝率合計: ${finalTotal.toFixed(1)}%`);
+            }
+        } else {
+            // 正規化が不可能な場合の緊急対応
+            console.warn('勝率正規化が不可能: totalWinProbability = 0');
+            predictions.forEach(prediction => {
+                prediction.winProbability = Math.max(0.1, 100 / predictions.length); // 均等配分
+                prediction.winExpectedValue = Math.round((prediction.winProbability / 100 * prediction.odds - 1) * 100) / 100;
+            });
+        }
+        
+        // 正規化後の最終検証
+        const finalWinTotal = predictions.reduce((sum, p) => sum + p.winProbability, 0);
+        if (Math.abs(finalWinTotal - 100) > 5) {
+            console.error(`緊急対応: 正規化後も大幅な乖離 (${finalWinTotal.toFixed(1)}%)`);
+            // 強制的に100%に修正
+            const correctionFactor = 100 / finalWinTotal;
+            predictions.forEach(prediction => {
+                prediction.winProbability = Math.round(prediction.winProbability * correctionFactor * 10) / 10;
+                prediction.winExpectedValue = Math.round((prediction.winProbability / 100 * prediction.odds - 1) * 100) / 100;
+            });
+            console.log(`強制修正後の勝率合計: ${predictions.reduce((sum, p) => sum + p.winProbability, 0).toFixed(1)}%`);
+        }
+        
+        // 複勝率の正規化処理（合計を300%に調整 - 3着まであるため）
+        const totalPlaceProbability = predictions.reduce((sum, p) => sum + p.placeProbability, 0);
+        const targetPlaceTotal = Math.min(300, predictions.length * 100); // 出走頭数に応じて調整
+        if (totalPlaceProbability > 0) {
+            const placeNormalizationFactor = targetPlaceTotal / totalPlaceProbability;
+            predictions.forEach(prediction => {
+                prediction.placeProbability = Math.round(prediction.placeProbability * placeNormalizationFactor * 10) / 10;
+                
+                // 複勝期待値も再計算
+                let placeOdds = 0;
+                if (prediction.odds <= 3) {
+                    placeOdds = prediction.odds * 0.4;
+                } else if (prediction.odds <= 10) {
+                    placeOdds = prediction.odds * 0.35;
+                } else {
+                    placeOdds = prediction.odds * 0.3;
+                }
+                
+                prediction.placeExpectedValue = Math.round((prediction.placeProbability / 100 * placeOdds - 1) * 100) / 100;
+            });
+        }
+        
+        // 最終確認と緊急修正
+        const finalTotal = predictions.reduce((sum, p) => sum + p.winProbability, 0);
+        console.log(`=== 予測計算完了時の最終確認 ===`);
+        console.log(`最終勝率合計: ${finalTotal.toFixed(1)}%`);
+        console.log(`個別勝率: [${predictions.map(p => p.winProbability.toFixed(1)).join(', ')}]`);
+        
+        // 緊急修正: 正規化が失敗している場合の強制対応
+        if (Math.abs(finalTotal - 100) > 5) {
+            console.error(`🚨 緊急事態: 正規化処理が失敗、強制修正を実行`);
+            const emergencyFactor = 100 / finalTotal;
+            predictions.forEach(prediction => {
+                prediction.winProbability = Math.round(prediction.winProbability * emergencyFactor * 10) / 10;
+                prediction.winExpectedValue = Math.round((prediction.winProbability / 100 * prediction.odds - 1) * 100) / 100;
+            });
+            
+            const correctedTotal = predictions.reduce((sum, p) => sum + p.winProbability, 0);
+            console.log(`緊急修正後の勝率合計: ${correctedTotal.toFixed(1)}%`);
+        }
+        
+        return predictions;
     }
 
     static displayResults(predictions) {
@@ -1048,8 +1173,276 @@ class PredictionEngine {
         
         return '芝'; // デフォルト値
     }
+    
+    // データ検証機能群
+    
+    // 予測データの品質を検証
+    static validatePredictionData(horses) {
+        let criticalIssues = 0;
+        let warnings = 0;
+        const issues = [];
+        
+        // 基本データ検証
+        if (horses.length === 0) {
+            criticalIssues++;
+            issues.push('馬データが存在しません');
+        } else if (horses.length < 8) {
+            warnings++;
+            issues.push(`馬データが少なすぎます（${horses.length}頭）`);
+        }
+        
+        // 各馬のデータ品質チェック
+        horses.forEach((horse, index) => {
+            const horseIssues = this.validateSingleHorseData(horse, index + 1);
+            criticalIssues += horseIssues.critical;
+            warnings += horseIssues.warnings;
+            issues.push(...horseIssues.details);
+        });
+        
+        // オッズの分布チェック
+        const oddsDistribution = this.analyzeOddsDistribution(horses);
+        if (oddsDistribution.hasAnomalies) {
+            warnings++;
+            issues.push('オッズ分布に異常があります');
+        }
+        
+        return {
+            criticalIssues,
+            warnings,
+            issues,
+            totalHorses: horses.length,
+            qualityScore: Math.max(0, 100 - (criticalIssues * 20) - (warnings * 5))
+        };
+    }
+    
+    // 個別馬データの検証
+    static validateSingleHorseData(horse, horseNumber) {
+        let critical = 0;
+        let warnings = 0;
+        const details = [];
+        
+        // 必須データの存在チェック
+        if (!horse.name) {
+            critical++;
+            details.push(`${horseNumber}番: 馬名が未設定`);
+        }
+        
+        if (!horse.odds || isNaN(parseFloat(horse.odds))) {
+            critical++;
+            details.push(`${horseNumber}番: オッズが無効`);
+        } else {
+            const odds = parseFloat(horse.odds);
+            if (odds <= 0) {
+                critical++;
+                details.push(`${horseNumber}番: オッズが0以下（${odds}）`);
+            } else if (odds > 999) {
+                warnings++;
+                details.push(`${horseNumber}番: オッズが999倍超（${odds}）`);
+            }
+        }
+        
+        // 騎手データチェック
+        if (!horse.jockey) {
+            warnings++;
+            details.push(`${horseNumber}番: 騎手が未設定`);
+        }
+        
+        // 年齢データチェック
+        if (horse.age) {
+            const age = parseInt(horse.age);
+            if (isNaN(age) || age < 2 || age > 12) {
+                warnings++;
+                details.push(`${horseNumber}番: 年齢が異常（${horse.age}歳）`);
+            }
+        }
+        
+        // 前走データの一貫性チェック
+        if (horse.lastRace && horse.lastRaceOrder) {
+            const displayOrder = this.parseRaceOrder(horse.lastRace);
+            const detailOrder = this.parseRaceOrder(horse.lastRaceOrder);
+            if (displayOrder !== null && detailOrder !== null && displayOrder !== detailOrder) {
+                warnings++;
+                details.push(`${horseNumber}番: 前走着順データに不一致（${horse.lastRace} vs ${horse.lastRaceOrder}）`);
+            }
+        }
+        
+        return { critical, warnings, details };
+    }
+    
+    // オッズ分布の分析
+    static analyzeOddsDistribution(horses) {
+        const oddsList = horses.map(h => parseFloat(h.odds)).filter(o => !isNaN(o));
+        
+        if (oddsList.length === 0) {
+            return { hasAnomalies: true, reason: 'オッズデータが存在しません' };
+        }
+        
+        const min = Math.min(...oddsList);
+        const max = Math.max(...oddsList);
+        const avg = oddsList.reduce((sum, odds) => sum + odds, 0) / oddsList.length;
+        
+        let hasAnomalies = false;
+        const anomalies = [];
+        
+        // 極端なオッズ分布をチェック
+        if (min === max) {
+            hasAnomalies = true;
+            anomalies.push('全馬同じオッズ');
+        }
+        
+        if (min <= 0.5) {
+            hasAnomalies = true;
+            anomalies.push('異常に低いオッズ（0.5倍以下）');
+        }
+        
+        if (max > 999) {
+            hasAnomalies = true;
+            anomalies.push('異常に高いオッズ（999倍超）');
+        }
+        
+        // 1番人気と最下位人気の差が極端すぎる場合
+        const ratio = max / min;
+        if (ratio > 1000) {
+            hasAnomalies = true;
+            anomalies.push(`オッズ格差が極端（${ratio.toFixed(1)}倍）`);
+        }
+        
+        return {
+            hasAnomalies,
+            anomalies,
+            statistics: { min, max, avg, ratio },
+            distribution: {
+                favorites: oddsList.filter(o => o <= 3).length,
+                middleOdds: oddsList.filter(o => o > 3 && o <= 10).length,
+                longshots: oddsList.filter(o => o > 10).length
+            }
+        };
+    }
+    
+    // 予測結果の検証
+    static validatePredictionResults(predictions) {
+        const issues = [];
+        let isValid = true;
+        
+        if (!predictions || predictions.length === 0) {
+            issues.push('予測結果が生成されませんでした');
+            return { isValid: false, issues };
+        }
+        
+        // スコア分布の検証
+        const scores = predictions.map(p => p.score).filter(s => !isNaN(s));
+        if (scores.length === 0) {
+            issues.push('有効なスコアが計算されませんでした');
+            isValid = false;
+        } else {
+            const minScore = Math.min(...scores);
+            const maxScore = Math.max(...scores);
+            const avgScore = scores.reduce((sum, s) => sum + s, 0) / scores.length;
+            
+            // 異常なスコア分布をチェック
+            if (minScore === maxScore) {
+                issues.push('全馬同じスコア');
+                isValid = false;
+            }
+            
+            if (maxScore - minScore < 5) {
+                issues.push('スコア差が小さすぎます（差別化不足）');
+            }
+            
+            if (Math.abs(avgScore - 50) > 30) {
+                issues.push(`平均スコアが基準値から大きく乖離（${avgScore.toFixed(1)}）`);
+            }
+        }
+        
+        // 勝率分布の検証
+        const winProbabilities = predictions.map(p => p.winProbability).filter(p => !isNaN(p));
+        if (winProbabilities.length > 0) {
+            const totalProb = winProbabilities.reduce((sum, p) => sum + p, 0);
+            console.log(`勝率検証: 合計=${totalProb.toFixed(1)}%, 個別勝率=[${winProbabilities.map(p => p.toFixed(1)).join(', ')}]`);
+            
+            // 正規化処理後は許容範囲を調整（正規化が失敗した場合に対応）
+            const tolerance = totalProb > 120 ? 10 : 2; // 大幅な乖離の場合は許容範囲を拡大
+            if (Math.abs(totalProb - 100) > tolerance) {
+                if (totalProb > 120) {
+                    issues.push(`勝率合計が100%から大幅に乖離（${totalProb.toFixed(1)}%）- 正規化処理に問題の可能性`);
+                    console.error('予測値正規化の問題を検出:', {
+                        totalProbability: totalProb,
+                        individualProbabilities: winProbabilities,
+                        horsesCount: predictions.length
+                    });
+                } else {
+                    issues.push(`勝率合計が100%から乖離（${totalProb.toFixed(1)}%）`);
+                }
+                isValid = false;
+            } else {
+                console.log(`勝率検証OK: 合計=${totalProb.toFixed(1)}% (許容範囲±${tolerance}%)`);
+            }
+        }
+        
+        // 異常値の検出
+        predictions.forEach((prediction, index) => {
+            if (prediction.score < 0 || prediction.score > 100) {
+                issues.push(`${index + 1}番: スコアが範囲外（${prediction.score}）`);
+            }
+            
+            if (prediction.winProbability < 0 || prediction.winProbability > 100) {
+                issues.push(`${index + 1}番: 勝率が範囲外（${prediction.winProbability}%）`);
+            }
+        });
+        
+        return {
+            isValid: isValid && issues.length === 0,
+            issues,
+            statistics: {
+                totalPredictions: predictions.length,
+                averageScore: scores.length > 0 ? scores.reduce((sum, s) => sum + s, 0) / scores.length : 0,
+                scoreRange: scores.length > 0 ? Math.max(...scores) - Math.min(...scores) : 0
+            }
+        };
+    }
+    
+    // 予測の一貫性チェック
+    static validatePredictionConsistency(predictions) {
+        const inconsistencies = [];
+        
+        // オッズと勝率の一貫性チェック
+        predictions.forEach((prediction, index) => {
+            const impliedProb = 100 / parseFloat(prediction.odds || 1);
+            const predictedProb = prediction.winProbability;
+            
+            if (Math.abs(impliedProb - predictedProb) > 20) {
+                inconsistencies.push({
+                    horse: index + 1,
+                    issue: `オッズ${prediction.odds}倍の暗示確率${impliedProb.toFixed(1)}%と予測勝率${predictedProb.toFixed(1)}%に大きな乖離`
+                });
+            }
+        });
+        
+        // 前走成績と予測スコアの一貫性チェック
+        predictions.forEach((prediction, index) => {
+            const lastRace = this.parseRaceOrder(prediction.lastRace);
+            if (lastRace !== null) {
+                const isGoodLastRace = lastRace <= 3;
+                const isHighScore = prediction.score > 60;
+                
+                if (isGoodLastRace && !isHighScore) {
+                    inconsistencies.push({
+                        horse: index + 1,
+                        issue: `前走${lastRace}着好走も予測スコア${prediction.score.toFixed(1)}が低い`
+                    });
+                } else if (!isGoodLastRace && lastRace <= 10 && isHighScore) {
+                    inconsistencies.push({
+                        horse: index + 1,
+                        issue: `前走${lastRace}着不振も予測スコア${prediction.score.toFixed(1)}が高い`
+                    });
+                }
+            }
+        });
+        
+        return inconsistencies;
+    }
 }
 
 // グローバル関数として公開
 window.calculatePredictions = PredictionEngine.calculatePredictions.bind(PredictionEngine);
-window.getAIRecommendation = PredictionEngine.requestAIRecommendation.bind(PredictionEngine); 
+window.getAIRecommendation = PredictionEngine.requestAIRecommendation.bind(PredictionEngine); console.log('勝率正規化機能が追加されました。勝率合計が100%になるように自動調整されます。');

@@ -1,8 +1,46 @@
-// AI推奨サービス - Claude API統合版
+// カスタムエラークラス定義
+class RateLimitError extends Error {
+    constructor(message, retryAfter = 60) {
+        super(message);
+        this.name = 'RateLimitError';
+        this.retryAfter = retryAfter;
+    }
+}
+
+class TimeoutError extends Error {
+    constructor(message) {
+        super(message);
+        this.name = 'TimeoutError';
+    }
+}
+
+class ClientError extends Error {
+    constructor(message) {
+        super(message);
+        this.name = 'ClientError';
+    }
+}
+
+class ServerError extends Error {
+    constructor(message) {
+        super(message);
+        this.name = 'ServerError';
+    }
+}
+
+// AI推奨サービス - Claude API統合版（エラーハンドリング強化）
 class AIRecommendationService {
     static isLoading = false;
     static lastRecommendation = null;
     static API_KEY_STORAGE_KEY = 'claude_api_key';
+    
+    // エラーハンドリング強化用の状態管理
+    static retryCount = 0;
+    static maxRetries = 3;
+    static isOfflineMode = false;
+    static lastSuccessfulCall = null;
+    static errorHistory = [];
+    static timeoutDuration = 30000; // 30秒
 
     // AI推奨を取得する（API/手動モード対応）
     static async getAIRecommendation(predictions, raceInfo = null) {
@@ -56,7 +94,17 @@ class AIRecommendationService {
 
         } catch (error) {
             console.error('AI推奨エラー:', error);
-            this.showErrorState(error.message);
+            
+            // エラー履歴に記録
+            this.recordError(error);
+            
+            // エラーの種類に応じた処理
+            const errorResult = await this.handleAIError(error, predictions, raceInfo);
+            if (errorResult) {
+                return errorResult;
+            }
+            
+            this.showErrorState(this.getErrorMessage(error));
             return null;
         } finally {
             this.isLoading = false;
@@ -94,6 +142,7 @@ class AIRecommendationService {
                     agari: horse.lastRaceAgari,
                     date: horse.lastRaceDate,
                     popularity: horse.lastRacePopularity,
+                    raceLevel: horse.lastRaceLevel, // レースレベル追加
                     weight: 1.00 // 35%重み
                 },
                 secondLastRace: (horse.secondLastRaceOrder || horse.secondLastRaceCourse || horse.secondLastRaceAgari) ? {
@@ -104,6 +153,7 @@ class AIRecommendationService {
                     agari: horse.secondLastRaceAgari,
                     date: horse.secondLastRaceDate,
                     popularity: horse.secondLastRacePopularity,
+                    raceLevel: horse.secondLastRaceLevel, // レースレベル追加
                     weight: 0.82 // 29%重み
                 } : null,
                 thirdLastRace: (horse.thirdLastRaceOrder || horse.thirdLastRaceCourse || horse.thirdLastRaceAgari) ? {
@@ -220,19 +270,29 @@ class AIRecommendationService {
             
         } catch (error) {
             console.error('Claude AI API呼び出しエラー:', error);
-            return { success: false, error: error.message };
+            
+            // エラータイプに応じた詳細なエラー情報を返却
+            const errorInfo = this.analyzeError(error);
+            return {
+                success: false,
+                error: error.message,
+                errorType: errorInfo.type,
+                retryable: errorInfo.retryable,
+                fallbackRecommended: errorInfo.fallbackRecommended
+            };
         }
     }
     
     // Claude AIに送信するプロンプトの作成（純粋データ版）
     static formatRaceDataForClaude(horses, raceInfo) {
         const horseList = horses.map((horse, index) => {
-            let horseInfo = `${index + 1}. ${horse.name || `${index + 1}番馬`} - オッズ:${horse.odds}倍, 前走:${horse.lastRace || horse.raceHistory?.lastRace?.order || '不明'}着, 騎手:${horse.jockey || '不明'}, 年齢:${horse.age || '不明'}歳`;
+            let horseInfo = `${index + 1}. ${horse.name || `${index + 1}番馬`} - オッズ:${horse.odds}倍, 前走:${horse.lastRace || horse.raceHistory?.lastRace?.order || '不明'}着, 騎手:${horse.jockey || '不明'}, 年齢:${horse.age || '不明'}歳, 脚質:${horse.runningStyle || '不明'}`;
             
             // 前走詳細データがあれば追加
             if (horse.raceHistory?.lastRace) {
                 const lastRace = horse.raceHistory.lastRace;
                 horseInfo += ` [前走:${lastRace.course || '?'} ${lastRace.distance || '?'}m`;
+                if (lastRace.raceLevel) horseInfo += ` ${lastRace.raceLevel}`;
                 if (lastRace.agari) horseInfo += ` 上がり${lastRace.agari}秒`;
                 if (lastRace.popularity) horseInfo += ` ${lastRace.popularity}番人気`;
                 horseInfo += `]`;
@@ -242,6 +302,7 @@ class AIRecommendationService {
             if (horse.raceHistory?.secondLastRace) {
                 const secondRace = horse.raceHistory.secondLastRace;
                 horseInfo += ` [2走前:${secondRace.order || '?'}着 ${secondRace.course || '?'} ${secondRace.distance || '?'}m`;
+                if (secondRace.raceLevel) horseInfo += ` ${secondRace.raceLevel}`;
                 if (secondRace.agari) horseInfo += ` 上がり${secondRace.agari}秒`;
                 if (secondRace.popularity) horseInfo += ` ${secondRace.popularity}番人気`;
                 horseInfo += `]`;
@@ -251,6 +312,7 @@ class AIRecommendationService {
             if (horse.raceHistory?.thirdLastRace) {
                 const thirdRace = horse.raceHistory.thirdLastRace;
                 horseInfo += ` [3走前:${thirdRace.order || '?'}着 ${thirdRace.course || '?'} ${thirdRace.distance || '?'}m`;
+                if (thirdRace.raceLevel) horseInfo += ` ${thirdRace.raceLevel}`;
                 if (thirdRace.agari) horseInfo += ` 上がり${thirdRace.agari}秒`;
                 if (thirdRace.popularity) horseInfo += ` ${thirdRace.popularity}番人気`;
                 horseInfo += `]`;
@@ -260,6 +322,7 @@ class AIRecommendationService {
             if (horse.raceHistory?.fourthLastRace) {
                 const fourthRace = horse.raceHistory.fourthLastRace;
                 horseInfo += ` [4走前:${fourthRace.order || '?'}着 ${fourthRace.course || '?'} ${fourthRace.distance || '?'}m`;
+                if (fourthRace.raceLevel) horseInfo += ` ${fourthRace.raceLevel}`;
                 if (fourthRace.agari) horseInfo += ` 上がり${fourthRace.agari}秒`;
                 if (fourthRace.popularity) horseInfo += ` ${fourthRace.popularity}番人気`;
                 horseInfo += `]`;
@@ -269,6 +332,7 @@ class AIRecommendationService {
             if (horse.raceHistory?.fifthLastRace) {
                 const fifthRace = horse.raceHistory.fifthLastRace;
                 horseInfo += ` [5走前:${fifthRace.order || '?'}着 ${fifthRace.course || '?'} ${fifthRace.distance || '?'}m`;
+                if (fifthRace.raceLevel) horseInfo += ` ${fifthRace.raceLevel}`;
                 if (fifthRace.agari) horseInfo += ` 上がり${fifthRace.agari}秒`;
                 if (fifthRace.popularity) horseInfo += ` ${fifthRace.popularity}番人気`;
                 horseInfo += `]`;
@@ -285,6 +349,7 @@ class AIRecommendationService {
 - **距離**: ${raceInfo?.distance || '未設定'}m
 - **馬場**: ${raceInfo?.trackType || '芝'} (${raceInfo?.trackCondition || '良'})
 - **天候**: ${raceInfo?.weather || '晴'}
+- **レースレベル**: ${raceInfo?.raceLevel || horses[0]?.currentRaceLevel || '未設定'}
 
 ## 🐎 出走馬詳細データ
 ${horseList}
@@ -294,12 +359,15 @@ ${horseList}
 
 **重視すべき要素（優先順・指数関数的減衰重み）:**
 1. **前5走の成績推移（前走35%→5走前16%）** - 調子の上向き/下降トレンド
-2. **距離・馬場適性** - 今回条件への適応度
-3. **騎手・オッズの妥当性** - 人気と実力の乖離
-4. **年齢・体重変化** - コンディション指標
+2. **脚質と距離・馬場適性** - 今回条件への戦法適応度
+3. **レースレベルの昇降級** - クラス変更による影響分析
+4. **騎手・オッズの妥当性** - 人気と実力の乖離
+5. **年齢・体重変化** - コンディション指標
 
 **具体的分析ポイント:**
 - 前5走のトレンド分析（向上・安定・悪化パターン）
+- **脚質適性分析**（逃げ・先行・差し・追込・自在の今回距離での有利性）
+- **レースレベル分析**（G1〜新馬戦のクラス昇降級による影響）
 - 上がり3Fの一貫性と好タイム継続性
 - 休養期間とローテーション
 - 騎手変更の影響
@@ -371,57 +439,104 @@ ${horseList}
         };
     }
     
-    // Claude APIをプロキシサーバー経由で呼び出し（CORS対策版）
+    // Claude APIをプロキシサーバー経由で呼び出し（エラーハンドリング強化版）
     static async callClaudeAPI(horses, raceInfo) {
-        try {
-            console.log('Claude AI API呼び出し開始（プロキシ経由）...');
-            
-            // APIキーを取得
-            const apiKey = this.getAPIKey();
-            if (!apiKey) {
-                throw new Error('APIキーが設定されていません。設定画面からAPIキーを入力してください。');
+        let lastError = null;
+        
+        // リトライ機能付きAPI呼び出し
+        for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
+            try {
+                console.log(`Claude AI API呼び出し開始（試行${attempt}/${this.maxRetries}）...`);
+                
+                // APIキーを取得
+                const apiKey = this.getAPIKey();
+                if (!apiKey) {
+                    throw new Error('APIキーが設定されていません。設定画面からAPIキーを入力してください。');
+                }
+                
+                // プロンプトを生成
+                const prompt = this.generatePromptForAPI(horses, raceInfo);
+                
+                // プロキシサーバーのエンドポイントを使用
+                const proxyUrl = window.location.origin.includes('localhost:3001') ? 
+                    '/api/claude' : 'http://localhost:3001/api/claude';
+                
+                // タイムアウト付きでAPIを呼び出し
+                const response = await this.fetchWithTimeout(proxyUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        prompt: prompt,
+                        apiKey: apiKey
+                    })
+                }, this.timeoutDuration);
+                
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    
+                    // HTTPステータスコードに応じた処理
+                    if (response.status === 429) {
+                        // レート制限エラー
+                        const retryAfter = response.headers.get('Retry-After') || 60;
+                        throw new RateLimitError(`レート制限に達しました。${retryAfter}秒後に再試行してください。`, retryAfter);
+                    } else if (response.status >= 500) {
+                        // サーバーエラー（リトライ可能）
+                        throw new ServerError(`サーバーエラー: ${response.status} - ${errorData.error || 'Internal Server Error'}`);
+                    } else {
+                        // クライアントエラー（リトライ不可）
+                        throw new ClientError(`クライアントエラー: ${response.status} - ${errorData.error || 'Bad Request'}`);
+                    }
+                }
+                
+                const result = await response.json();
+                console.log('Claude AI API呼び出し完了（プロキシ経由）:', result);
+                
+                if (!result.success) {
+                    throw new Error(`Claude APIエラー: ${result.error || 'Unknown error'}`);
+                }
+                
+                // 成功時の処理
+                this.retryCount = 0;
+                this.lastSuccessfulCall = new Date();
+                this.isOfflineMode = false;
+                
+                return {
+                    success: true,
+                    content: result.content,
+                    usage: result.usage,
+                    timestamp: new Date().toISOString()
+                };
+                
+            } catch (error) {
+                lastError = error;
+                console.error(`Claude API呼び出しエラー（試行${attempt}）:`, error);
+                
+                // エラータイプに応じたリトライ判定
+                if (error instanceof ClientError || error.name === 'AuthenticationError') {
+                    // リトライしないエラー
+                    break;
+                } else if (error instanceof RateLimitError) {
+                    // レート制限エラーの場合は待機
+                    if (attempt < this.maxRetries) {
+                        const waitTime = Math.min(error.retryAfter * 1000, 60000); // 最大60秒
+                        console.log(`レート制限により${waitTime/1000}秒待機します...`);
+                        await this.sleep(waitTime);
+                    }
+                    continue;
+                } else if (attempt < this.maxRetries) {
+                    // その他のエラーは指数バックオフで待機
+                    const waitTime = Math.min(1000 * Math.pow(2, attempt - 1), 10000); // 最大10秒
+                    console.log(`${waitTime/1000}秒後にリトライします...`);
+                    await this.sleep(waitTime);
+                }
             }
-            
-            // プロンプトを生成
-            const prompt = this.generatePromptForAPI(horses, raceInfo);
-            
-            // プロキシサーバーのエンドポイントを使用
-            const proxyUrl = window.location.origin.includes('localhost:3001') ? 
-                '/api/claude' : 'http://localhost:3001/api/claude';
-            
-            const response = await fetch(proxyUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    prompt: prompt,
-                    apiKey: apiKey
-                })
-            });
-            
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(`プロキシサーバーエラー: ${response.status} - ${errorData.error || 'Unknown error'}`);
-            }
-            
-            const result = await response.json();
-            console.log('Claude AI API呼び出し完了（プロキシ経由）:', result);
-            
-            if (!result.success) {
-                throw new Error(`Claude APIエラー: ${result.error || 'Unknown error'}`);
-            }
-            
-            return {
-                success: true,
-                content: result.content,
-                usage: result.usage
-            };
-            
-        } catch (error) {
-            console.error('Claude API呼び出しエラー:', error);
-            throw error;
         }
+        
+        // すべてのリトライが失敗した場合
+        this.retryCount = this.maxRetries;
+        throw lastError || new Error('Claude API呼び出しが失敗しました');
     }
     
     // Claude AIの回答を解析
@@ -3190,9 +3305,150 @@ ${horseList}
         }
     }
 
+    // エラーハンドリング強化機能群
+    
+    // タイムアウト付きfetch
+    static async fetchWithTimeout(url, options, timeout) {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeout);
+        
+        try {
+            const response = await fetch(url, {
+                ...options,
+                signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+            return response;
+        } catch (error) {
+            clearTimeout(timeoutId);
+            if (error.name === 'AbortError') {
+                throw new TimeoutError(`API呼び出しがタイムアウトしました（${timeout/1000}秒）`);
+            }
+            throw error;
+        }
+    }
+    
+    // エラーの種類を分析
+    static analyzeError(error) {
+        if (error instanceof RateLimitError) {
+            return {
+                type: 'rate_limit',
+                retryable: true,
+                fallbackRecommended: true,
+                userMessage: `レート制限に達しました。${error.retryAfter}秒後に再試行してください。`
+            };
+        } else if (error instanceof TimeoutError) {
+            return {
+                type: 'timeout',
+                retryable: true,
+                fallbackRecommended: true,
+                userMessage: 'API呼び出しがタイムアウトしました。ネットワーク接続をご確認ください。'
+            };
+        } else if (error instanceof ClientError) {
+            return {
+                type: 'client_error',
+                retryable: false,
+                fallbackRecommended: true,
+                userMessage: 'APIキーの設定に問題があります。設定を確認してください。'
+            };
+        } else if (error instanceof ServerError) {
+            return {
+                type: 'server_error',
+                retryable: true,
+                fallbackRecommended: true,
+                userMessage: 'サーバーに一時的な問題が発生しています。しばらく待ってから再試行してください。'
+            };
+        } else if (error.message.includes('ネットワーク') || error.message.includes('fetch')) {
+            return {
+                type: 'network_error',
+                retryable: true,
+                fallbackRecommended: true,
+                userMessage: 'ネットワーク接続に問題があります。接続を確認してください。'
+            };
+        } else {
+            return {
+                type: 'unknown_error',
+                retryable: false,
+                fallbackRecommended: true,
+                userMessage: '予期しないエラーが発生しました。'
+            };
+        }
+    }
+    
+    // エラーを記録
+    static recordError(error) {
+        const errorRecord = {
+            timestamp: new Date().toISOString(),
+            type: error.constructor.name,
+            message: error.message,
+            stack: error.stack
+        };
+        
+        this.errorHistory.push(errorRecord);
+        
+        // エラー履歴を最新100件まで保持
+        if (this.errorHistory.length > 100) {
+            this.errorHistory = this.errorHistory.slice(-100);
+        }
+        
+        console.log('エラーを記録しました:', errorRecord);
+    }
+    
+    // AIエラーを総合的に処理
+    static async handleAIError(error, predictions, raceInfo) {
+        const errorInfo = this.analyzeError(error);
+        
+        if (errorInfo.fallbackRecommended) {
+            showMessage(`${errorInfo.userMessage} フォールバック分析を実行します。`, 'info', 4000);
+            
+            try {
+                // フォールバック推奨を実行
+                return await this.generateFallbackRecommendation(predictions, raceInfo);
+            } catch (fallbackError) {
+                console.error('フォールバック推奨も失敗:', fallbackError);
+                this.activateOfflineMode();
+                return null;
+            }
+        }
+        
+        return null;
+    }
+    
+    // オフラインモードを有効化
+    static activateOfflineMode() {
+        this.isOfflineMode = true;
+        showMessage('オフラインモードが有効になりました。統計分析のみで予想を表示しています。', 'info', 5000);
+        console.log('オフラインモードを有効化しました');
+    }
+    
+    // エラーメッセージを取得
+    static getErrorMessage(error) {
+        const errorInfo = this.analyzeError(error);
+        return errorInfo.userMessage || error.message || '不明なエラーが発生しました';
+    }
+    
+    // スリープ関数
+    static sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+    
+    // エラー履歴を取得
+    static getErrorHistory() {
+        return [...this.errorHistory];
+    }
+    
+    // エラー統計を取得
+    static getErrorStats() {
+        const stats = {};
+        this.errorHistory.forEach(error => {
+            stats[error.type] = (stats[error.type] || 0) + 1;
+        });
+        return stats;
+    }
+
     // 初期化
     static initialize() {
-        console.log('AI推奨サービス（学習統合版）を初期化しました');
+        console.log('AI推奨サービス（エラーハンドリング強化版）を初期化しました');
         
         // 学習システムの初期化を確認
         if (typeof LearningSystem !== 'undefined') {
@@ -3201,6 +3457,23 @@ ${horseList}
         
         // APIキー状態を更新
         this.updateAPIKeyStatus();
+        
+        // ネットワーク状態の監視を開始
+        this.startNetworkMonitoring();
+    }
+    
+    // ネットワーク状態の監視
+    static startNetworkMonitoring() {
+        window.addEventListener('online', () => {
+            console.log('ネットワーク接続が復旧しました');
+            this.isOfflineMode = false;
+            showMessage('ネットワーク接続が復旧しました', 'info', 2000);
+        });
+        
+        window.addEventListener('offline', () => {
+            console.log('ネットワーク接続が切断されました');
+            this.activateOfflineMode();
+        });
     }
 }
 

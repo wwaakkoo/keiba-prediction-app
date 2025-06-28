@@ -1,6 +1,19 @@
-// 馬データ管理機能
+// 馬データ管理機能（データ検証強化版）
 class HorseManager {
     static horseCount = 0;
+    
+    // データ検証用の状態管理
+    static validationErrors = [];
+    static dataQualityThresholds = {
+        minOdds: 1.0,
+        maxOdds: 999.9,
+        minAge: 2,
+        maxAge: 12,
+        maxLastRaceOrder: 20,
+        minWeight: 380,
+        maxWeight: 580,
+        maxWeightChange: 20
+    };
 
     // 着順データを安全に数値化するユーティリティ関数
     static parseRaceOrder(orderValue) {
@@ -23,6 +36,11 @@ class HorseManager {
     }
 
     static addHorse() {
+        // データ品質チェックを実行
+        if (!this.checkSystemHealth()) {
+            showMessage('システムのデータ品質に問題があります。データを確認してください。', 'warning', 5000);
+        }
+        
         this.horseCount++;
         const container = document.getElementById('horsesContainer');
         
@@ -954,6 +972,28 @@ class HorseManager {
         //console.log('=== addHorseFromData開始 ===');
         //console.log('入力データ:', horseData);
         
+        // データ検証を実行
+        const validationResult = this.validateHorseDataInput(horseData);
+        if (!validationResult.isValid) {
+            console.warn(`馬データ検証エラー（${horseData.name}）:`, validationResult.errors);
+            
+            // 修復を試行
+            const repairedData = this.repairHorseDataInput(horseData, validationResult.errors);
+            if (repairedData) {
+                console.log(`馬データ修復成功（${horseData.name}）`);
+                horseData = repairedData;
+            } else {
+                console.error(`馬データ修復失敗（${horseData.name}）`);
+                throw new Error(`馬データが無効です: ${validationResult.errors.join(', ')}`);
+            }
+        }
+        
+        // 警告レベルの問題がある場合は記録
+        if (validationResult.warnings && validationResult.warnings.length > 0) {
+            console.warn(`馬データ警告（${horseData.name}）:`, validationResult.warnings);
+            this.recordValidationWarning(horseData.name, validationResult.warnings);
+        }
+        
         // 騎手名のマッピング（完全版）
         const jockeyMapping = {
             '横山和': '横山和生',
@@ -1661,6 +1701,348 @@ class HorseManager {
         }
         
         //console.log('=== addHorseFromData完了 ===');
+    }
+    
+    // データ検証機能群
+    
+    // 馬データ入力の検証
+    static validateHorseDataInput(horseData) {
+        const errors = [];
+        const warnings = [];
+        
+        // 型安全性の確保
+        if (typeof horseData !== 'object' || horseData === null) {
+            errors.push('馬データが無効なオブジェクトです');
+            return { isValid: false, errors, warnings };
+        }
+        
+        // 必須フィールドの検証
+        if (!horseData.name || (typeof horseData.name === 'string' && horseData.name.trim() === '')) {
+            errors.push('馬名が設定されていません');
+        }
+        
+        // オッズの検証
+        if (!horseData.odds) {
+            errors.push('オッズが設定されていません');
+        } else {
+            const odds = parseFloat(horseData.odds);
+            if (isNaN(odds)) {
+                errors.push('オッズが数値ではありません');
+            } else if (odds < this.dataQualityThresholds.minOdds) {
+                errors.push(`オッズが最小値（${this.dataQualityThresholds.minOdds}）未満です`);
+            } else if (odds > this.dataQualityThresholds.maxOdds) {
+                warnings.push(`オッズが${this.dataQualityThresholds.maxOdds}倍を超えています`);
+            } else if (odds === 0) {
+                errors.push('オッズが0倍です');
+            }
+        }
+        
+        // 年齢の検証
+        if (horseData.age) {
+            const age = parseInt(horseData.age);
+            if (isNaN(age)) {
+                warnings.push('年齢が数値ではありません');
+            } else if (age < this.dataQualityThresholds.minAge || age > this.dataQualityThresholds.maxAge) {
+                warnings.push(`年齢が通常範囲外です（${age}歳）`);
+            }
+        }
+        
+        // 前走着順の検証
+        if (horseData.lastRace) {
+            const lastRace = this.parseRaceOrder(horseData.lastRace);
+            if (lastRace === null) {
+                warnings.push('前走着順の形式が不正です');
+            } else if (lastRace > this.dataQualityThresholds.maxLastRaceOrder) {
+                warnings.push(`前走着順が${this.dataQualityThresholds.maxLastRaceOrder}着を超えています`);
+            }
+        }
+        
+        // 体重の検証
+        if (horseData.weight) {
+            const weight = parseInt(horseData.weight);
+            if (isNaN(weight)) {
+                warnings.push('体重が数値ではありません');
+            } else if (weight < this.dataQualityThresholds.minWeight || weight > this.dataQualityThresholds.maxWeight) {
+                warnings.push(`体重が通常範囲外です（${weight}kg）`);
+            }
+        }
+        
+        // 体重変化の検証
+        if (horseData.weightChange !== undefined && horseData.weightChange !== null) {
+            let weightChange;
+            if (typeof horseData.weightChange === 'number') {
+                weightChange = Math.abs(horseData.weightChange);
+            } else if (typeof horseData.weightChange === 'string') {
+                weightChange = parseInt(horseData.weightChange.replace(/[+-]/, ''));
+            } else {
+                weightChange = NaN;
+            }
+            
+            if (isNaN(weightChange)) {
+                warnings.push('体重変化が数値ではありません');
+            } else if (weightChange > this.dataQualityThresholds.maxWeightChange) {
+                warnings.push(`体重変化が大きすぎます（${horseData.weightChange}kg）`);
+            }
+        }
+        
+        // タイムデータの検証
+        this.validateTimeData(horseData, errors, warnings);
+        
+        // 一貫性チェック
+        this.validateDataConsistency(horseData, warnings);
+        
+        return {
+            isValid: errors.length === 0,
+            errors,
+            warnings,
+            severity: errors.length > 0 ? 'error' : warnings.length > 0 ? 'warning' : 'ok'
+        };
+    }
+    
+    // タイムデータの検証
+    static validateTimeData(horseData, errors, warnings) {
+        const timeFields = [
+            'lastRaceTime', 'secondLastRaceTime', 'thirdLastRaceTime', 
+            'fourthLastRaceTime', 'fifthLastRaceTime'
+        ];
+        
+        timeFields.forEach(field => {
+            if (horseData[field]) {
+                const timeValidation = this.validateRaceTime(horseData[field]);
+                if (!timeValidation.isValid) {
+                    warnings.push(`${field}: ${timeValidation.error}`);
+                } else if (timeValidation.isAnomalous) {
+                    warnings.push(`${field}: 異常なタイムです（${horseData[field]})}`);
+                }
+            }
+        });
+    }
+    
+    // レースタイムの検証
+    static validateRaceTime(timeString) {
+        if (!timeString) {
+            return { isValid: true, isAnomalous: false };
+        }
+        
+        const timeStr = String(timeString).trim();
+        
+        // 時間形式の検証（1:23.4 または 83.4 形式）
+        const minutePattern = /^(\d+):(\d+)\.(\d+)$/;
+        const secondPattern = /^(\d+)\.(\d+)$/;
+        
+        let totalSeconds = 0;
+        
+        if (minutePattern.test(timeStr)) {
+            const [, minutes, seconds, decimal] = timeStr.match(minutePattern);
+            totalSeconds = parseInt(minutes) * 60 + parseInt(seconds) + parseInt(decimal) / 10;
+        } else if (secondPattern.test(timeStr)) {
+            const [, seconds, decimal] = timeStr.match(secondPattern);
+            totalSeconds = parseInt(seconds) + parseInt(decimal) / 10;
+        } else {
+            return { isValid: false, error: 'タイム形式が不正です' };
+        }
+        
+        // 異常なタイムの検出
+        let isAnomalous = false;
+        if (totalSeconds < 50 || totalSeconds > 300) { // 50秒〜5分の範囲外
+            isAnomalous = true;
+        }
+        
+        return { isValid: true, isAnomalous, totalSeconds };
+    }
+    
+    // データ一貫性の検証
+    static validateDataConsistency(horseData, warnings) {
+        // 距離とタイムの一貫性チェック
+        if (horseData.lastRaceDistance && horseData.lastRaceTime) {
+            const distance = parseInt(horseData.lastRaceDistance);
+            const timeValidation = this.validateRaceTime(horseData.lastRaceTime);
+            
+            if (timeValidation.isValid && distance && timeValidation.totalSeconds) {
+                const expectedTimeRange = this.getExpectedTimeRange(distance);
+                if (timeValidation.totalSeconds < expectedTimeRange.min || 
+                    timeValidation.totalSeconds > expectedTimeRange.max) {
+                    warnings.push(`距離${distance}mに対してタイム${horseData.lastRaceTime}が異常です`);
+                }
+            }
+        }
+        
+        // レースレベルと着順の一貫性チェック
+        if (horseData.lastRaceLevel && horseData.lastRace) {
+            const lastRace = this.parseRaceOrder(horseData.lastRace);
+            if (lastRace && this.isHighLevelRace(horseData.lastRaceLevel) && lastRace <= 3) {
+                // 高レベルレースで3着以内は優秀
+            } else if (lastRace && this.isHighLevelRace(horseData.lastRaceLevel) && lastRace > 10) {
+                warnings.push(`${horseData.lastRaceLevel}で${lastRace}着は成績が振るいません`);
+            }
+        }
+    }
+    
+    // 期待タイム範囲を取得
+    static getExpectedTimeRange(distance) {
+        const baseTime = {
+            1000: { min: 56, max: 62 },
+            1200: { min: 68, max: 75 },
+            1400: { min: 80, max: 88 },
+            1600: { min: 92, max: 100 },
+            1800: { min: 104, max: 114 },
+            2000: { min: 116, max: 128 },
+            2400: { min: 140, max: 155 }
+        };
+        
+        // 最も近い距離を見つける
+        const distances = Object.keys(baseTime).map(d => parseInt(d));
+        const closestDistance = distances.reduce((prev, curr) => 
+            Math.abs(curr - distance) < Math.abs(prev - distance) ? curr : prev
+        );
+        
+        return baseTime[closestDistance] || { min: 50, max: 300 };
+    }
+    
+    // 高レベルレースかどうか判定
+    static isHighLevelRace(raceLevel) {
+        return ['G1', 'G2', 'G3', 'L', 'OP'].includes(raceLevel);
+    }
+    
+    // 馬データの修復
+    static repairHorseDataInput(horseData, errors) {
+        const repairedData = { ...horseData };
+        let repairSuccessful = true;
+        
+        errors.forEach(error => {
+            if (error.includes('馬名が設定されていません')) {
+                repairedData.name = `不明馬_${Date.now()}`;
+                console.log('馬名を自動設定:', repairedData.name);
+            } else if (error.includes('オッズ')) {
+                repairedData.odds = 99.9;
+                console.log('オッズをデフォルト値に設定:', repairedData.odds);
+            } else if (error.includes('オッズが0倍')) {
+                repairedData.odds = 999.9; // 0倍は999.9倍に修正
+                console.log('0倍オッズを修正:', repairedData.odds);
+            } else {
+                console.warn('修復不可能なエラー:', error);
+                repairSuccessful = false;
+            }
+        });
+        
+        return repairSuccessful ? repairedData : null;
+    }
+    
+    // 検証警告を記録
+    static recordValidationWarning(horseName, warnings) {
+        const warningRecord = {
+            timestamp: new Date().toISOString(),
+            horse: horseName,
+            warnings: warnings
+        };
+        
+        this.validationErrors.push(warningRecord);
+        
+        // 警告履歴を最新100件まで保持
+        if (this.validationErrors.length > 100) {
+            this.validationErrors = this.validationErrors.slice(-100);
+        }
+    }
+    
+    // システムの健全性をチェック
+    static checkSystemHealth() {
+        const horses = this.getAllHorses();
+        let healthScore = 100;
+        let issues = [];
+        
+        // データ数チェック
+        if (horses.length === 0) {
+            issues.push('馬データが登録されていません');
+            healthScore -= 50;
+        } else if (horses.length < 8) {
+            issues.push('馬データが少なすぎます（8頭未満）');
+            healthScore -= 20;
+        }
+        
+        // データ品質チェック
+        const anomalyCount = this.detectSystemAnomalies(horses).length;
+        if (anomalyCount > 0) {
+            issues.push(`${anomalyCount}件の異常データを検出`);
+            healthScore -= anomalyCount * 5;
+        }
+        
+        // 最近の検証エラー数チェック
+        const recentErrors = this.validationErrors.filter(e => 
+            new Date(e.timestamp) > new Date(Date.now() - 60 * 60 * 1000) // 1時間以内
+        ).length;
+        
+        if (recentErrors > 10) {
+            issues.push('最近の検証エラーが多すぎます');
+            healthScore -= 30;
+        }
+        
+        const isHealthy = healthScore >= 70;
+        
+        if (!isHealthy) {
+            console.warn('システム健全性チェック:', {
+                score: healthScore,
+                issues: issues,
+                horses: horses.length,
+                anomalies: anomalyCount,
+                recentErrors: recentErrors
+            });
+        }
+        
+        return isHealthy;
+    }
+    
+    // システム全体の異常を検出
+    static detectSystemAnomalies(horses) {
+        const anomalies = [];
+        
+        horses.forEach((horse, index) => {
+            // 極端に低いまたは高いオッズ
+            if (horse.odds && (parseFloat(horse.odds) === 0 || parseFloat(horse.odds) > 500)) {
+                anomalies.push({
+                    type: 'extreme_odds',
+                    horse: horse.name,
+                    value: horse.odds,
+                    message: `異常なオッズ: ${horse.odds}倍`
+                });
+            }
+            
+            // 重複馬名
+            const duplicates = horses.filter(h => h.name === horse.name);
+            if (duplicates.length > 1) {
+                anomalies.push({
+                    type: 'duplicate_name',
+                    horse: horse.name,
+                    message: '馬名が重複しています'
+                });
+            }
+            
+            // 年齢異常
+            if (horse.age && (parseInt(horse.age) < 2 || parseInt(horse.age) > 12)) {
+                anomalies.push({
+                    type: 'unusual_age',
+                    horse: horse.name,
+                    value: horse.age,
+                    message: `異常な年齢: ${horse.age}歳`
+                });
+            }
+        });
+        
+        return anomalies;
+    }
+    
+    // データ検証統計を取得
+    static getValidationStats() {
+        const horses = this.getAllHorses();
+        const anomalies = this.detectSystemAnomalies(horses);
+        
+        return {
+            totalHorses: horses.length,
+            anomalies: anomalies.length,
+            recentWarnings: this.validationErrors.filter(e => 
+                new Date(e.timestamp) > new Date(Date.now() - 24 * 60 * 60 * 1000)
+            ).length,
+            healthScore: this.checkSystemHealth() ? 'Good' : 'Poor'
+        };
     }
 }
 
