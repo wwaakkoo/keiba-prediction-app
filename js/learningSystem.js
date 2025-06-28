@@ -493,10 +493,11 @@ class LearningSystem {
             html += '<strong>🤖 AI分析の判断根拠と結果:</strong><br>';
             
             const aiRec = window.lastAIRecommendation;
+            let aiMainPick = null; // スコープを拡張して変数を定義
             
             // AI推奨馬の結果確認
             if (aiRec.topPicks && aiRec.topPicks.length > 0) {
-                const aiMainPick = aiRec.topPicks[0];
+                aiMainPick = aiRec.topPicks[0];
                 
                 if (aiMainPick.horse === firstHorse.name) {
                     html += `✅ <strong>AI第1推奨が的中!</strong><br>`;

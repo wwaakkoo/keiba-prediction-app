@@ -645,13 +645,14 @@ class DataConverter {
                         lastRace.lastRaceName = nextLine;
                         console.log('前走レース名抽出:', nextLine);
                         
-                        // レースレベルの抽出
-                        if (nextLine.includes('G1') || nextLine.includes('GI')) {
-                            lastRace.lastRaceLevel = 'G1';
+                        // レースレベルの抽出（修正版：より精密なパターンマッチング）
+                        // G3を最初にチェック（G1,G2より先に）
+                        if (nextLine.includes('G3') || nextLine.includes('GIII')) {
+                            lastRace.lastRaceLevel = 'G3';
                         } else if (nextLine.includes('G2') || nextLine.includes('GII')) {
                             lastRace.lastRaceLevel = 'G2';
-                        } else if (nextLine.includes('G3') || nextLine.includes('GIII')) {
-                            lastRace.lastRaceLevel = 'G3';
+                        } else if (nextLine.includes('G1') || nextLine.includes('GI')) {
+                            lastRace.lastRaceLevel = 'G1';
                         } else if (nextLine.includes('Listed') || nextLine.includes('L')) {
                             lastRace.lastRaceLevel = 'L';
                         } else if (nextLine.includes('OP') || nextLine.includes('オープン')) {
@@ -670,6 +671,13 @@ class DataConverter {
                         
                         if (lastRace.lastRaceLevel) {
                             console.log('前走レースレベル抽出:', lastRace.lastRaceLevel);
+                            // レースレベル検証
+                            const levelValidation = DataConverter.validateRaceLevel(lastRace.lastRaceLevel, nextLine);
+                            if (!levelValidation.isValid) {
+                                console.warn('レースレベル検証警告:', levelValidation.warning);
+                            }
+                        } else {
+                            console.warn('前走レースレベル未抽出:', nextLine);
                         }
                     }
                 }
@@ -1518,6 +1526,31 @@ class DataConverter {
         }
         
         return true;
+    }
+    
+    // レースレベルの検証機能
+    static validateRaceLevel(level, originalLine) {
+        const validLevels = ['G1', 'G2', 'G3', 'L', 'OP', '3勝', '2勝', '1勝', '未勝利', '新馬'];
+        
+        if (!validLevels.includes(level)) {
+            return {
+                isValid: false,
+                warning: `無効なレースレベル: ${level} (元の行: ${originalLine})`
+            };
+        }
+        
+        // G2,G3がG1として誤判定されていないかチェック
+        if (level === 'G1' && (originalLine.includes('G2') || originalLine.includes('GII') || originalLine.includes('G3') || originalLine.includes('GIII'))) {
+            return {
+                isValid: false,
+                warning: `レースレベル誤判定の可能性: ${level} (元の行: ${originalLine})`
+            };
+        }
+        
+        return {
+            isValid: true,
+            warning: null
+        };
     }
 }
 
