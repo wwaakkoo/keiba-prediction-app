@@ -622,7 +622,7 @@ class DataConverter {
             /^\d+頭/, // 馬数
             /番/, // 枠番・馬番
             /着/, // 着順
-            /GI|GII|GIII/, // グレード
+            /\b(GI|GII|GIII|G1|G2|G3)\b/, // グレード（境界指定）
             /栗東|美浦/, // 調教師
             /先中|差中/, // 休養情報
         ];
@@ -797,12 +797,13 @@ class DataConverter {
                         console.log('前走レース名抽出:', nextLine);
                         
                         // レースレベルの抽出
-                        if (nextLine.includes('G1') || nextLine.includes('GI')) {
-                            lastRace.lastRaceLevel = 'G1';
-                        } else if (nextLine.includes('G2') || nextLine.includes('GII')) {
-                            lastRace.lastRaceLevel = 'G2';
-                        } else if (nextLine.includes('G3') || nextLine.includes('GIII')) {
+                        // 正規表現で正確なパターンマッチング（境界を明確化）
+                        if (nextLine.match(/\bGIII\b|\bG3\b/)) {
                             lastRace.lastRaceLevel = 'G3';
+                        } else if (nextLine.match(/\bGII\b|\bG2\b/)) {
+                            lastRace.lastRaceLevel = 'G2';
+                        } else if (nextLine.match(/\bGI\b|\bG1\b/)) {
+                            lastRace.lastRaceLevel = 'G1';
                         } else if (nextLine.includes('Listed') || nextLine.includes('L')) {
                             lastRace.lastRaceLevel = 'L';
                         } else if (nextLine.includes('OP') || nextLine.includes('オープン')) {
@@ -942,7 +943,7 @@ class DataConverter {
             const line = lines[i].trim();
             
             // レース名の抽出（例: "大阪杯 GI"）
-            if (!raceInfo.name && (line.includes('GI') || line.includes('GII') || line.includes('GIII'))) {
+            if (!raceInfo.name && line.match(/\b(GI|GII|GIII|G1|G2|G3)\b/)) {
                 // 前走情報のレース名を除外するため、日付の前にあるレース名を探す
                 const nextLines = lines.slice(i, i + 5);
                 const hasDate = nextLines.some(nextLine => nextLine.match(/\d{4}\.\d{2}\.\d{2}/));
@@ -1796,7 +1797,7 @@ class DataConverter {
             /栗東|美浦/, // トレーニングセンター
             /芝|ダ/, // 馬場種別
             /良|稍|重|不/, // 馬場状態
-            /GI|GII|GIII|G1|G2|G3/, // グレード
+            /\b(GI|GII|GIII|G1|G2|G3)\b/, // グレード（境界指定）
             /^\d{4}\.\d{2}\.\d{2}/, // 日付
             /映像を見る/, // UI要素
             /以下|転厩|外厩|休養/, // 特殊情報

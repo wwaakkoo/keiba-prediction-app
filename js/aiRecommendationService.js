@@ -134,6 +134,8 @@ class AIRecommendationService {
             trackType: horse.trackType,
             weather: horse.weather,
             trackCondition: horse.trackCondition,
+            // 血統データを含める
+            pedigreeData: horse.pedigreeData,
             // 過去5走データを含める（指数関数的減衰重み対応）
             raceHistory: {
                 lastRace: {
@@ -290,6 +292,27 @@ class AIRecommendationService {
         const horseList = horses.map((horse, index) => {
             let horseInfo = `${index + 1}. ${horse.name || `${index + 1}番馬`} - オッズ:${horse.odds}倍, 前走:${horse.lastRace || horse.raceHistory?.lastRace?.order || '不明'}着, 騎手:${horse.jockey || '不明'}, 年齢:${horse.age || '不明'}歳, 脚質:${horse.runningStyle || '不明'}`;
             
+            // 血統情報を追加
+            if (horse.pedigreeData) {
+                const pedigree = horse.pedigreeData;
+                horseInfo += ` [血統:${pedigree.sireAnalysis?.name || '?'}`;
+                if (pedigree.damSireAnalysis?.name) {
+                    horseInfo += ` (母父:${pedigree.damSireAnalysis.name})`;
+                }
+                if (pedigree.overallRating?.grade) {
+                    horseInfo += ` 血統評価:${pedigree.overallRating.grade}級(${pedigree.overallRating.totalScore}点)`;
+                }
+                if (pedigree.sireAnalysis?.specialties) {
+                    horseInfo += ` 特性:${pedigree.sireAnalysis.specialties.join('・')}`;
+                }
+                if (pedigree.matingAnalysis?.compatibility >= 85) {
+                    horseInfo += ` 配合:優秀`;
+                } else if (pedigree.matingAnalysis?.compatibility <= 65) {
+                    horseInfo += ` 配合:課題`;
+                }
+                horseInfo += `]`;
+            }
+            
             // 前走詳細データがあれば追加
             if (horse.raceHistory?.lastRace) {
                 const lastRace = horse.raceHistory.lastRace;
@@ -366,20 +389,22 @@ ${horseList}
 2. **脚質と距離・馬場適性** - 今回条件への戦法適応度
 3. **レースレベルの昇降級** - クラス変更による影響分析
 4. **騎手・オッズの妥当性** - 人気と実力の乖離
+5. **血統評価と適性分析** - 父系・母父系の特性、配合相性、距離・馬場血統適性
 
 **【AI独自分析（統計では捉えきれない要素）】**
-5. **心理的・精神的要因** - 馬の気性、集中力、プレッシャー対応、大舞台適性
-6. **戦術的・展開要素** - 騎手の戦術選択、ポジション取り、レース運びの巧拙
-7. **複合的相互作用** - 複数要因の組み合わせ効果、非線形な関係性
-8. **質的・直感的判断** - 馬体バランス、気配、調教の質的評価
-9. **レース全体の文脈** - 他馬との相性、レース全体のレベル感、特殊条件
+6. **心理的・精神的要因** - 馬の気性、集中力、プレッシャー対応、大舞台適性
+7. **戦術的・展開要素** - 騎手の戦術選択、ポジション取り、レース運びの巧拙
+8. **複合的相互作用** - 複数要因の組み合わせ効果、非線形な関係性
+9. **質的・直感的判断** - 馬体バランス、気配、調教の質的評価
+10. **レース全体の文脈** - 他馬との相性、レース全体のレベル感、特殊条件
 
 **具体的分析ポイント:**
 - **数値分析**: 前5走トレンド、脚質適性、レースレベル分析、上がり3F一貫性
+- **血統分析**: 父系・母父系の系統特性、配合パターン評価、距離・馬場血統適性、種牡馬ランク
 - **戦術分析**: 想定ペース、ポジション争い、直線での加速タイミング
 - **心理分析**: 馬の性格（闘争心・臆病さ）、騎手との相性、環境適応力
 - **質的判断**: 調教内容の充実度、馬体の張り・気配、近況の変化
-- **相互作用**: 脚質×展開、騎手×馬の相性、オッズ×実力の総合判断
+- **相互作用**: 脚質×展開、騎手×馬の相性、血統×条件、オッズ×実力の総合判断
 - **経験則**: ベテラン的な勘、パターン認識、例外的な好走可能性
 
 ## 📊 回答フォーマット
@@ -3028,21 +3053,41 @@ ${horseList}
         // 券種別の成功率を計算
         const betTypes = {};
         bettingHistory.forEach(record => {
+            // bettingEvaluationとdetailsの存在確認
+            if (!record.bettingEvaluation || !record.bettingEvaluation.details || !Array.isArray(record.bettingEvaluation.details)) {
+                console.warn('Invalid bettingEvaluation structure:', record);
+                return;
+            }
+            
             record.bettingEvaluation.details.forEach(bet => {
+                // betオブジェクトとtypeプロパティの存在確認
+                if (!bet || !bet.type) {
+                    console.warn('Invalid bet object:', bet);
+                    return;
+                }
+                
                 if (!betTypes[bet.type]) {
                     betTypes[bet.type] = { total: 0, successful: 0 };
                 }
                 betTypes[bet.type].total++;
-                if (bet.isSuccessful) {
+                if (bet.isSuccessful === true) {
                     betTypes[bet.type].successful++;
                 }
             });
         });
         
         const labels = Object.keys(betTypes);
-        const successRates = labels.map(type => 
-            ((betTypes[type].successful / betTypes[type].total) * 100).toFixed(1)
-        );
+        const successRates = labels.map(type => {
+            const total = betTypes[type].total;
+            const successful = betTypes[type].successful;
+            // 0除算対策
+            if (total === 0) {
+                return '0.0';
+            }
+            const rate = (successful / total) * 100;
+            // NaN対策
+            return isNaN(rate) ? '0.0' : rate.toFixed(1);
+        });
         const totalCounts = labels.map(type => betTypes[type].total);
         
         const data = {
@@ -3112,10 +3157,23 @@ ${horseList}
             `${type}: ${successRates[index]}% (${betTypes[type].successful}/${totalCounts[index]})`
         ).join('<br>• ');
         
+        // 最高成功率券種の安全な取得
+        let bestType = 'なし';
+        if (labels.length > 0 && successRates.length > 0) {
+            const numericRates = successRates.map(rate => parseFloat(rate)).filter(rate => !isNaN(rate));
+            if (numericRates.length > 0) {
+                const maxRate = Math.max(...numericRates);
+                const maxIndex = successRates.findIndex(rate => parseFloat(rate) === maxRate);
+                if (maxIndex >= 0 && maxIndex < labels.length) {
+                    bestType = labels[maxIndex];
+                }
+            }
+        }
+
         this.updateChartDescription(`💰 <strong>買い目戦略成功率</strong><br>
             • ${detailsText}<br>
             • 総評価対象: ${bettingHistory.length}レース<br>
-            • 最も成功率が高い券種: ${labels.length > 0 ? labels[successRates.indexOf(Math.max(...successRates))] : 'なし'}`);
+            • 最も成功率が高い券種: ${bestType}`);
     }
     
     // 信頼度分析グラフ

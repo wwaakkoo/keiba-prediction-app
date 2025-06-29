@@ -986,6 +986,15 @@ class HorseManager {
     // 血統データ抽出メソッド
     static extractPedigreeData(card, horseName) {
         try {
+            // レース条件を取得
+            const raceLevelElement = document.getElementById('raceLevel');
+            const raceDistanceElement = document.getElementById('raceDistance');
+            const raceTrackTypeElement = document.getElementById('raceTrackType');
+            
+            const raceLevel = raceLevelElement ? raceLevelElement.value : null;
+            const raceDistance = raceDistanceElement ? parseInt(raceDistanceElement.value) : null;
+            const raceTrackType = raceTrackTypeElement ? raceTrackTypeElement.value : null;
+            
             // 血統情報の取得（UI から取得するか、DataConverter から取得）
             const sireInput = card.querySelector('input[name="sire"]');
             const damInput = card.querySelector('input[name="dam"]');
@@ -1005,11 +1014,21 @@ class HorseManager {
                 }
             }
             
+            // 血統データが見つからない場合、馬名からの推測を試行
+            if (!sire && !dam && !damSire && typeof PedigreeDatabase !== 'undefined') {
+                const inferredPedigree = PedigreeDatabase.inferPedigreeFromHorseName(horseName);
+                if (inferredPedigree && inferredPedigree.confidence > 0.5) {
+                    sire = inferredPedigree.sire;
+                    console.log(`馬名から血統推測: ${horseName} -> 父: ${sire} (信頼度: ${Math.round(inferredPedigree.confidence * 100)}%)`);
+                }
+            }
+            
             // 血統データが存在する場合のみ分析実行
             if (sire || dam || damSire) {
                 if (typeof PedigreeDatabase !== 'undefined') {
-                    const pedigreeAnalysis = PedigreeDatabase.analyzePedigree(sire, dam, damSire);
-                    console.log(`血統分析完了: ${horseName} - ${sire} × ${dam} (母父: ${damSire})`);
+                    // レース条件を渡して血統分析を実行
+                    const pedigreeAnalysis = PedigreeDatabase.analyzePedigree(sire, dam, damSire, raceLevel, raceDistance, raceTrackType);
+                    console.log(`血統分析完了: ${horseName} - ${sire} × ${dam} (母父: ${damSire}) [${raceLevel || 'レベル不明'}] ${raceDistance}m ${raceTrackType || ''}`);
                     return pedigreeAnalysis;
                 } else {
                     console.warn('PedigreeDatabase が見つかりません');
