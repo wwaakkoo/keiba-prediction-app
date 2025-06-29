@@ -322,6 +322,10 @@ class PredictionEngine {
             }
             score += jockeyChangeScore * (adj.jockeyWeight || 1.0);
 
+            // 血統評価スコア統合
+            const pedigreeScore = this.calculatePedigreeScore(horse);
+            score += pedigreeScore;
+
             // 人気度バイアス調整
             score += adj.popularityBias;
 
@@ -1401,6 +1405,124 @@ class PredictionEngine {
         };
     }
     
+    // 血統評価スコア計算
+    static calculatePedigreeScore(horse) {
+        let pedigreeScore = 0;
+        
+        try {
+            // 血統データが存在する場合のみ処理
+            if (horse.pedigreeData) {
+                const pedigreeData = horse.pedigreeData;
+                
+                // 血統総合評価スコア（-15〜+15の範囲）
+                if (pedigreeData.overallRating && pedigreeData.overallRating.totalScore) {
+                    const rating = pedigreeData.overallRating.totalScore;
+                    // 80点以上なら+15、70点以上なら+10、60点以上なら+5、50点以下なら-5
+                    if (rating >= 80) {
+                        pedigreeScore += 15;
+                    } else if (rating >= 70) {
+                        pedigreeScore += 10;
+                    } else if (rating >= 60) {
+                        pedigreeScore += 5;
+                    } else if (rating >= 50) {
+                        pedigreeScore += 0;
+                    } else {
+                        pedigreeScore -= 5;
+                    }
+                }
+                
+                // 血統適性による距離・馬場補正
+                const distanceBonus = this.calculatePedigreeDistanceBonus(horse, pedigreeData);
+                const trackBonus = this.calculatePedigreeTrackBonus(horse, pedigreeData);
+                
+                pedigreeScore += distanceBonus + trackBonus;
+                
+                // 血統配合相性ボーナス
+                if (pedigreeData.matingAnalysis && pedigreeData.matingAnalysis.compatibility >= 85) {
+                    pedigreeScore += 5; // 優秀な配合
+                } else if (pedigreeData.matingAnalysis && pedigreeData.matingAnalysis.compatibility <= 65) {
+                    pedigreeScore -= 3; // 相性不良
+                }
+                
+                console.log(`血統評価: ${horse.name} - 総合スコア: ${pedigreeScore}点`);
+            } else {
+                // 血統データなしの場合はデフォルト処理
+                pedigreeScore = 0;
+                console.log(`血統評価: ${horse.name} - 血統データなし（デフォルト0点）`);
+            }
+        } catch (error) {
+            console.error(`血統評価エラー: ${horse.name}`, error);
+            pedigreeScore = 0; // エラー時はニュートラル
+        }
+        
+        // スコアを-15〜+15の範囲に制限
+        return Math.max(-15, Math.min(15, pedigreeScore));
+    }
+    
+    // 血統距離適性ボーナス計算
+    static calculatePedigreeDistanceBonus(horse, pedigreeData) {
+        if (!pedigreeData.sireAnalysis || !pedigreeData.sireAnalysis.distanceAptitude || !horse.distance) {
+            return 0;
+        }
+        
+        const currentDistance = parseInt(horse.distance);
+        const distanceAptitude = pedigreeData.sireAnalysis.distanceAptitude;
+        
+        // 最も近い距離の適性値を取得
+        const distances = Object.keys(distanceAptitude).map(d => parseInt(d)).sort((a, b) => a - b);
+        let closestDistance = distances[0];
+        let minDiff = Math.abs(currentDistance - closestDistance);
+        
+        for (const distance of distances) {
+            const diff = Math.abs(currentDistance - distance);
+            if (diff < minDiff) {
+                minDiff = diff;
+                closestDistance = distance;
+            }
+        }
+        
+        const aptitude = distanceAptitude[closestDistance];
+        
+        // 適性値に基づいてボーナス計算（-5〜+5の範囲）
+        if (aptitude >= 90) {
+            return 5;
+        } else if (aptitude >= 80) {
+            return 3;
+        } else if (aptitude >= 70) {
+            return 0;
+        } else if (aptitude >= 60) {
+            return -2;
+        } else {
+            return -5;
+        }
+    }
+    
+    // 血統馬場適性ボーナス計算
+    static calculatePedigreeTrackBonus(horse, pedigreeData) {
+        if (!pedigreeData.sireAnalysis || !pedigreeData.sireAnalysis.trackAptitude || !horse.trackType) {
+            return 0;
+        }
+        
+        const trackAptitude = pedigreeData.sireAnalysis.trackAptitude;
+        const currentTrackType = horse.trackType;
+        
+        const aptitude = trackAptitude[currentTrackType];
+        if (!aptitude) return 0;
+        
+        // 馬場適性値に基づいてボーナス計算（-5〜+5の範囲）
+        if (aptitude >= 90) {
+            return 5;
+        } else if (aptitude >= 80) {
+            return 3;
+        } else if (aptitude >= 70) {
+            return 0;
+        } else if (aptitude >= 60) {
+            return -2;
+        } else {
+            return -5;
+        }
+    }
+
     // 予測の一貫性チェック
     static validatePredictionConsistency(predictions) {
         const inconsistencies = [];

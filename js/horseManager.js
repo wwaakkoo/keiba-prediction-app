@@ -157,6 +157,23 @@ class HorseManager {
                 </div>
             </div>
             <div class="horse-section">
+                <h4>🧬 血統情報</h4>
+                <div class="horse-content">
+                    <div class="form-group">
+                        <label>父</label>
+                        <input type="text" name="sire" placeholder="父馬名">
+                    </div>
+                    <div class="form-group">
+                        <label>母</label>
+                        <input type="text" name="dam" placeholder="母馬名">
+                    </div>
+                    <div class="form-group">
+                        <label>母父</label>
+                        <input type="text" name="damSire" placeholder="母父馬名">
+                    </div>
+                </div>
+            </div>
+            <div class="horse-section">
                 <h4>🏁 今回のレース情報</h4>
                 <div class="horse-content">
                     <div class="form-group">
@@ -869,7 +886,7 @@ class HorseManager {
             const fifthLastRaceLevelSelect = card.querySelector('select[name="fifthLastRaceLevel"]');
             const fifthLastRaceLevel = fifthLastRaceLevelSelect ? fifthLastRaceLevelSelect.value : '';
 
-            horses.push({
+            const horse = {
                 name: horseName,
                 odds: odds,
                 lastRace: lastRace,
@@ -897,7 +914,6 @@ class HorseManager {
                 lastRaceWeight: lastRaceWeight,
                 lastRaceJockey: lastRaceJockey,
                 lastRacePopularity: lastRacePopularity,
-                lastRaceOrder: lastRaceOrder,
                 lastRaceAgari: lastRaceAgari,
                 // 2走前情報
                 secondLastRaceCourse: secondLastRaceCourse,
@@ -953,10 +969,58 @@ class HorseManager {
                 // 馬番・枠番情報
                 horseNumber: horseNumber,
                 frameNumber: frameNumber
-            });
+            };
+
+            // 血統データを統合
+            const pedigreeData = this.extractPedigreeData(card, horseName);
+            if (pedigreeData) {
+                horse.pedigreeData = pedigreeData;
+            }
+
+            horses.push(horse);
         });
 
         return horses;
+    }
+
+    // 血統データ抽出メソッド
+    static extractPedigreeData(card, horseName) {
+        try {
+            // 血統情報の取得（UI から取得するか、DataConverter から取得）
+            const sireInput = card.querySelector('input[name="sire"]');
+            const damInput = card.querySelector('input[name="dam"]');
+            const damSireInput = card.querySelector('input[name="damSire"]');
+            
+            let sire = sireInput ? sireInput.value : '';
+            let dam = damInput ? damInput.value : '';
+            let damSire = damSireInput ? damSireInput.value : '';
+            
+            // UIに血統情報がない場合、DataConverterから取得を試行
+            if (!sire && !dam && !damSire && typeof DataConverter !== 'undefined') {
+                const extractedPedigree = DataConverter.extractHorsePedigreeFromName(horseName);
+                if (extractedPedigree) {
+                    sire = extractedPedigree.sire || '';
+                    dam = extractedPedigree.dam || '';
+                    damSire = extractedPedigree.damSire || '';
+                }
+            }
+            
+            // 血統データが存在する場合のみ分析実行
+            if (sire || dam || damSire) {
+                if (typeof PedigreeDatabase !== 'undefined') {
+                    const pedigreeAnalysis = PedigreeDatabase.analyzePedigree(sire, dam, damSire);
+                    console.log(`血統分析完了: ${horseName} - ${sire} × ${dam} (母父: ${damSire})`);
+                    return pedigreeAnalysis;
+                } else {
+                    console.warn('PedigreeDatabase が見つかりません');
+                }
+            }
+            
+            return null;
+        } catch (error) {
+            console.error(`血統データ抽出エラー: ${horseName}`, error);
+            return null;
+        }
     }
 
     static validateHorses() {
@@ -1207,6 +1271,23 @@ class HorseManager {
                         <option value="追込" ${horseData.runningStyle === '追込' ? 'selected' : ''}>追込</option>
                         <option value="自在" ${horseData.runningStyle === '自在' ? 'selected' : ''}>自在</option>
                     </select>
+                </div>
+            </div>
+            <div class="horse-section">
+                <h4>🧬 血統情報</h4>
+                <div class="horse-content">
+                    <div class="form-group">
+                        <label>父</label>
+                        <input type="text" name="sire" placeholder="父馬名" value="${horseData.sire || ''}">
+                    </div>
+                    <div class="form-group">
+                        <label>母</label>
+                        <input type="text" name="dam" placeholder="母馬名" value="${horseData.dam || ''}">
+                    </div>
+                    <div class="form-group">
+                        <label>母父</label>
+                        <input type="text" name="damSire" placeholder="母父馬名" value="${horseData.damSire || ''}">
+                    </div>
                 </div>
             </div>
             <div class="horse-section">
