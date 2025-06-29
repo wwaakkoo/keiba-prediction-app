@@ -552,4 +552,63 @@ input:focus, select:focus, textarea:focus {
     border: 1px solid #ddd;
     border-radius: 4px;
     background: white;
+}
+
+/* 血統情報表示スタイル */
+.pedigree-info {
+    font-size: 0.9em;
+    color: #6c757d;
+    margin-top: 5px;
+    padding: 5px 8px;
+    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+    border-radius: 6px;
+    border-left: 3px solid #28a745;
+}
+
+.pedigree-info:hover {
+    background: linear-gradient(135deg, #e9ecef, #dee2e6);
+    transform: translateY(-1px);
+    transition: all 0.2s ease;
+}
+
+/* 血統グレード表示の強調 */
+.pedigree-grade {
+    font-weight: bold;
+    padding: 2px 6px;
+    border-radius: 4px;
+    text-shadow: 1px 1px 1px rgba(0,0,0,0.1);
+}
+
+/* 血統特性表示 */
+.pedigree-specialty {
+    font-size: 0.8em;
+    color: #495057;
+    margin-top: 3px;
+    font-style: italic;
+}
+
+/* 配合評価表示 */
+.mating-analysis {
+    font-size: 0.85em;
+    margin-top: 3px;
+    padding: 2px 5px;
+    border-radius: 3px;
+}
+
+.mating-excellent {
+    background: linear-gradient(135deg, #d4edda, #c3e6cb);
+    color: #155724;
+    border: 1px solid #b8daff;
+}
+
+.mating-good {
+    background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+    color: #856404;
+    border: 1px solid #ffeaa7;
+}
+
+.mating-poor {
+    background: linear-gradient(135deg, #f8d7da, #f5c6cb);
+    color: #721c24;
+    border: 1px solid #f5c6cb;
 } 

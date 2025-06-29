@@ -493,10 +493,11 @@ class LearningSystem {
             html += '<strong>🤖 AI分析の判断根拠と結果:</strong><br>';
             
             const aiRec = window.lastAIRecommendation;
+            let aiMainPick = null; // スコープを拡張
             
             // AI推奨馬の結果確認
             if (aiRec.topPicks && aiRec.topPicks.length > 0) {
-                const aiMainPick = aiRec.topPicks[0];
+                aiMainPick = aiRec.topPicks[0];
                 
                 if (aiMainPick.horse === firstHorse.name) {
                     html += `✅ <strong>AI第1推奨が的中!</strong><br>`;
@@ -548,37 +549,129 @@ class LearningSystem {
                             let hitStatus = '❌';
                             let details = '';
                             
-                            // 戦略タイプごとの的中判定
-                            if (bet.type === '単勝' && bet.combination.includes(firstHorse.name)) {
-                                hitStatus = '✅';
-                                details = `予想配当${bet.expectedReturn} → 実際オッズ${firstHorse.odds}倍で的中`;
-                                patternHits++;
-                            } else if (bet.type === '複勝' && actualTop3.some(h => bet.combination.includes(h.name))) {
-                                hitStatus = '✅';
-                                const hitHorse = actualTop3.find(h => bet.combination.includes(h.name));
-                                const hitPos = actualTop3.findIndex(h => h.name === hitHorse.name) + 1;
-                                details = `「${hitHorse.name}」が${hitPos}着で的中`;
-                                patternHits++;
+                            // 戦略タイプごとの的中判定（馬番対応版）
+                            if (bet.type === '単勝') {
+                                // 馬番での照合も追加
+                                const betNumber = parseInt(bet.combination.replace(/[^\d]/g, ''));
+                                const isHit = bet.combination.includes(firstHorse.name) || 
+                                             (!isNaN(betNumber) && (firstHorse.name === betNumber.toString() || 
+                                              (firstHorse.horseNumber && firstHorse.horseNumber === betNumber)));
+                                if (isHit) {
+                                    hitStatus = '✅';
+                                    details = `予想配当${bet.expectedReturn} → 実際オッズ${firstHorse.odds}倍で的中`;
+                                    patternHits++;
+                                }
+                            } else if (bet.type === '複勝') {
+                                // 馬番での照合も追加
+                                const betNumber = parseInt(bet.combination.replace(/[^\d]/g, ''));
+                                const hitHorse = actualTop3.find(h => {
+                                    if (bet.combination.includes(h.name)) return true;
+                                    if (!isNaN(betNumber)) {
+                                        if (h.name === betNumber.toString()) return true;
+                                        if (h.horseNumber === betNumber) return true;
+                                    }
+                                    return false;
+                                });
+                                if (hitHorse) {
+                                    hitStatus = '✅';
+                                    const hitPos = actualTop3.findIndex(h => h.name === hitHorse.name) + 1;
+                                    details = `「${hitHorse.name}」が${hitPos}着で的中`;
+                                    patternHits++;
+                                }
                             } else if (bet.type === 'ワイド' || bet.type.includes('ワイド')) {
-                                // ワイド的中判定（簡易版）
+                                // ワイド的中判定（馬番対応版）
                                 const wideHorses = bet.combination.split('-');
                                 if (wideHorses.length >= 2) {
-                                    const bothIn = wideHorses.every(horseName => 
-                                        actualTop3.some(h => horseName.includes(h.name))
-                                    );
+                                    // 馬番から馬名を取得するための関数
+                                    const getHorseNameFromNumber = (horseNumberStr) => {
+                                        const horseNumber = parseInt(horseNumberStr.replace(/[^\d]/g, ''));
+                                        if (isNaN(horseNumber)) return horseNumberStr;
+                                        
+                                        // HorseManagerから馬データを取得
+                                        let horses = [];
+                                        try {
+                                            if (typeof HorseManager !== 'undefined' && HorseManager.getAllHorses) {
+                                                horses = HorseManager.getAllHorses();
+                                            } else if (typeof PredictionEngine !== 'undefined' && PredictionEngine.getAllHorses) {
+                                                horses = PredictionEngine.getAllHorses();
+                                            }
+                                        } catch (e) {
+                                            console.warn('馬データ取得エラー:', e);
+                                        }
+                                        
+                                        // 馬番に対応する馬名を検索
+                                        const foundHorse = horses.find(h => {
+                                            // horseNumberプロパティがある場合
+                                            if (h.horseNumber === horseNumber) return true;
+                                            // 馬名に番号が含まれている場合の簡易チェック
+                                            if (h.name && h.name.includes(horseNumber.toString())) return true;
+                                            return false;
+                                        });
+                                        
+                                        return foundHorse ? foundHorse.name : horseNumberStr;
+                                    };
+                                    
+                                    // 馬番を馬名に変換
+                                    const horseNames = wideHorses.map(getHorseNameFromNumber);
+                                    
+                                    // 両方の馬が3着以内にいるかチェック（馬番・馬名両対応）
+                                    const bothIn = wideHorses.every(horseRef => {
+                                        const horseNumber = parseInt(horseRef.replace(/[^\d]/g, ''));
+                                        return actualTop3.some(h => {
+                                            // 馬名での照合
+                                            if (h.name === horseRef || horseRef.includes(h.name) || h.name.includes(horseRef)) return true;
+                                            // 馬番での照合（着順入力が馬番の場合）
+                                            if (!isNaN(horseNumber)) {
+                                                // h.nameが馬番の場合（例：「11」「9」「8」）
+                                                if (h.name === horseNumber.toString()) return true;
+                                                // h.horseNumberがある場合
+                                                if (h.horseNumber === horseNumber) return true;
+                                                // 馬名に馬番が含まれている場合
+                                                if (h.name && h.name.includes(horseNumber.toString())) return true;
+                                            }
+                                            return false;
+                                        });
+                                    });
+                                    
                                     if (bothIn) {
                                         hitStatus = '✅';
-                                        details = '組み合わせ両方が3着以内で的中';
+                                        const hitPositions = wideHorses.map(horseRef => {
+                                            const horseNumber = parseInt(horseRef.replace(/[^\d]/g, ''));
+                                            const foundHorse = actualTop3.find(h => {
+                                                if (h.name === horseRef || horseRef.includes(h.name) || h.name.includes(horseRef)) return true;
+                                                if (!isNaN(horseNumber)) {
+                                                    if (h.name === horseNumber.toString()) return true;
+                                                    if (h.horseNumber === horseNumber) return true;
+                                                    if (h.name && h.name.includes(horseNumber.toString())) return true;
+                                                }
+                                                return false;
+                                            });
+                                            const pos = actualTop3.indexOf(foundHorse) + 1;
+                                            const displayName = foundHorse ? foundHorse.name : horseRef;
+                                            return `${displayName}(${pos}着)`;
+                                        }).join('・');
+                                        details = `ワイド的中: ${hitPositions}`;
                                         patternHits++;
                                     }
                                 }
                             } else if (bet.type.includes('連複') || bet.type.includes('連単')) {
-                                // 3連複・3連単等の的中判定
+                                // 3連複・3連単等の的中判定（馬番対応版）
                                 const horses = bet.combination.split('-');
                                 if (horses.length >= 3) {
-                                    const allIn = horses.every(horseName => 
-                                        actualTop3.some(h => horseName.includes(h.name))
-                                    );
+                                    const allIn = horses.every(horseRef => {
+                                        const horseNumber = parseInt(horseRef.replace(/[^\d]/g, ''));
+                                        return actualTop3.some(h => {
+                                            // 馬名での照合
+                                            if (h.name === horseRef || horseRef.includes(h.name) || h.name.includes(horseRef)) return true;
+                                            // 馬番での照合
+                                            if (!isNaN(horseNumber)) {
+                                                if (h.name === horseNumber.toString()) return true;
+                                                if (h.horseNumber === horseNumber) return true;
+                                                if (h.name && h.name.includes(horseNumber.toString())) return true;
+                                            }
+                                            return false;
+                                        });
+                                    });
                                     if (allIn) {
                                         hitStatus = '✅';
                                         details = '全ての馬が3着以内で的中';
@@ -623,8 +716,15 @@ class LearningSystem {
                 html += `<br><strong>AI判断の信頼度:</strong> ${confidenceText}<br>`;
                 if (aiMainPick && aiMainPick.horse === firstHorse.name) {
                     html += `信頼度「${confidenceText}」の判断が的中し、AI分析の精度を確認できました<br>`;
+                    // 成功パターンを記録
+                    this.recordAISuccess(aiRec, firstHorse, confidenceText);
                 } else {
                     html += `信頼度「${confidenceText}」でしたが外れたため、AI分析手法の見直しが必要です<br>`;
+                    // 失敗パターンを分析し、改善案を生成
+                    const improvements = this.analyzeAIFailureAndGenerateImprovements(aiRec, firstHorse, actualTop3, confidenceText);
+                    html += improvements.analysisText;
+                    // 次回のAI分析で考慮すべき点を保存
+                    this.saveAIImprovementPoints(improvements.improvementPoints);
                 }
             }
             
@@ -820,6 +920,447 @@ class LearningSystem {
     static getLearningData() {
         return this.learningData;
     }
+
+    // AI成功パターンを記録
+    static recordAISuccess(aiRec, winnerHorse, confidenceLevel) {
+        if (!this.learningData.aiAnalysis) {
+            this.learningData.aiAnalysis = {
+                successPatterns: [],
+                failurePatterns: [],
+                improvementPoints: [],
+                confidenceAccuracy: { high: {hit: 0, total: 0}, medium: {hit: 0, total: 0}, low: {hit: 0, total: 0} }
+            };
+        }
+
+        // 成功パターンを記録
+        this.learningData.aiAnalysis.successPatterns.push({
+            date: new Date().toISOString(),
+            confidence: confidenceLevel,
+            winnerHorse: winnerHorse.name,
+            winnerOdds: winnerHorse.odds,
+            aiReason: aiRec.topPicks[0]?.reason || '',
+            keyFactors: this.extractSuccessFactors(aiRec, winnerHorse)
+        });
+
+        // 信頼度別精度を更新
+        if (this.learningData.aiAnalysis.confidenceAccuracy[confidenceLevel.toLowerCase()]) {
+            this.learningData.aiAnalysis.confidenceAccuracy[confidenceLevel.toLowerCase()].hit++;
+            this.learningData.aiAnalysis.confidenceAccuracy[confidenceLevel.toLowerCase()].total++;
+        }
+
+        // 成功パターンは最新20件まで保持
+        if (this.learningData.aiAnalysis.successPatterns.length > 20) {
+            this.learningData.aiAnalysis.successPatterns = this.learningData.aiAnalysis.successPatterns.slice(-20);
+        }
+
+        this.saveLearningData();
+    }
+
+    // AI失敗パターンを分析し改善案を生成
+    static analyzeAIFailureAndGenerateImprovements(aiRec, actualWinner, actualTop3, confidenceLevel) {
+        if (!this.learningData.aiAnalysis) {
+            this.learningData.aiAnalysis = {
+                successPatterns: [],
+                failurePatterns: [],
+                improvementPoints: [],
+                confidenceAccuracy: { high: {hit: 0, total: 0}, medium: {hit: 0, total: 0}, low: {hit: 0, total: 0} }
+            };
+        }
+
+        // 失敗パターンを記録
+        const failurePattern = {
+            date: new Date().toISOString(),
+            confidence: confidenceLevel,
+            aiPrediction: aiRec.topPicks[0]?.horse || '不明',
+            aiReason: aiRec.topPicks[0]?.reason || '',
+            actualWinner: actualWinner.name,
+            actualWinnerOdds: actualWinner.odds,
+            actualTop3: actualTop3.map(h => h.name),
+            analysisGaps: this.identifyAnalysisGaps(aiRec, actualWinner, actualTop3)
+        };
+
+        // 穴馬候補の学習も実行
+        this.learnSleeperPatterns(actualTop3);
+
+        this.learningData.aiAnalysis.failurePatterns.push(failurePattern);
+
+        // 信頼度別精度を更新
+        if (this.learningData.aiAnalysis.confidenceAccuracy[confidenceLevel.toLowerCase()]) {
+            this.learningData.aiAnalysis.confidenceAccuracy[confidenceLevel.toLowerCase()].total++;
+        }
+
+        // 失敗パターンは最新30件まで保持
+        if (this.learningData.aiAnalysis.failurePatterns.length > 30) {
+            this.learningData.aiAnalysis.failurePatterns = this.learningData.aiAnalysis.failurePatterns.slice(-30);
+        }
+
+        // 改善案を生成
+        const improvements = this.generateImprovementSuggestions(failurePattern, aiRec);
+        
+        let analysisText = `<br><strong>🔍 AI分析手法の具体的見直し内容:</strong><br>`;
+        analysisText += `<div style="background: #fff3cd; padding: 8px; border-radius: 4px; margin: 5px 0;">`;
+        analysisText += `<strong>失敗要因分析:</strong><br>`;
+        improvements.failureReasons.forEach(reason => {
+            analysisText += `・${reason}<br>`;
+        });
+        analysisText += `<br><strong>次回への改善点:</strong><br>`;
+        improvements.suggestions.forEach(suggestion => {
+            analysisText += `・${suggestion}<br>`;
+        });
+        analysisText += `</div>`;
+
+        this.saveLearningData();
+
+        return {
+            analysisText,
+            improvementPoints: improvements.suggestions
+        };
+    }
+
+    // 成功要因を抽出
+    static extractSuccessFactors(aiRec, winnerHorse) {
+        const factors = [];
+        
+        if (aiRec.analysis) {
+            if (aiRec.analysis.includes('先行') && winnerHorse.runningStyle === '先行') {
+                factors.push('脚質判断が的確');
+            }
+            if (aiRec.analysis.includes('オッズ') && winnerHorse.odds < 5) {
+                factors.push('人気の評価が適切');
+            }
+            if (aiRec.analysis.includes('血統')) {
+                factors.push('血統分析が有効');
+            }
+        }
+
+        return factors;
+    }
+
+    // 分析のギャップを特定
+    static identifyAnalysisGaps(aiRec, actualWinner, actualTop3) {
+        const gaps = [];
+
+        // 人気と結果のギャップ
+        if (actualWinner.odds > 10 && aiRec.topPicks[0]?.horse !== actualWinner.name) {
+            gaps.push('高オッズ馬の評価不足');
+        }
+
+        // 展開予想のギャップ
+        if (aiRec.analysis && aiRec.analysis.includes('先行有利') && actualWinner.runningStyle === '差し') {
+            gaps.push('展開予想と実際の展開の乖離');
+        }
+
+        // 血統評価のギャップ
+        if (aiRec.analysis && aiRec.analysis.includes('血統') && !actualTop3.some(h => h.name === aiRec.topPicks[0]?.horse)) {
+            gaps.push('血統評価の重要度設定');
+        }
+
+        return gaps;
+    }
+
+    // 改善提案を生成
+    static generateImprovementSuggestions(failurePattern, aiRec) {
+        const failureReasons = [];
+        const suggestions = [];
+
+        // 人気薄的中の場合
+        if (failurePattern.actualWinnerOdds > 10) {
+            failureReasons.push(`高オッズ馬「${failurePattern.actualWinner}」(${failurePattern.actualWinnerOdds}倍)の評価が不十分`);
+            suggestions.push('穴馬候補の血統・適性分析を強化');
+            suggestions.push('人気に囚われない客観的指標の重視');
+        }
+
+        // 信頼度と結果の乖離
+        if (failurePattern.confidence === '高') {
+            failureReasons.push('高信頼度での外れは分析手法の根本的見直しが必要');
+            suggestions.push('AI分析の重み付けロジックを再検討');
+            suggestions.push('過信を避け、統計データとのバランスを改善');
+        } else if (failurePattern.confidence === '中') {
+            failureReasons.push('中程度の信頼度でも分析精度の向上余地あり');
+            suggestions.push('分析要素の精度を個別に検証・改善');
+        }
+
+        // 展開予想の改善
+        if (failurePattern.analysisGaps.includes('展開予想と実際の展開の乖離')) {
+            failureReasons.push('レース展開の予想が実際と異なった');
+            suggestions.push('コース特性と騎手戦術の関係性を詳細分析');
+            suggestions.push('過去の同条件レースでの展開パターンを重視');
+        }
+
+        // 血統分析の改善
+        if (failurePattern.analysisGaps.includes('血統評価の重要度設定')) {
+            failureReasons.push('血統評価の重要度が実際の結果と乖離');
+            suggestions.push('レース条件別の血統影響度を再調整');
+            suggestions.push('統計データとの整合性を確認');
+        }
+
+        return { failureReasons, suggestions };
+    }
+
+    // AI改善点を保存
+    static saveAIImprovementPoints(improvementPoints) {
+        if (!this.learningData.aiAnalysis) {
+            this.learningData.aiAnalysis = {
+                successPatterns: [],
+                failurePatterns: [],
+                improvementPoints: [],
+                confidenceAccuracy: { high: {hit: 0, total: 0}, medium: {hit: 0, total: 0}, low: {hit: 0, total: 0} }
+            };
+        }
+
+        // 改善点を蓄積（重複除去）
+        improvementPoints.forEach(point => {
+            if (!this.learningData.aiAnalysis.improvementPoints.includes(point)) {
+                this.learningData.aiAnalysis.improvementPoints.push(point);
+            }
+        });
+
+        // 改善点は最新50件まで保持
+        if (this.learningData.aiAnalysis.improvementPoints.length > 50) {
+            this.learningData.aiAnalysis.improvementPoints = this.learningData.aiAnalysis.improvementPoints.slice(-50);
+        }
+
+        this.saveLearningData();
+    }
+
+    // AI分析の改善提案を取得（次回のAI分析で参照用）
+    static getAIImprovementSuggestions() {
+        if (!this.learningData.aiAnalysis?.improvementPoints) {
+            return [];
+        }
+
+        // 最新の改善点上位10件を返す
+        return this.learningData.aiAnalysis.improvementPoints.slice(-10);
+    }
+
+    // AI信頼度別の精度統計を取得
+    static getAIConfidenceStats() {
+        if (!this.learningData.aiAnalysis?.confidenceAccuracy) {
+            return null;
+        }
+
+        const stats = {};
+        Object.entries(this.learningData.aiAnalysis.confidenceAccuracy).forEach(([level, data]) => {
+            stats[level] = {
+                accuracy: data.total > 0 ? (data.hit / data.total * 100).toFixed(1) : '0.0',
+                hit: data.hit,
+                total: data.total
+            };
+        });
+
+        return stats;
+    }
+
+    // 穴馬候補パターンを学習
+    static learnSleeperPatterns(actualTop3) {
+        if (!this.learningData.sleeperAnalysis) {
+            this.learningData.sleeperAnalysis = {
+                patterns: [],
+                factorAccuracy: {
+                    '休み明けで夏場に好調': { hit: 0, total: 0 },
+                    '若駒で成長期待': { hit: 0, total: 0 },
+                    'ダート血統の芝挑戦': { hit: 0, total: 0 },
+                    '地方馬の中央挑戦': { hit: 0, total: 0 },
+                    '前走好走で巻き返し期待': { hit: 0, total: 0 },
+                    '距離適性抜群の血統': { hit: 0, total: 0 },
+                    'トップ騎手に乗り替わり': { hit: 0, total: 0 },
+                    '馬体重増加で充実': { hit: 0, total: 0 },
+                    '減量で身軽さアップ': { hit: 0, total: 0 },
+                    '北海道開催で地元有利': { hit: 0, total: 0 },
+                    '夏に強い血統': { hit: 0, total: 0 }
+                },
+                adjustments: {
+                    baseThreshold: 20, // 基本閾値
+                    factorWeights: {} // 要因別重み
+                }
+            };
+        }
+
+        // 現在の予測結果から穴馬候補を取得
+        const predictions = PredictionEngine.getCurrentPredictions();
+        if (!predictions) return;
+
+        predictions.forEach(horse => {
+            const sleeper = PredictionEngine.detectSleeper(horse);
+            
+            if (sleeper.isSleeper) {
+                // 穴馬候補が3着以内に入ったかチェック
+                const isHit = actualTop3.some(topHorse => topHorse.name === horse.name);
+                
+                // 学習パターンを記録
+                const pattern = {
+                    date: new Date().toISOString(),
+                    horseName: horse.name,
+                    odds: horse.odds,
+                    sleeperScore: sleeper.score,
+                    reasons: this.extractSleeperFactors(sleeper.reason),
+                    isHit: isHit,
+                    position: isHit ? actualTop3.findIndex(h => h.name === horse.name) + 1 : null
+                };
+
+                this.learningData.sleeperAnalysis.patterns.push(pattern);
+
+                // 要因別精度を更新
+                pattern.reasons.forEach(factor => {
+                    if (this.learningData.sleeperAnalysis.factorAccuracy[factor]) {
+                        this.learningData.sleeperAnalysis.factorAccuracy[factor].total++;
+                        if (isHit) {
+                            this.learningData.sleeperAnalysis.factorAccuracy[factor].hit++;
+                        }
+                    }
+                });
+
+                // 学習パターンは最新100件まで保持
+                if (this.learningData.sleeperAnalysis.patterns.length > 100) {
+                    this.learningData.sleeperAnalysis.patterns = this.learningData.sleeperAnalysis.patterns.slice(-100);
+                }
+            }
+        });
+
+        // 穴馬検出精度の動的調整
+        this.adjustSleeperDetection();
+        this.saveLearningData();
+    }
+
+    // 穴馬要因を抽出
+    static extractSleeperFactors(reasonText) {
+        const factors = [];
+        const allFactors = [
+            '休み明けで夏場に好調', '若駒で成長期待', 'ダート血統の芝挑戦',
+            '地方馬の中央挑戦', '前走好走で巻き返し期待', '距離適性抜群の血統',
+            'トップ騎手に乗り替わり', '馬体重増加で充実', '減量で身軽さアップ',
+            '北海道開催で地元有利', '夏に強い血統'
+        ];
+
+        allFactors.forEach(factor => {
+            if (reasonText.includes(factor)) {
+                factors.push(factor);
+            }
+        });
+
+        return factors;
+    }
+
+    // 穴馬検出精度を動的調整
+    static adjustSleeperDetection() {
+        if (!this.learningData.sleeperAnalysis || this.learningData.sleeperAnalysis.patterns.length < 10) {
+            return; // 学習データが不足
+        }
+
+        const patterns = this.learningData.sleeperAnalysis.patterns.slice(-50); // 最新50件で分析
+        const totalSleepers = patterns.length;
+        const hitSleepers = patterns.filter(p => p.isHit).length;
+        const currentAccuracy = hitSleepers / totalSleepers;
+
+        // 全体的な精度に基づく閾値調整
+        if (currentAccuracy < 0.2) {
+            // 精度が低すぎる場合、閾値を上げて検出を厳しくする
+            this.learningData.sleeperAnalysis.adjustments.baseThreshold = Math.min(35, this.learningData.sleeperAnalysis.adjustments.baseThreshold + 2);
+        } else if (currentAccuracy > 0.4) {
+            // 精度が高い場合、閾値を下げてより多く検出
+            this.learningData.sleeperAnalysis.adjustments.baseThreshold = Math.max(15, this.learningData.sleeperAnalysis.adjustments.baseThreshold - 1);
+        }
+
+        // 要因別重み調整
+        Object.entries(this.learningData.sleeperAnalysis.factorAccuracy).forEach(([factor, data]) => {
+            if (data.total >= 5) { // 最低5回のデータが必要
+                const accuracy = data.hit / data.total;
+                
+                if (accuracy > 0.5) {
+                    // 精度の高い要因は重みを増加
+                    this.learningData.sleeperAnalysis.adjustments.factorWeights[factor] = 1.2;
+                } else if (accuracy < 0.2) {
+                    // 精度の低い要因は重みを減少
+                    this.learningData.sleeperAnalysis.adjustments.factorWeights[factor] = 0.8;
+                } else {
+                    // 標準的な精度は重み1.0
+                    this.learningData.sleeperAnalysis.adjustments.factorWeights[factor] = 1.0;
+                }
+            }
+        });
+
+        console.log(`穴馬検出精度調整: 閾値=${this.learningData.sleeperAnalysis.adjustments.baseThreshold}, 精度=${(currentAccuracy * 100).toFixed(1)}%`);
+    }
+
+    // 学習結果を適用した穴馬検出閾値を取得
+    static getAdjustedSleeperThreshold() {
+        if (!this.learningData.sleeperAnalysis?.adjustments) {
+            return 20; // デフォルト値
+        }
+        return this.learningData.sleeperAnalysis.adjustments.baseThreshold;
+    }
+
+    // 学習結果を適用した要因別重みを取得
+    static getSleeperFactorWeight(factor) {
+        if (!this.learningData.sleeperAnalysis?.adjustments?.factorWeights) {
+            return 1.0; // デフォルト値
+        }
+        return this.learningData.sleeperAnalysis.adjustments.factorWeights[factor] || 1.0;
+    }
+
+    // 穴馬学習統計を表示
+    static showSleeperStats() {
+        if (!this.learningData.sleeperAnalysis || this.learningData.sleeperAnalysis.patterns.length === 0) {
+            alert('穴馬学習データがありません。レース結果を入力してください。');
+            return;
+        }
+
+        const patterns = this.learningData.sleeperAnalysis.patterns;
+        const totalSleepers = patterns.length;
+        const hitSleepers = patterns.filter(p => p.isHit).length;
+        const accuracy = ((hitSleepers / totalSleepers) * 100).toFixed(1);
+
+        let html = '<div style="background: #f5f5f5; padding: 20px; border-radius: 10px; margin-top: 15px;">';
+        html += '<h4 style="color: #e67e22; margin-bottom: 15px;">💎 穴馬候補学習統計</h4>';
+
+        // 全体成績
+        html += '<div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 15px;">';
+        html += '<h5 style="color: #e67e22; margin-bottom: 10px;">📊 全体成績</h5>';
+        html += `<p>穴馬候補検出数: ${totalSleepers}回</p>`;
+        html += `<p>的中数: ${hitSleepers}回</p>`;
+        html += `<p>穴馬的中率: ${accuracy}%</p>`;
+        html += `<p>現在の検出閾値: ${this.learningData.sleeperAnalysis.adjustments.baseThreshold}点</p>`;
+        html += '</div>';
+
+        // 要因別成績
+        html += '<div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 15px;">';
+        html += '<h5 style="color: #d35400; margin-bottom: 10px;">🔍 要因別的中率</h5>';
+        
+        Object.entries(this.learningData.sleeperAnalysis.factorAccuracy).forEach(([factor, data]) => {
+            if (data.total > 0) {
+                const factorAccuracy = ((data.hit / data.total) * 100).toFixed(1);
+                const weight = this.getSleeperFactorWeight(factor);
+                const weightText = weight > 1.0 ? '↗️' : weight < 1.0 ? '↘️' : '→';
+                html += `<p>${factor}: ${factorAccuracy}% (${data.hit}/${data.total}) ${weightText} 重み${weight}</p>`;
+            }
+        });
+        html += '</div>';
+
+        // 最近の穴馬候補
+        html += '<div style="background: white; padding: 15px; border-radius: 8px;">';
+        html += '<h5 style="color: #b7950b; margin-bottom: 10px;">📈 最近の穴馬候補 (最新10件)</h5>';
+        const recentPatterns = patterns.slice(-10).reverse();
+        recentPatterns.forEach(pattern => {
+            const result = pattern.isHit ? `✅ ${pattern.position}着` : '❌ 圏外';
+            const dateStr = new Date(pattern.date).toLocaleDateString();
+            html += `<p>${dateStr}: ${pattern.horseName} (${pattern.odds}倍) ${result}</p>`;
+        });
+        html += '</div>';
+
+        html += '</div>';
+
+        // 新しいウィンドウで表示
+        const newWindow = window.open('', '_blank', 'width=600,height=800,scrollbars=yes');
+        newWindow.document.write(`
+            <html>
+                <head><title>穴馬候補学習統計</title></head>
+                <body style="font-family: Arial, sans-serif; margin: 20px;">
+                    ${html}
+                </body>
+            </html>
+        `);
+        newWindow.document.close();
+    }
 }
 
 // グローバル関数として公開
@@ -827,4 +1368,5 @@ window.processRaceResult = LearningSystem.processRaceResult.bind(LearningSystem)
 window.showLearningStats = LearningSystem.showLearningStats.bind(LearningSystem);
 window.resetLearningData = LearningSystem.resetLearningData.bind(LearningSystem);
 window.saveLearningData = LearningSystem.saveLearningData.bind(LearningSystem);
-window.loadLearningData = LearningSystem.loadLearningData.bind(LearningSystem); 
+window.loadLearningData = LearningSystem.loadLearningData.bind(LearningSystem);
+window.showSleeperStats = LearningSystem.showSleeperStats.bind(LearningSystem); 

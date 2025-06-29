@@ -322,6 +322,14 @@ class PredictionEngine {
             }
             score += jockeyChangeScore * (adj.jockeyWeight || 1.0);
 
+            // 血統評価スコア統合
+            const pedigreeScore = this.calculatePedigreeScore(horse);
+            score += pedigreeScore;
+            
+            // 夏競馬補正
+            const summerAdjustment = this.applySummerAdjustment(horse);
+            score += summerAdjustment;
+
             // 人気度バイアス調整
             score += adj.popularityBias;
 
@@ -555,6 +563,74 @@ class PredictionEngine {
             
             const horseNumberDisplay = horse.horseNumber ? `${horse.horseNumber}番 ` : '';
             
+            // 血統情報の表示文字列を生成（強化版・エラーハンドリング対応）
+            let pedigreeInfo = '';
+            try {
+                if (horse.pedigreeData) {
+                    const pd = horse.pedigreeData;
+                    
+                    // 基本血統情報
+                    if (pd.sireAnalysis?.name) {
+                        pedigreeInfo = `<div class="pedigree-info">🧬 ${pd.sireAnalysis.name}`;
+                        if (pd.damSireAnalysis?.name) {
+                            pedigreeInfo += ` (母父:${pd.damSireAnalysis.name})`;
+                        }
+                        
+                        // 血統総合グレード
+                        if (pd.overallRating?.grade) {
+                            const gradeColor = this.getGradeColor(pd.overallRating.grade);
+                            pedigreeInfo += ` <span class="pedigree-grade" style="color: ${gradeColor}; background: rgba(255,255,255,0.8); padding: 2px 6px; border-radius: 4px;">${pd.overallRating.grade}級</span>`;
+                        }
+                        
+                        // 血統得点表示
+                        if (pd.overallRating?.totalScore) {
+                            pedigreeInfo += ` <span style="color: #6c757d;">(${pd.overallRating.totalScore}点)</span>`;
+                        }
+                        
+                        pedigreeInfo += '</div>';
+                        
+                        // 血統特性・適性表示
+                        const specialties = [];
+                        if (pd.sireAnalysis?.specialty) specialties.push(pd.sireAnalysis.specialty);
+                        if (pd.damSireAnalysis?.specialty) specialties.push(`母父:${pd.damSireAnalysis.specialty}`);
+                        if (specialties.length > 0) {
+                            pedigreeInfo += `<div class="pedigree-specialty">🏃 ${specialties.join(' • ')}</div>`;
+                        }
+                        
+                        // 配合分析結果表示
+                        if (pd.matingAnalysis?.compatibility) {
+                            const compatibilityClass = pd.matingAnalysis.compatibility >= 80 ? 'mating-excellent' :
+                                                       pd.matingAnalysis.compatibility >= 60 ? 'mating-good' : 'mating-poor';
+                            const compatibilityText = pd.matingAnalysis.compatibility >= 80 ? '優秀' :
+                                                     pd.matingAnalysis.compatibility >= 60 ? '良好' : '注意';
+                            pedigreeInfo += `<div class="mating-analysis ${compatibilityClass}">💝 配合${compatibilityText} (${pd.matingAnalysis.compatibility}%)</div>`;
+                        }
+                        
+                        // 血統適性による推奨度表示
+                        const pedigreeRecommendation = this.calculatePedigreeRecommendation(pd);
+                        if (pedigreeRecommendation) {
+                            pedigreeInfo += `<div class="pedigree-recommendation" style="color: ${pedigreeRecommendation.color}; font-weight: bold; margin-top: 3px;">${pedigreeRecommendation.icon} ${pedigreeRecommendation.text}</div>`;
+                        }
+                        
+                        // 穴馬候補判定
+                        const sleeper = this.detectSleeper(horse);
+                        if (sleeper.isSleeper) {
+                            pedigreeInfo += `<div class="sleeper-alert" style="color: #e67e22; font-weight: bold; background: rgba(230,126,34,0.1); padding: 3px 6px; border-radius: 3px; margin-top: 3px;">💎 ${sleeper.reason}</div>`;
+                        }
+                    } else {
+                        // 血統データが不完全な場合
+                        pedigreeInfo = `<div class="pedigree-info" style="color: #ffc107; background: rgba(255,193,7,0.1);">⚠️ 血統データが不完全です</div>`;
+                    }
+                } else {
+                    // 血統データが存在しない場合
+                    pedigreeInfo = `<div class="pedigree-info" style="color: #6c757d; background: rgba(108,117,125,0.1);">📊 血統データなし</div>`;
+                }
+            } catch (error) {
+                // 血統データ処理エラー時
+                console.warn('血統データ表示エラー:', error, horse.name);
+                pedigreeInfo = `<div class="pedigree-info" style="color: #dc3545; background: rgba(220,53,69,0.1);">❌ 血統データ処理エラー</div>`;
+            }
+            
             html += `
                 <div class="result-item confidence-${confidence}" style="${extraStyle}">
                     <div><strong>${index + 1}位: ${horseNumberDisplay}${horse.name}${isTopThreePlace ? ' ⭐' : ''}</strong></div>
@@ -562,6 +638,7 @@ class PredictionEngine {
                     <div>勝率: ${horse.winProbability}%</div>
                     <div>複勝率: ${horse.placeProbability}%</div>
                     <div>オッズ: ${horse.odds}倍</div>
+                    ${pedigreeInfo}
                 </div>
             `;
         });
@@ -572,6 +649,289 @@ class PredictionEngine {
 
     static changeSortOrder(sortBy) {
         this.renderSortedResults(sortBy);
+    }
+
+    // 血統グレードに応じた色を取得
+    static getGradeColor(grade) {
+        switch(grade) {
+            case 'S': return '#d4af37'; // ゴールド
+            case 'A': return '#e74c3c'; // 赤
+            case 'B': return '#3498db'; // 青
+            case 'C': return '#2ecc71'; // 緑
+            case 'D': return '#95a5a6'; // グレー
+            default: return '#6c757d'; // デフォルトグレー
+        }
+    }
+
+    // 血統適性による推奨度を計算
+    static calculatePedigreeRecommendation(pedigreeData) {
+        if (!pedigreeData) return null;
+        
+        let score = 0;
+        let factors = [];
+        
+        // 総合評価グレードによる基本スコア
+        if (pedigreeData.overallRating?.grade) {
+            switch(pedigreeData.overallRating.grade) {
+                case 'S': score += 20; factors.push('S級血統'); break;
+                case 'A': score += 15; factors.push('A級血統'); break;
+                case 'B': score += 10; factors.push('B級血統'); break;
+                case 'C': score += 5; factors.push('C級血統'); break;
+                case 'D': score += 0; factors.push('D級血統'); break;
+            }
+        }
+        
+        // 配合評価による加算
+        if (pedigreeData.matingAnalysis?.compatibility) {
+            const compatibility = pedigreeData.matingAnalysis.compatibility;
+            if (compatibility >= 90) {
+                score += 15; factors.push('配合絶好');
+            } else if (compatibility >= 80) {
+                score += 10; factors.push('配合優秀');
+            } else if (compatibility >= 60) {
+                score += 5; factors.push('配合良好');
+            } else {
+                score -= 5; factors.push('配合注意');
+            }
+        }
+        
+        // 父系・母父系の特殊評価
+        if (pedigreeData.sireAnalysis?.name) {
+            const sireName = pedigreeData.sireAnalysis.name;
+            // 超一流種牡馬の特別評価
+            if (['ディープインパクト', 'オルフェーヴル', 'ロードカナロア', 'キズナ'].includes(sireName)) {
+                score += 8; factors.push('超一流父');
+            }
+        }
+        
+        // 推奨レベルを決定
+        if (score >= 30) {
+            return {
+                text: '血統的に強く推奨',
+                icon: '🌟',
+                color: '#d4af37',
+                level: 'excellent'
+            };
+        } else if (score >= 20) {
+            return {
+                text: '血統的に推奨',
+                icon: '⭐',
+                color: '#e74c3c',
+                level: 'good'
+            };
+        } else if (score >= 10) {
+            return {
+                text: '血統的に注目',
+                icon: '✨',
+                color: '#3498db',
+                level: 'fair'
+            };
+        } else if (score >= 5) {
+            return {
+                text: '血統的に普通',
+                icon: '📊',
+                color: '#2ecc71',
+                level: 'average'
+            };
+        } else {
+            return {
+                text: '血統的に厳しい',
+                icon: '⚠️',
+                color: '#e67e22',
+                level: 'poor'
+            };
+        }
+    }
+
+    // 穴馬候補を検出
+    static detectSleeper(horse) {
+        const reasons = [];
+        let sleeperScore = 0;
+        
+        // 現在の季節を取得
+        const month = new Date().getMonth() + 1;
+        const isSummer = month >= 6 && month <= 9;
+        
+        // 夏競馬特有の穴馬パターン
+        if (isSummer) {
+            // 夏場の高オッズ馬（6倍以上）で条件が良い馬
+            if (horse.odds >= 6) {
+                sleeperScore += 10;
+                
+                // 休み明けでフレッシュ
+                if (horse.restDays >= 42) {
+                    sleeperScore += 15;
+                    reasons.push('休み明けで夏場に好調');
+                }
+                
+                // 若い馬の夏デビュー
+                if (horse.age <= 4) {
+                    sleeperScore += 10;
+                    reasons.push('若駒で成長期待');
+                }
+                
+                // ダート血統が芝に挑戦（意外性）
+                if (horse.pedigreeData?.sireAnalysis?.specialties?.includes('ダート') && 
+                    this.getCurrentTrackType() === '芝') {
+                    sleeperScore += 8;
+                    reasons.push('ダート血統の芝挑戦');
+                }
+                
+                // 地方馬の中央挑戦
+                if (horse.jockey && (horse.jockey.includes('地方') || horse.trainer?.includes('地方'))) {
+                    sleeperScore += 12;
+                    reasons.push('地方馬の中央挑戦');
+                }
+            }
+        }
+        
+        // オールシーズン穴馬パターン
+        if (horse.odds >= 8) {
+            // 前走で好走（3着以内）していた馬
+            if (horse.lastRace <= 3) {
+                sleeperScore += 20;
+                reasons.push('前走好走で巻き返し期待');
+            }
+            
+            // 距離適性が抜群の血統
+            if (horse.pedigreeData) {
+                const distance = this.getCurrentRaceDistance();
+                const sire = horse.pedigreeData.sireAnalysis;
+                if (sire?.distance && sire.distance[distance] >= 90) {
+                    sleeperScore += 15;
+                    reasons.push('距離適性抜群の血統');
+                }
+            }
+            
+            // 騎手変更で騎乗技術向上期待
+            if (CONFIG.TOP_JOCKEYS.some(jockey => horse.jockey.includes(jockey.replace(/[・\.]/g, '')))) {
+                sleeperScore += 10;
+                reasons.push('トップ騎手に乗り替わり');
+            }
+            
+            // 馬体重の大幅な変化（調整効果）
+            if (Math.abs(horse.weightChange) >= 10) {
+                if (horse.weightChange > 0) {
+                    sleeperScore += 5;
+                    reasons.push('馬体重増加で充実');
+                } else {
+                    sleeperScore += 8;
+                    reasons.push('減量で身軽さアップ');
+                }
+            }
+        }
+        
+        // 夏場の特殊条件
+        if (isSummer) {
+            // 北海道開催での地元有利
+            const course = this.getCurrentCourse();
+            if ((course === '札幌' || course === '函館') && horse.trainer?.includes('北海道')) {
+                sleeperScore += 8;
+                reasons.push('北海道開催で地元有利');
+            }
+            
+            // 夏負けしにくい血統
+            const strongSummerSires = ['ステイゴールド', 'ヴィクトワールピサ', 'ゴールドアリュール'];
+            if (horse.pedigreeData?.sireAnalysis?.name && 
+                strongSummerSires.includes(horse.pedigreeData.sireAnalysis.name)) {
+                sleeperScore += 6;
+                reasons.push('夏に強い血統');
+            }
+        }
+        
+        // スコアが20以上で穴馬候補と判定
+        return {
+            isSleeper: sleeperScore >= 20,
+            score: sleeperScore,
+            reason: reasons.length > 0 ? `穴馬候補: ${reasons.join('・')}` : '穴馬要因なし'
+        };
+    }
+    
+    // 現在のレース条件取得メソッド
+    static getCurrentRaceDistance() {
+        const distanceElement = document.getElementById('raceDistance');
+        return distanceElement ? parseInt(distanceElement.value) : 1600;
+    }
+    
+    static getCurrentTrackType() {
+        const trackElement = document.getElementById('raceTrackType');
+        return trackElement ? trackElement.value : '芝';
+    }
+    
+    static getCurrentCourse() {
+        const courseElement = document.getElementById('raceCourse');
+        return courseElement ? courseElement.value : '';
+    }
+    
+    // 夏競馬補正を適用
+    static applySummerAdjustment(horse) {
+        const month = new Date().getMonth() + 1;
+        const isSummer = month >= 6 && month <= 9;
+        
+        if (!isSummer) return 0;
+        
+        let adjustment = 0;
+        
+        // 夏場の荒れ要因を考慮した補正
+        
+        // 1. 人気馬の信頼度低下（夏は荒れやすい）
+        if (horse.odds <= 3) {
+            adjustment -= 3; // 人気馬のスコアを下げる
+        } else if (horse.odds >= 8) {
+            adjustment += 2; // 高オッズ馬のスコアを少し上げる
+        }
+        
+        // 2. 夏負けしやすい血統
+        const summerWeakSires = ['ディープインパクト', 'キングカメハメハ'];
+        if (horse.pedigreeData?.sireAnalysis?.name && 
+            summerWeakSires.includes(horse.pedigreeData.sireAnalysis.name)) {
+            adjustment -= 2;
+        }
+        
+        // 3. 夏に強い血統
+        const summerStrongSires = ['ステイゴールド', 'ゴールドアリュール', 'クロフネ'];
+        if (horse.pedigreeData?.sireAnalysis?.name && 
+            summerStrongSires.includes(horse.pedigreeData.sireAnalysis.name)) {
+            adjustment += 3;
+        }
+        
+        // 4. 北海道開催の特別補正
+        const course = this.getCurrentCourse();
+        if (course === '札幌' || course === '函館') {
+            // 涼しい気候での開催
+            if (horse.pedigreeData?.sireAnalysis?.specialties?.includes('芝')) {
+                adjustment += 2; // 芝血統にプラス
+            }
+            
+            // 距離適性重視（広いコース）
+            const distance = this.getCurrentRaceDistance();
+            if (distance >= 2000 && horse.pedigreeData?.sireAnalysis?.specialties?.includes('長距離')) {
+                adjustment += 2;
+            }
+        }
+        
+        // 5. 小倉開催の特別補正
+        if (course === '小倉') {
+            // 小回りコースでスピード重視
+            if (horse.pedigreeData?.sireAnalysis?.specialties?.includes('短距離') ||
+                horse.pedigreeData?.sireAnalysis?.specialties?.includes('スピード')) {
+                adjustment += 2;
+            }
+        }
+        
+        // 6. 夏場の馬体重管理
+        if (horse.weightChange <= -8) {
+            adjustment += 1; // 夏バテ対策の減量
+        } else if (horse.weightChange >= 10) {
+            adjustment -= 1; // 夏場の増量は不利
+        }
+        
+        // 7. 若馬の夏場成長
+        if (horse.age <= 4) {
+            adjustment += 1; // 若馬は夏場に成長
+        }
+        
+        return adjustment;
     }
 
     static getCurrentPredictions() {
@@ -1401,6 +1761,124 @@ class PredictionEngine {
         };
     }
     
+    // 血統評価スコア計算
+    static calculatePedigreeScore(horse) {
+        let pedigreeScore = 0;
+        
+        try {
+            // 血統データが存在する場合のみ処理
+            if (horse.pedigreeData) {
+                const pedigreeData = horse.pedigreeData;
+                
+                // 血統総合評価スコア（-15〜+15の範囲）
+                if (pedigreeData.overallRating && pedigreeData.overallRating.totalScore) {
+                    const rating = pedigreeData.overallRating.totalScore;
+                    // 80点以上なら+15、70点以上なら+10、60点以上なら+5、50点以下なら-5
+                    if (rating >= 80) {
+                        pedigreeScore += 15;
+                    } else if (rating >= 70) {
+                        pedigreeScore += 10;
+                    } else if (rating >= 60) {
+                        pedigreeScore += 5;
+                    } else if (rating >= 50) {
+                        pedigreeScore += 0;
+                    } else {
+                        pedigreeScore -= 5;
+                    }
+                }
+                
+                // 血統適性による距離・馬場補正
+                const distanceBonus = this.calculatePedigreeDistanceBonus(horse, pedigreeData);
+                const trackBonus = this.calculatePedigreeTrackBonus(horse, pedigreeData);
+                
+                pedigreeScore += distanceBonus + trackBonus;
+                
+                // 血統配合相性ボーナス
+                if (pedigreeData.matingAnalysis && pedigreeData.matingAnalysis.compatibility >= 85) {
+                    pedigreeScore += 5; // 優秀な配合
+                } else if (pedigreeData.matingAnalysis && pedigreeData.matingAnalysis.compatibility <= 65) {
+                    pedigreeScore -= 3; // 相性不良
+                }
+                
+                console.log(`血統評価: ${horse.name} - 総合スコア: ${pedigreeScore}点`);
+            } else {
+                // 血統データなしの場合はデフォルト処理
+                pedigreeScore = 0;
+                console.log(`血統評価: ${horse.name} - 血統データなし（デフォルト0点）`);
+            }
+        } catch (error) {
+            console.error(`血統評価エラー: ${horse.name}`, error);
+            pedigreeScore = 0; // エラー時はニュートラル
+        }
+        
+        // スコアを-15〜+15の範囲に制限
+        return Math.max(-15, Math.min(15, pedigreeScore));
+    }
+    
+    // 血統距離適性ボーナス計算
+    static calculatePedigreeDistanceBonus(horse, pedigreeData) {
+        if (!pedigreeData.sireAnalysis || !pedigreeData.sireAnalysis.distanceAptitude || !horse.distance) {
+            return 0;
+        }
+        
+        const currentDistance = parseInt(horse.distance);
+        const distanceAptitude = pedigreeData.sireAnalysis.distanceAptitude;
+        
+        // 最も近い距離の適性値を取得
+        const distances = Object.keys(distanceAptitude).map(d => parseInt(d)).sort((a, b) => a - b);
+        let closestDistance = distances[0];
+        let minDiff = Math.abs(currentDistance - closestDistance);
+        
+        for (const distance of distances) {
+            const diff = Math.abs(currentDistance - distance);
+            if (diff < minDiff) {
+                minDiff = diff;
+                closestDistance = distance;
+            }
+        }
+        
+        const aptitude = distanceAptitude[closestDistance];
+        
+        // 適性値に基づいてボーナス計算（-5〜+5の範囲）
+        if (aptitude >= 90) {
+            return 5;
+        } else if (aptitude >= 80) {
+            return 3;
+        } else if (aptitude >= 70) {
+            return 0;
+        } else if (aptitude >= 60) {
+            return -2;
+        } else {
+            return -5;
+        }
+    }
+    
+    // 血統馬場適性ボーナス計算
+    static calculatePedigreeTrackBonus(horse, pedigreeData) {
+        if (!pedigreeData.sireAnalysis || !pedigreeData.sireAnalysis.trackAptitude || !horse.trackType) {
+            return 0;
+        }
+        
+        const trackAptitude = pedigreeData.sireAnalysis.trackAptitude;
+        const currentTrackType = horse.trackType;
+        
+        const aptitude = trackAptitude[currentTrackType];
+        if (!aptitude) return 0;
+        
+        // 馬場適性値に基づいてボーナス計算（-5〜+5の範囲）
+        if (aptitude >= 90) {
+            return 5;
+        } else if (aptitude >= 80) {
+            return 3;
+        } else if (aptitude >= 70) {
+            return 0;
+        } else if (aptitude >= 60) {
+            return -2;
+        } else {
+            return -5;
+        }
+    }
+
     // 予測の一貫性チェック
     static validatePredictionConsistency(predictions) {
         const inconsistencies = [];
@@ -1440,6 +1918,21 @@ class PredictionEngine {
         });
         
         return inconsistencies;
+    }
+
+    // 血統グレードの色分け
+    static getGradeColor(grade) {
+        switch (grade) {
+            case 'S': return '#ff6b35'; // オレンジレッド
+            case 'A+': return '#ff8c42'; // オレンジ
+            case 'A': return '#ffa726'; // 明るいオレンジ
+            case 'B+': return '#66bb6a'; // 緑
+            case 'B': return '#42a5f5'; // 青
+            case 'C+': return '#ab47bc'; // 紫
+            case 'C': return '#78909c'; // グレー
+            case 'D': return '#90a4ae'; // ライトグレー
+            default: return '#616161'; // デフォルトグレー
+        }
     }
 }
 

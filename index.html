@@ -293,6 +293,7 @@
                     <button class="btn" style="background: linear-gradient(45deg, #2196f3, #667eea);" onclick="processUnifiedRaceResult()">🧠 統合学習に反映</button>
                     <button class="btn" style="background: linear-gradient(45deg, #4caf50, #2e7d32);" onclick="showLearningStats()">📈 統計学習状況</button>
                     <button class="btn" style="background: linear-gradient(45deg, #667eea, #764ba2);" onclick="AIRecommendationService.showLearningStats()">📊 AI判断分析</button>
+                    <button class="btn" style="background: linear-gradient(45deg, #e67e22, #d35400);" onclick="LearningSystem.showSleeperStats()">💎 穴馬学習統計</button>
                     <button class="btn" style="background: linear-gradient(45deg, #ff9800, #f57c00);" onclick="AIRecommendationService.showLearningGraphs()">📈 AI分析グラフ</button>
                     <button class="btn" style="background: linear-gradient(45deg, #f44336, #d32f2f); font-size: 0.9em;" onclick="resetAllLearningData()">🔄 全学習データリセット</button>
                 </div>
@@ -337,6 +338,7 @@
                         <button class="btn" style="background: linear-gradient(45deg, #2196f3, #1976d2);" onclick="AIRecommendationService.showConfidenceChart()">🎯 信頼度分析</button>
                         <button class="btn" style="background: linear-gradient(45deg, #9c27b0, #7b1fa2);" onclick="AIRecommendationService.showOddsChart()">💰 オッズ分布</button>
                         <button class="btn" style="background: linear-gradient(45deg, #ff9800, #f57c00);" onclick="AIRecommendationService.showBettingStrategyChart()">🎯 買い目成功率</button>
+                        <button class="btn" style="background: linear-gradient(45deg, #e67e22, #d35400);" onclick="LearningSystem.showSleeperStats()">💎 穴馬学習統計</button>
                         <button class="btn" style="background: linear-gradient(45deg, #f44336, #d32f2f);" onclick="document.getElementById('learningGraphsSection').style.display='none'">❌ 閉じる</button>
                     </div>
                     
@@ -361,6 +363,7 @@
     </div>
 
     <script src="js/config.js"></script>
+    <script src="js/pedigreeDatabase.js"></script>
     <script src="js/dataConverter.js"></script>
     <script src="js/horseManager.js"></script>
     <script src="js/dataManager.js"></script>
