@@ -614,36 +614,61 @@ class LearningSystem {
                                     // 馬番を馬名に変換
                                     const horseNames = wideHorses.map(getHorseNameFromNumber);
                                     
-                                    // 両方の馬が3着以内にいるかチェック（馬番・馬名両対応）
+                                    // 両方の馬が3着以内にいるかチェック（改良版）
                                     const bothIn = wideHorses.every(horseRef => {
-                                        const horseNumber = parseInt(horseRef.replace(/[^\d]/g, ''));
+                                        console.log(`ワイド的中判定: ${horseRef} をチェック中`);
+                                        
                                         return actualTop3.some(h => {
-                                            // 馬名での照合
-                                            if (h.name === horseRef || horseRef.includes(h.name) || h.name.includes(horseRef)) return true;
-                                            // 馬番での照合（着順入力が馬番の場合）
-                                            if (!isNaN(horseNumber)) {
-                                                // h.nameが馬番の場合（例：「11」「9」「8」）
-                                                if (h.name === horseNumber.toString()) return true;
-                                                // h.horseNumberがある場合
-                                                if (h.horseNumber === horseNumber) return true;
-                                                // 馬名に馬番が含まれている場合
-                                                if (h.name && h.name.includes(horseNumber.toString())) return true;
+                                            // 1. 完全一致での馬名照合
+                                            if (h.name === horseRef) {
+                                                console.log(`✅ 馬名完全一致: ${h.name} === ${horseRef}`);
+                                                return true;
                                             }
+                                            
+                                            // 2. 馬番での厳密照合（horseRefが数字のみの場合）
+                                            if (/^\d+$/.test(horseRef.trim())) {
+                                                const horseNumber = parseInt(horseRef.trim());
+                                                // h.nameが同じ馬番の場合
+                                                if (h.name === horseNumber.toString()) {
+                                                    console.log(`✅ 馬番(name)一致: ${h.name} === ${horseNumber}`);
+                                                    return true;
+                                                }
+                                                // h.horseNumberがある場合
+                                                if (h.horseNumber === horseNumber) {
+                                                    console.log(`✅ 馬番(horseNumber)一致: ${h.horseNumber} === ${horseNumber}`);
+                                                    return true;
+                                                }
+                                            }
+                                            
+                                            // 3. 部分一致での馬名照合（最後の手段）
+                                            if (horseRef.includes(h.name) || h.name.includes(horseRef)) {
+                                                console.log(`✅ 馬名部分一致: ${h.name} <=> ${horseRef}`);
+                                                return true;
+                                            }
+                                            
                                             return false;
                                         });
                                     });
                                     
+                                    console.log(`ワイド的中判定結果: ${bothIn ? '的中' : '外れ'}`);
+                                    
                                     if (bothIn) {
                                         hitStatus = '✅';
                                         const hitPositions = wideHorses.map(horseRef => {
-                                            const horseNumber = parseInt(horseRef.replace(/[^\d]/g, ''));
                                             const foundHorse = actualTop3.find(h => {
-                                                if (h.name === horseRef || horseRef.includes(h.name) || h.name.includes(horseRef)) return true;
-                                                if (!isNaN(horseNumber)) {
+                                                // 1. 完全一致での馬名照合
+                                                if (h.name === horseRef) return true;
+                                                
+                                                // 2. 馬番での厳密照合
+                                                if (/^\d+$/.test(horseRef.trim())) {
+                                                    const horseNumber = parseInt(horseRef.trim());
                                                     if (h.name === horseNumber.toString()) return true;
                                                     if (h.horseNumber === horseNumber) return true;
-                                                    if (h.name && h.name.includes(horseNumber.toString())) return true;
                                                 }
+                                                
+                                                // 3. 部分一致での馬名照合
+                                                if (horseRef.includes(h.name) || h.name.includes(horseRef)) return true;
+                                                
                                                 return false;
                                             });
                                             const pos = actualTop3.indexOf(foundHorse) + 1;

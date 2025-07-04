@@ -1761,11 +1761,16 @@ class PredictionEngine {
         };
     }
     
-    // 血統評価スコア計算
+    // 血統評価スコア計算（最新データベース対応）
     static calculatePedigreeScore(horse) {
         let pedigreeScore = 0;
         
         try {
+            // 未知血統の動的検出・登録
+            if (typeof DynamicPedigreeDB !== 'undefined') {
+                DynamicPedigreeDB.detectAndRegisterUnknownPedigree(horse);
+            }
+            
             // 血統データが存在する場合のみ処理
             if (horse.pedigreeData) {
                 const pedigreeData = horse.pedigreeData;
@@ -1773,18 +1778,38 @@ class PredictionEngine {
                 // 血統総合評価スコア（-15〜+15の範囲）
                 if (pedigreeData.overallRating && pedigreeData.overallRating.totalScore) {
                     const rating = pedigreeData.overallRating.totalScore;
-                    // 80点以上なら+15、70点以上なら+10、60点以上なら+5、50点以下なら-5
-                    if (rating >= 80) {
+                    // 90点以上なら+15、80点以上なら+12、70点以上なら+8、60点以上なら+3、50点以下なら-5
+                    if (rating >= 90) {
                         pedigreeScore += 15;
-                    } else if (rating >= 70) {
+                    } else if (rating >= 85) {
+                        pedigreeScore += 12;
+                    } else if (rating >= 80) {
                         pedigreeScore += 10;
+                    } else if (rating >= 75) {
+                        pedigreeScore += 8;
+                    } else if (rating >= 70) {
+                        pedigreeScore += 6;
+                    } else if (rating >= 65) {
+                        pedigreeScore += 3;
                     } else if (rating >= 60) {
-                        pedigreeScore += 5;
+                        pedigreeScore += 1;
                     } else if (rating >= 50) {
                         pedigreeScore += 0;
                     } else {
                         pedigreeScore -= 5;
                     }
+                }
+                
+                // 最新血統データ分析ボーナス
+                if (pedigreeData.modernAnalysis) {
+                    const modernBonus = this.calculateModernPedigreeBonus(horse, pedigreeData.modernAnalysis);
+                    pedigreeScore += modernBonus;
+                }
+                
+                // 血統系統分析ボーナス
+                if (pedigreeData.lineageAnalysis) {
+                    const lineageBonus = this.calculateLineageBonus(horse, pedigreeData.lineageAnalysis);
+                    pedigreeScore += lineageBonus;
                 }
                 
                 // 血統適性による距離・馬場補正
@@ -1794,25 +1819,142 @@ class PredictionEngine {
                 pedigreeScore += distanceBonus + trackBonus;
                 
                 // 血統配合相性ボーナス
-                if (pedigreeData.matingAnalysis && pedigreeData.matingAnalysis.compatibility >= 85) {
-                    pedigreeScore += 5; // 優秀な配合
-                } else if (pedigreeData.matingAnalysis && pedigreeData.matingAnalysis.compatibility <= 65) {
-                    pedigreeScore -= 3; // 相性不良
+                if (pedigreeData.matingAnalysis && pedigreeData.matingAnalysis.compatibility >= 90) {
+                    pedigreeScore += 6; // 最優秀配合
+                } else if (pedigreeData.matingAnalysis && pedigreeData.matingAnalysis.compatibility >= 85) {
+                    pedigreeScore += 4; // 優秀な配合
+                } else if (pedigreeData.matingAnalysis && pedigreeData.matingAnalysis.compatibility >= 80) {
+                    pedigreeScore += 2; // 良好な配合
+                } else if (pedigreeData.matingAnalysis && pedigreeData.matingAnalysis.compatibility <= 60) {
+                    pedigreeScore -= 4; // 相性不良
                 }
                 
                 console.log(`血統評価: ${horse.name} - 総合スコア: ${pedigreeScore}点`);
+                console.log(`  - 血統総合評価: ${pedigreeData.overallRating?.totalScore || 'N/A'}点`);
+                console.log(`  - 距離適性ボーナス: ${distanceBonus}点`);
+                console.log(`  - 馬場適性ボーナス: ${trackBonus}点`);
+                if (pedigreeData.modernAnalysis) {
+                    console.log(`  - 最新データボーナス: 適用済み`);
+                }
             } else {
-                // 血統データなしの場合はデフォルト処理
-                pedigreeScore = 0;
-                console.log(`血統評価: ${horse.name} - 血統データなし（デフォルト0点）`);
+                // 血統データなしの場合もリアルタイム分析を試行
+                console.log(`血統評価: ${horse.name} - 血統データなし、リアルタイム分析開始`);
+                console.log(`  - 父: ${horse.sire || '不明'}`);
+                console.log(`  - 母: ${horse.dam || '不明'}`);
+                console.log(`  - 母父: ${horse.damSire || '不明'}`);
+                
+                // 動的血統データベースを優先して利用
+                if (typeof DynamicPedigreeDB !== 'undefined') {
+                    const dynamicData = DynamicPedigreeDB.getDynamicPedigreeData(horse);
+                    if (dynamicData.hasDynamicData) {
+                        pedigreeScore = this.calculateDynamicPedigreeScore(dynamicData);
+                        console.log(`血統評価: ${horse.name} - 動的データ分析: ${pedigreeScore}点`);
+                    } else {
+                        pedigreeScore = this.generateRealTimePedigreeScore(horse);
+                        console.log(`血統評価: ${horse.name} - リアルタイム分析: ${pedigreeScore}点`);
+                    }
+                } else {
+                    pedigreeScore = this.generateRealTimePedigreeScore(horse);
+                    console.log(`血統評価: ${horse.name} - リアルタイム分析: ${pedigreeScore}点`);
+                }
             }
         } catch (error) {
             console.error(`血統評価エラー: ${horse.name}`, error);
             pedigreeScore = 0; // エラー時はニュートラル
         }
         
-        // スコアを-15〜+15の範囲に制限
-        return Math.max(-15, Math.min(15, pedigreeScore));
+        // スコアを-20〜+20の範囲に制限（新しい範囲）
+        return Math.max(-20, Math.min(20, pedigreeScore));
+    }
+    
+    // 動的血統データによるスコア計算
+    static calculateDynamicPedigreeScore(dynamicData) {
+        let score = 0;
+        
+        // 父系評価
+        if (dynamicData.sire) {
+            const sireScore = this.calculateDynamicStallionScore(dynamicData.sire);
+            score += sireScore;
+            console.log(`  - 動的父系評価: ${sireScore}点 (信頼度: ${(dynamicData.sire.confidence * 100).toFixed(1)}%)`);
+        }
+        
+        // 母系評価
+        if (dynamicData.dam) {
+            const damScore = this.calculateDynamicMareScore(dynamicData.dam);
+            score += damScore * 0.6; // 母系は父系より影響度低め
+            console.log(`  - 動的母系評価: ${damScore * 0.6}点 (信頼度: ${(dynamicData.dam.confidence * 100).toFixed(1)}%)`);
+        }
+        
+        // 母父評価
+        if (dynamicData.damSire) {
+            const damSireScore = this.calculateDynamicStallionScore(dynamicData.damSire);
+            score += damSireScore * 0.4; // 母父は父系より影響度低め
+            console.log(`  - 動的母父評価: ${damSireScore * 0.4}点 (信頼度: ${(dynamicData.damSire.confidence * 100).toFixed(1)}%)`);
+        }
+        
+        return Math.round(score);
+    }
+    
+    // 動的種牡馬データによるスコア計算
+    static calculateDynamicStallionScore(stallionData) {
+        let score = 0;
+        
+        // 基本レーティング（50-100 → -10 to +10）
+        score += (stallionData.rating - 70) * 0.5;
+        
+        // 勝率による調整
+        if (stallionData.winRate >= 0.3) {
+            score += 5; // 高勝率
+        } else if (stallionData.winRate >= 0.2) {
+            score += 2; // 標準勝率
+        } else if (stallionData.winRate <= 0.1) {
+            score -= 3; // 低勝率
+        }
+        
+        // 信頼度による調整（データが少ない場合は控えめに）
+        score *= stallionData.confidence;
+        
+        // レース数による安定性調整
+        if (stallionData.raceCount >= 10) {
+            score *= 1.2; // 十分なデータがある場合は評価を高める
+        } else if (stallionData.raceCount >= 5) {
+            score *= 1.0; // 標準
+        } else {
+            score *= 0.8; // データが少ない場合は評価を抑える
+        }
+        
+        return score;
+    }
+    
+    // 動的繁殖牝馬データによるスコア計算
+    static calculateDynamicMareScore(mareData) {
+        let score = 0;
+        
+        // 基本レーティング（50-100 → -8 to +8）
+        score += (mareData.rating - 65) * 0.4;
+        
+        // 勝率による調整
+        if (mareData.winRate >= 0.25) {
+            score += 3; // 高勝率
+        } else if (mareData.winRate >= 0.15) {
+            score += 1; // 標準勝率
+        } else if (mareData.winRate <= 0.08) {
+            score -= 2; // 低勝率
+        }
+        
+        // 信頼度による調整
+        score *= mareData.confidence;
+        
+        // レース数による安定性調整
+        if (mareData.raceCount >= 8) {
+            score *= 1.1;
+        } else if (mareData.raceCount >= 4) {
+            score *= 1.0;
+        } else {
+            score *= 0.9;
+        }
+        
+        return score;
     }
     
     // 血統距離適性ボーナス計算
@@ -1933,6 +2075,245 @@ class PredictionEngine {
             case 'D': return '#90a4ae'; // ライトグレー
             default: return '#616161'; // デフォルトグレー
         }
+    }
+    
+    // 最新血統データボーナス計算
+    static calculateModernPedigreeBonus(horse, modernAnalysis) {
+        let bonus = 0;
+        
+        try {
+            // リーディング順位ボーナス
+            if (modernAnalysis.leadingRank) {
+                if (modernAnalysis.leadingRank <= 3) {
+                    bonus += 3; // トップ3種牡馬
+                } else if (modernAnalysis.leadingRank <= 10) {
+                    bonus += 2; // トップ10種牡馬
+                } else if (modernAnalysis.leadingRank <= 20) {
+                    bonus += 1; // トップ20種牡馬
+                }
+            }
+            
+            // 勝率ボーナス
+            if (modernAnalysis.winRate) {
+                if (modernAnalysis.winRate >= 0.40) {
+                    bonus += 3; // 勝率40%以上
+                } else if (modernAnalysis.winRate >= 0.35) {
+                    bonus += 2; // 勝率35%以上
+                } else if (modernAnalysis.winRate >= 0.30) {
+                    bonus += 1; // 勝率30%以上
+                }
+            }
+            
+            // 重賞勝ち馬数ボーナス
+            if (modernAnalysis.gradedWinners) {
+                if (modernAnalysis.gradedWinners >= 5) {
+                    bonus += 2; // 重賞勝ち馬5頭以上
+                } else if (modernAnalysis.gradedWinners >= 3) {
+                    bonus += 1; // 重賞勝ち馬3頭以上
+                }
+            }
+            
+            // 適性スコアボーナス
+            if (modernAnalysis.aptitudeScore) {
+                if (modernAnalysis.aptitudeScore >= 85) {
+                    bonus += 2; // 高適性
+                } else if (modernAnalysis.aptitudeScore <= 60) {
+                    bonus -= 2; // 低適性
+                }
+            }
+            
+        } catch (error) {
+            console.error('最新血統データボーナス計算エラー:', error);
+        }
+        
+        return Math.max(-5, Math.min(8, bonus));
+    }
+    
+    // 血統系統ボーナス計算
+    static calculateLineageBonus(horse, lineageAnalysis) {
+        let bonus = 0;
+        
+        try {
+            // 系統の評価
+            if (lineageAnalysis.rating) {
+                if (lineageAnalysis.rating >= 90) {
+                    bonus += 2; // 最高級系統
+                } else if (lineageAnalysis.rating >= 85) {
+                    bonus += 1; // 高級系統
+                }
+            }
+            
+            // 系統の勢力度
+            if (lineageAnalysis.dominance) {
+                if (lineageAnalysis.dominance >= 0.4) {
+                    bonus += 1; // 主流系統
+                } else if (lineageAnalysis.dominance <= 0.1) {
+                    bonus -= 1; // マイナー系統
+                }
+            }
+            
+        } catch (error) {
+            console.error('血統系統ボーナス計算エラー:', error);
+        }
+        
+        return Math.max(-2, Math.min(3, bonus));
+    }
+    
+    // リアルタイム血統スコア生成
+    static generateRealTimePedigreeScore(horse) {
+        let score = 0;
+        
+        try {
+            console.log(`  リアルタイム血統分析開始: ${horse.name}`);
+            console.log(`  - PedigreeDatabaseチェック: ${typeof PedigreeDatabase !== 'undefined' ? '利用可能' : '利用不可'}`);
+            console.log(`  - 父馬情報: ${horse.sire || 'なし'}`);
+            
+            // 馬名から血統を推測し、リアルタイム分析
+            if (horse.sire && typeof PedigreeDatabase !== 'undefined') {
+                const raceLevel = this.getCurrentRaceLevel();
+                const raceDistance = this.getCurrentRaceDistance();
+                const raceTrackType = this.getCurrentTrackType();
+                
+                console.log(`  - レース条件: ${raceLevel} / ${raceDistance}m / ${raceTrackType}`);
+                
+                // 血統データベースから分析
+                const pedigreeAnalysis = PedigreeDatabase.analyzePedigree(
+                    horse.sire,
+                    horse.dam || '不明',
+                    horse.damSire || '不明',
+                    raceLevel,
+                    raceDistance,
+                    raceTrackType
+                );
+                
+                console.log(`  - 血統分析結果:`, pedigreeAnalysis ? '成功' : '失敗');
+                
+                if (pedigreeAnalysis && pedigreeAnalysis.overallRating) {
+                    const rating = pedigreeAnalysis.overallRating.totalScore;
+                    console.log(`  - 血統総合評価: ${rating}点`);
+                    
+                    if (rating >= 80) {
+                        score += 5;
+                        console.log(`  - 高評価ボーナス: +5点`);
+                    } else if (rating >= 70) {
+                        score += 3;
+                        console.log(`  - 良評価ボーナス: +3点`);
+                    } else if (rating >= 60) {
+                        score += 1;
+                        console.log(`  - 標準評価ボーナス: +1点`);
+                    } else if (rating < 50) {
+                        score -= 2;
+                        console.log(`  - 低評価ペナルティ: -2点`);
+                    }
+                } else {
+                    console.log(`  - 血統総合評価なし`);
+                }
+                
+                // コース適性分析
+                const courseName = this.getCurrentCourseName();
+                console.log(`  - コース名: ${courseName || 'なし'}`);
+                
+                if (courseName && raceDistance) {
+                    const courseAnalysis = PedigreeDatabase.analyzeCourseAptitude(
+                        horse.sire,
+                        courseName,
+                        raceDistance
+                    );
+                    
+                    console.log(`  - コース適性分析:`, courseAnalysis ? `${courseAnalysis.aptitudeScore}点` : 'なし');
+                    
+                    if (courseAnalysis && courseAnalysis.aptitudeScore) {
+                        if (courseAnalysis.aptitudeScore >= 90) {
+                            score += 3;
+                            console.log(`  - コース最適ボーナス: +3点`);
+                        } else if (courseAnalysis.aptitudeScore >= 80) {
+                            score += 2;
+                            console.log(`  - コース良好ボーナス: +2点`);
+                        } else if (courseAnalysis.aptitudeScore <= 60) {
+                            score -= 1;
+                            console.log(`  - コース不適ペナルティ: -1点`);
+                        }
+                    }
+                }
+                
+                console.log(`  リアルタイム血統分析完了: ${horse.name} (父: ${horse.sire}) - スコア: ${score}点`);
+            } else {
+                console.log(`  リアルタイム血統分析スキップ: 父馬情報またはデータベースなし`);
+                
+                // 馬名からの血統推測を試行
+                if (horse.name && typeof PedigreeDatabase !== 'undefined') {
+                    console.log(`  馬名からの血統推測を試行`);
+                    const inferredPedigree = PedigreeDatabase.inferPedigreeFromHorseName(horse.name);
+                    
+                    if (inferredPedigree && inferredPedigree.confidence >= 0.5) {
+                        console.log(`  推測成功: ${inferredPedigree.sire} (信頼度: ${inferredPedigree.confidence})`);
+                        
+                        // 推測された父馬で再分析
+                        const raceLevel = this.getCurrentRaceLevel();
+                        const raceDistance = this.getCurrentRaceDistance();
+                        const raceTrackType = this.getCurrentTrackType();
+                        
+                        const pedigreeAnalysis = PedigreeDatabase.analyzePedigree(
+                            inferredPedigree.sire,
+                            '不明',
+                            '不明',
+                            raceLevel,
+                            raceDistance,
+                            raceTrackType
+                        );
+                        
+                        if (pedigreeAnalysis && pedigreeAnalysis.overallRating) {
+                            const rating = pedigreeAnalysis.overallRating.totalScore;
+                            const confidenceAdjustment = inferredPedigree.confidence;
+                            
+                            if (rating >= 80) {
+                                score += Math.round(3 * confidenceAdjustment);
+                            } else if (rating >= 70) {
+                                score += Math.round(2 * confidenceAdjustment);
+                            } else if (rating >= 60) {
+                                score += Math.round(1 * confidenceAdjustment);
+                            }
+                            
+                            console.log(`  推測血統分析: ${rating}点 × 信頼度${confidenceAdjustment} = ${score}点ボーナス`);
+                        }
+                    } else {
+                        console.log(`  馬名からの血統推測失敗または信頼度不足`);
+                        // 基本的な新馬戦用スコア調整
+                        score = -3; // 血統データなしのペナルティ
+                        console.log(`  新馬戦血統不明ペナルティ: ${score}点`);
+                    }
+                } else {
+                    // 基本的な新馬戦用スコア調整
+                    if (horse.name) {
+                        score = -3; // 血統データなしのペナルティ
+                        console.log(`  新馬戦血統不明ペナルティ: ${score}点`);
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('リアルタイム血統分析エラー:', error);
+            score = -3; // エラー時もペナルティ
+        }
+        
+        return Math.max(-5, Math.min(8, score));
+    }
+    
+    // 現在のコース名を取得
+    static getCurrentCourseName() {
+        // UI上のレース情報から取得（実装依存）
+        try {
+            const raceInfoElement = document.querySelector('.race-info');
+            if (raceInfoElement) {
+                const raceText = raceInfoElement.textContent;
+                if (raceText.includes('東京')) return '東京';
+                if (raceText.includes('京都')) return '京都';
+                if (raceText.includes('阪神')) return '阪神';
+                if (raceText.includes('ダート')) return 'ダート';
+            }
+        } catch (error) {
+            console.warn('コース名取得エラー:', error);
+        }
+        return null;
     }
 }
 

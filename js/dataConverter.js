@@ -446,9 +446,14 @@ class DataConverter {
                         }
                         
                         // 母系抽出
+                        console.log(`母系判定テスト（古いロジック）: "${damName}" -> isDamName: ${DataConverter.isDamName(damName)}`);
                         if (damName && DataConverter.isDamName(damName)) {
                             horse.dam = damName;
                             console.log(`✅ 母系抽出成功（古いロジック）: ${horse.dam}`);
+                        } else if (damName && damName.trim().length > 0) {
+                            // isDamName判定に失敗したが、有効な文字列の場合は強制的に母系として扱う
+                            console.log(`⚠️ 母系強制抽出（古いロジック）: ${damName}`);
+                            horse.dam = damName;
                         }
                         
                         // 母父抽出
@@ -1688,13 +1693,16 @@ class DataConverter {
         'ドゥラメンテ', 'モーリス', 'エピファネイア', 'ルーラーシップ',
         'キタサンブラック', 'ゴールドシップ', 'ホッコータルマエ', 'カレンチャン',
         'リアルスティール', 'サンデーサイレンス', 'ノーザンテースト', 'ミスタープロスペクター',
-        'ストームキャット', 'More Than Ready', 'ハービンジャー'
+        'ストームキャット', 'More Than Ready', 'ハービンジャー', 'キズナ',
+        'スクワートルスクワート', 'ネロ', 'ロードバリオス', 'ワールドエース',
+        'コパノリッキー', 'マクフィ', 'ヘニーヒューズ', 'サトノクラウン'
     ];
     
     static mareNames = [
         'ベラジオオペラ', 'ドゥレッツァ', 'エアルーティーン', 'モアザンセイクリッド',
         'ランドオーバーシー', 'シンハライト', 'レディアンバサダー', 'サクラトップリアル', 'マーガレットメドウ',
-        'ムーンライトダンス', 'レキシールー'
+        'ムーンライトダンス', 'レキシールー', 'ローランダー', 'フォーエバーモア', 'ダンシングブレーヴ',
+        'エアグルーヴ', 'プリンセスオリビア', 'ホワイトウォーター', 'リトルキューティー', 'シャンハイ'
     ];
     
     static horseNames = [
@@ -1764,13 +1772,18 @@ class DataConverter {
         // その他の情報の場合は母系ではない
         if (DataConverter.isKnownNonHorseName(trimmed) || DataConverter.isOtherInfo(trimmed)) return false;
         
-        // 既知の父系リストに含まれていても、この文脈では母系として扱う
-        // （父系判定を削除して、より柔軟にする）
+        // 動的血統データベースをチェック（未知血統でも許可）
+        if (typeof DynamicPedigreeDB !== 'undefined') {
+            if (DynamicPedigreeDB.isKnownMare(trimmed)) {
+                return true;
+            }
+        }
         
         // 基本的な形式チェック（カタカナ・ひらがな・漢字・英字のみ、適切な長さ）
         const hasValidFormat = /^[ァ-ヶー\u3040-\u309F\u4E00-\u9FAF\sA-Za-z]+$/.test(trimmed);
         const hasValidLength = trimmed.length >= 2 && trimmed.length <= 20;
         
+        // 未知血統でも形式が正しければ受け入れ（動的登録のため）
         return hasValidFormat && hasValidLength;
     }
     
@@ -1803,7 +1816,22 @@ class DataConverter {
             /以下|転厩|外厩|休養/, // 特殊情報
             /^\s*$/, // 空行
             /--|\◎|\◯|\▲|\△|\☆|\✓|消/, // 印
+            /近親|従兄|従姉|半兄|半姉|全兄|全姉/, // 近親情報
+            /生まれ|誕生/, // 誕生日情報
         ];
+        
+        // 既知の騎手名リスト（血統として誤認される可能性のある短い名前）
+        const knownJockeyNames = [
+            '川須', '川田', '福永', '武豊', '田辺', '石橋', '横山', '藤岡', '池添', '津村', '戸崎', '武士',
+            '丸山', '丸田', '内田', '三浦', '松山', '大野', '吉田', '藤田', '田中', '和田', '浜中', '幸',
+            '岩田', '秋山', '四位', '太宰', '菱田', '中谷', '斎藤', '森', '柴田', '鮫島', '北村', '小牧',
+            '木幡', '杉原', '菅原', '佐藤', '坂井', '古川', '石川', '荻野', '村田', '宮崎', '佐々木'
+        ];
+        
+        // 短い騎手名（2文字）は血統候補から除外
+        if (knownJockeyNames.includes(line.trim())) {
+            return true;
+        }
         
         return nonHorsePatterns.some(pattern => pattern.test(line));
     }
