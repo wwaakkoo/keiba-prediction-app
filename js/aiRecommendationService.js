@@ -435,11 +435,11 @@ ${horseList}
           "type": "AIが最適と判断する券種（単勝、複勝、ワイド、馬連、馬単、3連複、3連単から選択）",
           "combination": "具体的買い目",
           "amount": "金額",
-          "expectedReturn": "予想配当幅",
+          "expectedReturn": "予想配当幅（必ず賭け金より高い配当を記載。例：1000円→1200-1500円）",
           "reason": "選択理由"
         }
       ],
-      "expectedHitRate": "的中率見込み",
+      "expectedHitRate": "的中率見込み（期待値がプラスになる確率）",
       "riskLevel": "high/medium/low"
     },
     {
@@ -450,11 +450,11 @@ ${horseList}
           "type": "AIが最適と判断する券種",
           "combination": "具体的買い目",
           "amount": "金額",
-          "expectedReturn": "予想配当幅",
+          "expectedReturn": "予想配当幅（必ず賭け金より高い配当を記載。例：1000円→1200-1500円）",
           "reason": "選択理由"
         }
       ],
-      "expectedHitRate": "的中率見込み",
+      "expectedHitRate": "的中率見込み（期待値がプラスになる確率）",
       "riskLevel": "high/medium/low"
     },
     {
@@ -465,15 +465,15 @@ ${horseList}
           "type": "AIが最適と判断する券種",
           "combination": "具体的買い目",
           "amount": "金額",
-          "expectedReturn": "予想配当幅",
+          "expectedReturn": "予想配当幅（必ず賭け金より高い配当を記載。例：1000円→1200-1500円）",
           "reason": "選択理由"
         }
       ],
-      "expectedHitRate": "的中率見込み",
+      "expectedHitRate": "的中率見込み（期待値がプラスになる確率）",
       "riskLevel": "high/medium/low"
     }
   ],
-  "riskAnalysis": "リスクと対策（80文字程度）",
+  "riskAnalysis": "投資リスクと期待値分析、損失回避策（80文字程度）",
   "confidence": "high/medium/low"
 }
 
@@ -491,12 +491,19 @@ ${horseList}
 - **相互作用**: 複数要因の組み合わせ効果・非線形関係の洞察
 - **経験則**: 統計に表れない例外的パターン・ベテラン的勘
 
+**【投資効率・期待値重視】**
+- **最重要**: 的中時の配当が賭け金を上回ることを必須条件とする
+- **期待値計算**: (的中率 × 配当倍率 - 1) > 0 となる買い目のみ推奨
+- **配当例**: 複勝100円→110円(的中しても10円利益)は避け、130円以上を目安とする
+- **投資効率**: 賭け金に対して最低でも20%以上の利益が見込める買い目を優先
+- **損失回避**: 「当たっても損する」買い目は絶対に推奨しない
+
 **【アウトプット】**
 - 予算1000円で3つの異なる戦略パターンを提案
 - 各パターンで最適な券種をAIが選択（単勝、複勝、ワイド、馬連、馬単、3連複、3連単）
-- 的中率とリターンのバランスを考慮した提案
-- **安全重視**：的中率高・配当低（複勝中心等）
-- **バランス重視**：的中率中・配当中（ワイド・馬連等）
+- 期待値とリターンの投資効率を最優先に考慮した提案
+- **安全重視**：的中率高・期待値プラス確実（複勝1.3倍以上等）
+- **バランス重視**：的中率中・期待値良好（ワイド・馬連で2倍以上等）
 - **高配当狙い**：的中率低・配当高（3連複・3連単等）
 - 各戦略の選択理由とAI独自の洞察を明記
 - 日本語で簡潔に回答
@@ -638,7 +645,67 @@ ${horseList}
                 throw new Error('JSON形式の回答が見つかりません');
             }
             
-            const claudeData = JSON.parse(jsonMatch[0]);
+            // JSON文字列の正規化（不正な改行・カンマ・全角文字を修正）
+            let jsonString = jsonMatch[0];
+            
+            console.log('修正前JSON（先頭500文字）:', jsonString.substring(0, 500));
+            
+            // 1. 文字列リテラル内での不正な改行を修正
+            jsonString = jsonString.replace(/"\s*\n\s*([a-zA-Z])/g, '", "$1');
+            jsonString = jsonString.replace(/,\s*\n\s*"/g, ', "');
+            
+            // 2. プロパティ名の途中での改行を修正
+            jsonString = jsonString.replace(/"\s*\n\s*([a-zA-Z][a-zA-Z0-9]*)":/g, '"$1":');
+            
+            // 3. 余分なカンマを除去（より広範囲に対応）
+            jsonString = jsonString.replace(/",\s*([}\]])/g, '"$1');
+            jsonString = jsonString.replace(/,(\s*[}\]])/g, '$1');
+            
+            // 4. JSONに必要な全角文字のみを半角に変換（文字列内容は保護）
+            // combination値内の全角ハイフンと矢印のみを変換
+            jsonString = jsonString.replace(/"combination":\s*"([^"]*[‑－−→]+[^"]*)"/g, (match, value) => {
+                const converted = value.replace(/[‑－−]/g, '-').replace(/[→]/g, '->');
+                return '"combination": "' + converted + '"';
+            });
+            
+            // 5. 不要な処理を削除（文字列内容を破損させるため）
+            // この処理は削除
+            
+            console.log('修正後JSON（先頭500文字）:', jsonString.substring(0, 500));
+            
+            console.log('JSON解析前の正規化:', jsonString.substring(0, 200) + '...');
+            
+            let claudeData;
+            try {
+                claudeData = JSON.parse(jsonString);
+                console.log('✅ JSON解析成功:', claudeData);
+                console.log('bettingStrategy構造:', claudeData.bettingStrategy);
+            } catch (parseError) {
+                console.error('JSON解析エラー:', parseError);
+                console.error('問題のあるJSON:', jsonString);
+                
+                // 追加の修正を試行
+                jsonString = jsonString.replace(/"\s*\n+\s*/g, '"');
+                jsonString = jsonString.replace(/,\s*\n+\s*/g, ',');
+                
+                // より詳細な修正（安全版）
+                jsonString = jsonString.replace(/,\s*}/g, '}'); // オブジェクト終了前の余分なカンマ
+                jsonString = jsonString.replace(/,\s*]/g, ']'); // 配列終了前の余分なカンマ
+                
+                // combination値内の全角文字のみを再変換
+                jsonString = jsonString.replace(/"combination":\s*"([^"]*[‑－−→]+[^"]*)"/g, (match, value) => {
+                    const converted = value.replace(/[‑－−]/g, '-').replace(/[→]/g, '->');
+                    return '"combination": "' + converted + '"';
+                });
+                
+                try {
+                    claudeData = JSON.parse(jsonString);
+                    console.log('✅ JSON解析成功（修正後）:', claudeData);
+                    console.log('bettingStrategy構造（修正後）:', claudeData.bettingStrategy);
+                } catch (secondError) {
+                    throw new Error(`JSON解析に失敗しました: ${secondError.message}`);
+                }
+            }
             
             // 馬番が正しいかチェックして修正
             if (claudeData.topPicks) {
@@ -654,19 +721,28 @@ ${horseList}
             }
             
             // bettingStrategyの形式を統一（3パターン対応）
-            const processedBettingStrategy = (claudeData.bettingStrategy || []).map(pattern => ({
-                patternName: pattern.patternName || '戦略パターン',
-                totalBudget: pattern.totalBudget || '1000円',
-                expectedHitRate: pattern.expectedHitRate || '未設定',
-                riskLevel: pattern.riskLevel || 'medium',
-                bets: (pattern.bets || []).map(bet => ({
-                    type: bet.type || '不明',
-                    combination: bet.combination || 'N/A',
-                    amount: bet.amount || '未設定',
-                    expectedReturn: bet.expectedReturn || 'N/A',
-                    reason: bet.reason || '理由未設定'
-                }))
-            }));
+            console.log('processedBettingStrategy前:', claudeData.bettingStrategy);
+            const processedBettingStrategy = (claudeData.bettingStrategy || []).map((pattern, index) => {
+                console.log(`パターン${index + 1}処理中:`, pattern);
+                return {
+                    patternName: pattern.patternName || '戦略パターン',
+                    totalBudget: pattern.totalBudget || '1000円',
+                    expectedHitRate: pattern.expectedHitRate || '未設定',
+                    riskLevel: pattern.riskLevel || 'medium',
+                    bets: (pattern.bets || []).map((bet, betIndex) => {
+                        console.log(`bet${betIndex + 1}処理中:`, bet);
+                        const processedBet = {
+                            type: bet.type || '不明',
+                            combination: bet.combination || bet.target || 'N/A',
+                            amount: bet.amount || '未設定',
+                            expectedReturn: bet.expectedReturn || 'N/A',
+                            reason: bet.reason || '理由未設定'
+                        };
+                        console.log(`bet${betIndex + 1}処理後:`, processedBet);
+                        return processedBet;
+                    })
+                };
+            });
 
             return {
                 success: true,
@@ -2607,7 +2683,72 @@ ${horseList}
                 };
             }
             
-            const claudeData = JSON.parse(jsonMatch[0]);
+            // JSON文字列の正規化（不正な改行・カンマ・全角文字を修正）
+            let jsonString = jsonMatch[0];
+            
+            console.log('修正前JSON（先頭500文字）:', jsonString.substring(0, 500));
+            
+            // 1. 文字列リテラル内での不正な改行を修正
+            jsonString = jsonString.replace(/"\s*\n\s*([a-zA-Z])/g, '", "$1');
+            jsonString = jsonString.replace(/,\s*\n\s*"/g, ', "');
+            
+            // 2. プロパティ名の途中での改行を修正
+            jsonString = jsonString.replace(/"\s*\n\s*([a-zA-Z][a-zA-Z0-9]*)":/g, '"$1":');
+            
+            // 3. 余分なカンマを除去（より広範囲に対応）
+            jsonString = jsonString.replace(/",\s*([}\]])/g, '"$1');
+            jsonString = jsonString.replace(/,(\s*[}\]])/g, '$1');
+            
+            // 4. JSONに必要な全角文字のみを半角に変換（文字列内容は保護）
+            // combination値内の全角ハイフンと矢印のみを変換
+            jsonString = jsonString.replace(/"combination":\s*"([^"]*[‑－−→]+[^"]*)"/g, (match, value) => {
+                const converted = value.replace(/[‑－−]/g, '-').replace(/[→]/g, '->');
+                return '"combination": "' + converted + '"';
+            });
+            
+            // 5. 不要な処理を削除（文字列内容を破損させるため）
+            // この処理は削除
+            
+            console.log('修正後JSON（先頭500文字）:', jsonString.substring(0, 500));
+            
+            let claudeData;
+            try {
+                claudeData = JSON.parse(jsonString);
+            } catch (parseError) {
+                console.error('手動AI回答のJSON解析エラー:', parseError);
+                
+                // 追加の修正を試行
+                jsonString = jsonString.replace(/"\s*\n+\s*/g, '"');
+                jsonString = jsonString.replace(/,\s*\n+\s*/g, ',');
+                
+                // より詳細な修正（安全版）
+                jsonString = jsonString.replace(/,\s*}/g, '}'); // オブジェクト終了前の余分なカンマ
+                jsonString = jsonString.replace(/,\s*]/g, ']'); // 配列終了前の余分なカンマ
+                
+                // combination値内の全角文字のみを再変換
+                jsonString = jsonString.replace(/"combination":\s*"([^"]*[‑－−→]+[^"]*)"/g, (match, value) => {
+                    const converted = value.replace(/[‑－−]/g, '-').replace(/[→]/g, '->');
+                    return '"combination": "' + converted + '"';
+                });
+                
+                try {
+                    claudeData = JSON.parse(jsonString);
+                    console.log('手動AI回答のJSON解析成功（修正後）');
+                } catch (secondError) {
+                    // JSON解析に失敗した場合はテキスト処理にフォールバック
+                    return {
+                        success: true,
+                        analysis: aiResponse.substring(0, 300) + (aiResponse.length > 300 ? '...' : ''),
+                        topPicks: this.extractTopPicksFromText(aiResponse, horses),
+                        bettingStrategy: this.extractBettingStrategyFromText(aiResponse),
+                        summary: this.extractSummaryFromText(aiResponse),
+                        confidence: 'medium',
+                        sourceType: 'manual_claude_ai_fallback',
+                        generatedAt: new Date().toLocaleString('ja-JP'),
+                        method: 'Claude AI 手動入力（テキスト解析）'
+                    };
+                }
+            }
             
             // 馬番設定
             if (claudeData.topPicks) {
