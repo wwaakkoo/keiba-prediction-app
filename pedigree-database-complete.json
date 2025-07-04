@@ -1,0 +1,376 @@
+{
+  "lastUpdated": "2025-07-03",
+  "version": "1.0.0",
+  "stallions": [
+    {
+      "name": "キズナ",
+      "lineage": "サンデーサイレンス系",
+      "subLineage": "ディープインパクト系",
+      "origin": "日本",
+      "JRA_leading_rank_2025_July": 1,
+      "earnings_million_Yen": 22191.37,
+      "win_rate": 0.379,
+      "graded_winners": 6,
+      "notable_offspring": ["ジャスティンミラノ", "シックスペンス", "サンライズジパング"],
+      "aptitude": {
+        "distance": ["1800m", "2000m", "2400m"],
+        "surface": ["芝", "ダート"],
+        "running_style": ["差し", "追込"],
+        "course": ["東京", "京都", "阪神"],
+        "track_condition": ["良", "稍重"]
+      },
+      "progeny_traits": {
+        "maturity": "中程度",
+        "peak_age": "3〜4歳",
+        "filly_compatibility": "良好",
+        "international_success": "高い"
+      },
+      "breeding": {
+        "goodMatches": ["ノーザンダンサー系", "キングカメハメハ系", "アウトブリード"],
+        "avoidCombinations": ["3x3以内のインブリード"]
+      }
+    },
+    {
+      "name": "ロードカナロア",
+      "lineage": "ミスタープロスペクター系",
+      "subLineage": "キングカメハメハ系",
+      "origin": "日本",
+      "JRA_leading_rank_2025_July": 2,
+      "earnings_million_Yen": 21925.99,
+      "win_rate": 0.429,
+      "graded_winners": 6,
+      "notable_offspring": ["アーモンドアイ", "サートゥルナーリア", "パンサラッサ"],
+      "aptitude": {
+        "distance": ["1200m", "1400m", "1600m", "2000m"],
+        "surface": ["芝", "ダート"],
+        "running_style": ["逃げ", "先行", "差し"],
+        "course": ["全コース"],
+        "track_condition": ["良", "稍重", "重"]
+      },
+      "progeny_traits": {
+        "maturity": "高い",
+        "peak_age": "2〜4歳",
+        "filly_compatibility": "極めて良好",
+        "international_success": "極めて高い"
+      },
+      "breeding": {
+        "goodMatches": ["サンデーサイレンス系", "ノーザンダンサー系"],
+        "avoidCombinations": []
+      }
+    },
+    {
+      "name": "キタサンブラック",
+      "lineage": "ディープインパクト系",
+      "subLineage": "ディープインパクト系",
+      "origin": "日本",
+      "JRA_leading_rank_2025_July": 3,
+      "earnings_million_Yen": 13210.52,
+      "win_rate": 0.411,
+      "graded_winners": 5,
+      "notable_offspring": ["クリソベリル", "サンライズオネス"],
+      "aptitude": {
+        "distance": ["1800m", "2000m", "2400m"],
+        "surface": ["芝", "ダート"],
+        "running_style": ["差し", "追込"],
+        "course": ["東京", "京都", "阪神"],
+        "track_condition": ["良", "稍重"]
+      },
+      "progeny_traits": {
+        "maturity": "中程度",
+        "peak_age": "3〜4歳",
+        "filly_compatibility": "良好",
+        "international_success": "中程度"
+      },
+      "breeding": {
+        "goodMatches": ["ミスタープロスペクター系", "ノーザンダンサー系"],
+        "avoidCombinations": ["3x3以内のインブリード"]
+      }
+    },
+    {
+      "name": "エピファネイア",
+      "lineage": "ロベルト系",
+      "subLineage": "ロベルト系",
+      "origin": "日本",
+      "JRA_leading_rank_2025_July": 4,
+      "earnings_million_Yen": 11365.82,
+      "win_rate": 0.392,
+      "graded_winners": 3,
+      "notable_offspring": ["クロノジェネシス", "ダービーフィズ"],
+      "aptitude": {
+        "distance": ["1800m", "2000m", "2400m"],
+        "surface": ["芝"],
+        "running_style": ["差し", "追込"],
+        "course": ["東京", "京都", "阪神"],
+        "track_condition": ["良", "稍重"]
+      },
+      "progeny_traits": {
+        "maturity": "中程度",
+        "peak_age": "3〜4歳",
+        "filly_compatibility": "極めて良好",
+        "international_success": "中程度"
+      },
+      "breeding": {
+        "goodMatches": ["サンデーサイレンス系", "ノーザンダンサー系"],
+        "avoidCombinations": []
+      }
+    },
+    {
+      "name": "ドゥラメンテ",
+      "lineage": "ミスタープロスペクター系",
+      "subLineage": "キングカメハメハ系",
+      "origin": "日本",
+      "JRA_leading_rank_2025_July": 5,
+      "earnings_million_Yen": 11133.80,
+      "win_rate": 0.398,
+      "graded_winners": 2,
+      "notable_offspring": ["サラキア", "ダノンファンタジー"],
+      "aptitude": {
+        "distance": ["1400m", "1600m", "1800m"],
+        "surface": ["芝", "ダート"],
+        "running_style": ["先行", "差し"],
+        "course": ["東京", "京都", "阪神"],
+        "track_condition": ["良", "稍重"]
+      },
+      "progeny_traits": {
+        "maturity": "中程度",
+        "peak_age": "3〜4歳",
+        "filly_compatibility": "良好",
+        "international_success": "中程度"
+      },
+      "breeding": {
+        "goodMatches": ["サンデーサイレンス系", "ノーザンダンサー系"],
+        "avoidCombinations": []
+      }
+    },
+    {
+      "name": "ドレフォン",
+      "lineage": "ノーザンダンサー系（ストームキャット系）",
+      "subLineage": "ストームキャット系",
+      "origin": "米国",
+      "JRA_leading_rank_2025_July": 6,
+      "earnings_million_Yen": 10037.67,
+      "win_rate": 0.360,
+      "graded_winners": 2,
+      "notable_offspring": ["ダノンスマッシュ", "スティンライクビー"],
+      "aptitude": {
+        "distance": ["1200m", "1400m"],
+        "surface": ["芝", "ダート"],
+        "running_style": ["逃げ", "先行"],
+        "course": ["全コース"],
+        "track_condition": ["良", "稍重", "重"]
+      },
+      "progeny_traits": {
+        "maturity": "高い",
+        "peak_age": "2〜3歳",
+        "filly_compatibility": "良好",
+        "international_success": "高い"
+      },
+      "breeding": {
+        "goodMatches": ["サンデーサイレンス系", "ミスタープロスペクター系"],
+        "avoidCombinations": []
+      }
+    },
+    {
+      "name": "ルーラーシップ",
+      "lineage": "ミスタープロスペクター系",
+      "subLineage": "キングカメハメハ系",
+      "origin": "日本",
+      "JRA_leading_rank_2025_July": 7,
+      "earnings_million_Yen": 8624.52,
+      "win_rate": 0.354,
+      "graded_winners": 2,
+      "notable_offspring": ["マカヒキ", "サトノソルタス"],
+      "aptitude": {
+        "distance": ["1600m", "1800m", "2000m"],
+        "surface": ["芝", "ダート"],
+        "running_style": ["差し", "追込"],
+        "course": ["東京", "京都", "阪神"],
+        "track_condition": ["良", "稍重"]
+      },
+      "progeny_traits": {
+        "maturity": "中程度",
+        "peak_age": "3〜4歳",
+        "filly_compatibility": "良好",
+        "international_success": "中程度"
+      },
+      "breeding": {
+        "goodMatches": ["サンデーサイレンス系", "ノーザンダンサー系"],
+        "avoidCombinations": []
+      }
+    },
+    {
+      "name": "アメリカンファラオ",
+      "lineage": "シアトルスルー系（Tapit）",
+      "subLineage": "Tapit系",
+      "origin": "米国",
+      "JRA_leading_rank_2025_July": 54,
+      "earnings_million_Yen": 1995.5,
+      "win_rate": null,
+      "graded_winners": 0,
+      "notable_offspring": [],
+      "aptitude": {
+        "distance": ["1800m", "2000m"],
+        "surface": ["芝"],
+        "running_style": ["差し", "追込"],
+        "course": ["東京", "京都"],
+        "track_condition": ["良", "稍重"]
+      },
+      "progeny_traits": {
+        "maturity": "中程度",
+        "peak_age": "3〜4歳",
+        "filly_compatibility": "未知",
+        "international_success": "未知"
+      },
+      "breeding": {
+        "goodMatches": ["サンデーサイレンス系"],
+        "avoidCombinations": []
+      }
+    }
+  ],
+  "bloodlineCategories": [
+    {
+      "name": "サンデーサイレンス系",
+      "founder": "サンデーサイレンス",
+      "level": 1,
+      "characteristics": {
+        "distance": "中距離〜長距離",
+        "surface": "芝中心、ダート適性も一部あり",
+        "runningStyle": "差し・追込",
+        "physicalTraits": "スタミナと瞬発力のバランス"
+      },
+      "majorStallions": ["ディープインパクト", "ハーツクライ", "ステイゴールド"],
+      "currentInfluence": "極めて高い（JRA登録馬の7割以上に影響）",
+      "futureProspects": "近親交配回避のためアウトクロス併用が鍵"
+    },
+    {
+      "name": "ミスタープロスペクター系",
+      "founder": "Mr. Prospector",
+      "level": 1,
+      "characteristics": {
+        "distance": "短距離〜マイル中心",
+        "surface": "芝・ダート両用",
+        "runningStyle": "逃げ・先行",
+        "physicalTraits": "スピード型・筋力型"
+      },
+      "majorStallions": ["キングカメハメハ", "ロードカナロア", "ドゥラメンテ"],
+      "currentInfluence": "高い（ダート・短距離重賞に強い）",
+      "futureProspects": "ダート王者ライン構築中"
+    },
+    {
+      "name": "ノーザンダンサー系",
+      "founder": "ノーザンダンサー",
+      "level": 1,
+      "characteristics": {
+        "distance": "短距離〜マイル",
+        "surface": "芝・ダート両用",
+        "runningStyle": "逃げ・先行",
+        "physicalTraits": "スピード型・早熟"
+      },
+      "majorStallions": ["ドレフォン", "ストームキャット系"],
+      "currentInfluence": "中程度（スプリント重賞に強い）",
+      "futureProspects": "スプリント王者ライン形成中"
+    },
+    {
+      "name": "ロベルト系",
+      "founder": "ロベルト",
+      "level": 1,
+      "characteristics": {
+        "distance": "中距離〜長距離",
+        "surface": "芝中心",
+        "runningStyle": "差し・追込",
+        "physicalTraits": "スタミナ型・晩成"
+      },
+      "majorStallions": ["エピファネイア", "シルバーステート"],
+      "currentInfluence": "中程度（牝馬に強い）",
+      "futureProspects": "牝馬系統として発展中"
+    }
+  ],
+  "breedingTheory": {
+    "successfulPatterns": {
+      "inbreeding": {
+        "patterns": ["3x4", "4x4"],
+        "effect": "成長力と気性安定に効果あり",
+        "warnings": "3x3以内は競争寿命や気性にリスク"
+      },
+      "nicks": {
+        "SundaySilence_x_ND": {
+          "example": "ディープインパクト×ND系牝馬",
+          "successRate": "極めて高い"
+        },
+        "KingKamehameha_x_SS": {
+          "example": "ロードカナロア×ディープ系牝馬",
+          "successRate": "高い"
+        },
+        "MrProspector_x_Roberto": {
+          "example": "ミスプロ系×ロベルト系",
+          "successRate": "高い"
+        }
+      },
+      "outcrossing": {
+        "effect": "活力向上・体質強化",
+        "recommendedPatterns": ["異系統配合", "海外血統との配合"]
+      }
+    },
+    "cautions": {
+      "avoidPatterns": [
+        "父母ともに瞬発力偏重型（短命傾向）",
+        "インブリード3x3以下の濃度",
+        "同一種牡馬の重複配合"
+      ],
+      "inbreedingCoefficient": "15〜25%が推奨、安全上限は30%"
+    }
+  },
+  "courseAptitude": [
+    {
+      "racecourse": "東京",
+      "characteristics": "直線が長く末脚勝負に有利",
+      "distanceAptitude": {
+        "1600m": ["ディープインパクト系", "キングカメハメハ系"],
+        "2000m": ["キズナ", "ハーツクライ系"],
+        "2400m": ["ステイゴールド系", "ディープインパクト系"]
+      }
+    },
+    {
+      "racecourse": "京都",
+      "characteristics": "下り坂から直線で加速力重視",
+      "distanceAptitude": {
+        "1600m": ["ハーツクライ系", "キングカメハメハ系"],
+        "2000m": ["ディープインパクト系", "ノーザンテースト系"],
+        "2400m": ["ステイゴールド系", "キングカメハメハ系"]
+      }
+    },
+    {
+      "racecourse": "阪神",
+      "characteristics": "急坂がありパワーと持続力が問われる",
+      "distanceAptitude": {
+        "1600m": ["ハーツクライ系", "ストームキャット系"],
+        "2000m": ["キタサンブラック", "ゴールドシップ"],
+        "2400m": ["ステイゴールド系", "ロベルト系"]
+      }
+    },
+    {
+      "racecourse": "ダート",
+      "characteristics": "ダッシュ力と持久力のバランスが重要",
+      "distanceAptitude": {
+        "1200m": ["ドレフォン", "ヘニーヒューズ"],
+        "1400m": ["ヘニーヒューズ", "クロフネ系"],
+        "1600m": ["ロードカナロア", "キングカメハメハ系"],
+        "1800m": ["シニスターミニスター", "ドレフォン"]
+      }
+    }
+  ],
+  "historicalTrends": {
+    "byDecade": {
+      "1990s": ["サンデーサイレンス", "ノーザンテースト", "リファール"],
+      "2000s": ["ディープインパクト", "キングカメハメハ", "ハーツクライ"],
+      "2010s": ["ロードカナロア", "ダイワメジャー", "ステイゴールド"],
+      "2020s": ["キズナ", "ロードカナロア", "キタサンブラック"]
+    },
+    "futurePredictions": [
+      "ドゥラメンテ系の発展",
+      "海外血統の更なる流入",
+      "アウトクロス配合の重要性増大",
+      "ダート系統の多様化"
+    ]
+  }
+}

@@ -764,3 +764,191 @@ window.testHybridLearningAccuracy = testHybridLearningAccuracy;
 window.trainFromHistoricalData = trainFromHistoricalData;
 window.showHybridLearningStats = showHybridLearningStats;
 window.generateTestHybridData = generateTestHybridData;
+
+// 強化学習システムとの統合
+function switchToEnhancedLearningSystem() {
+    try {
+        if (typeof EnhancedLearningSystem !== 'undefined') {
+            // 既存の学習データを移行
+            const oldLearningData = LearningSystem.getLearningData();
+            console.log('従来の学習データ:', oldLearningData);
+            
+            // 強化学習システム初期化
+            EnhancedLearningSystem.initialize();
+            
+            // 可視化システム初期化
+            if (typeof EnhancedVisualizationSystem !== 'undefined') {
+                EnhancedVisualizationSystem.initialize();
+                showMessage('🚀 強化学習システムに切り替えました！新しいダッシュボードをご確認ください。', 'success', 5000);
+                
+                // グラフセクションを表示
+                const graphSection = document.getElementById('learningGraphsSection');
+                if (graphSection) {
+                    graphSection.style.display = 'block';
+                }
+            } else {
+                console.warn('EnhancedVisualizationSystem が読み込まれていません');
+            }
+        } else {
+            console.warn('EnhancedLearningSystem が読み込まれていません');
+            showMessage('強化学習システムの読み込みに失敗しました', 'error', 3000);
+        }
+    } catch (error) {
+        console.error('強化学習システム切り替えエラー:', error);
+        showMessage(`システム切り替えエラー: ${error.message}`, 'error', 5000);
+    }
+}
+
+// 強化学習システムのテスト
+function testEnhancedLearningSystem() {
+    try {
+        if (typeof EnhancedLearningSystem === 'undefined') {
+            showMessage('強化学習システムが読み込まれていません', 'error', 3000);
+            return;
+        }
+        
+        // テスト用のレース結果データ
+        const testActualResults = {
+            winner: {
+                name: 'テスト馬A',
+                sire: 'ディープインパクト',
+                dam: 'テスト母',
+                runningStyle: '差し',
+                age: 4,
+                horseNumber: 1
+            },
+            allResults: [
+                { name: 'テスト馬A', sire: 'ディープインパクト', runningStyle: '差し' },
+                { name: 'テスト馬B', sire: 'ハーツクライ', runningStyle: '先行' },
+                { name: 'テスト馬C', sire: 'キングカメハメハ', runningStyle: '追込' }
+            ]
+        };
+        
+        const testPredictions = [
+            { name: 'テスト馬A', sire: 'ディープインパクト', runningStyle: '差し', score: 85 },
+            { name: 'テスト馬B', sire: 'ハーツクライ', runningStyle: '先行', score: 78 },
+            { name: 'テスト馬C', sire: 'キングカメハメハ', runningStyle: '追込', score: 72 }
+        ];
+        
+        const testRaceConditions = {
+            distance: 2000,
+            surface: '芝',
+            course: '阪神',
+            weather: '晴'
+        };
+        
+        // 強化学習処理を実行
+        console.log('=== 強化学習システムテスト開始 ===');
+        const learningResults = EnhancedLearningSystem.processEnhancedRaceResult(
+            testActualResults, 
+            testPredictions, 
+            testRaceConditions
+        );
+        
+        console.log('強化学習結果:', learningResults);
+        
+        // 統計サマリーを取得
+        const stats = EnhancedLearningSystem.getStatsSummary();
+        console.log('統計サマリー:', stats);
+        
+        // 可視化システムがあれば更新
+        if (typeof EnhancedVisualizationSystem !== 'undefined') {
+            EnhancedVisualizationSystem.updateAllCharts();
+        }
+        
+        showMessage('✅ 強化学習システムのテストが完了しました', 'success', 3000);
+        
+    } catch (error) {
+        console.error('強化学習システムテストエラー:', error);
+        showMessage(`テストエラー: ${error.message}`, 'error', 5000);
+    }
+}
+
+// グローバル関数として公開
+window.switchToEnhancedLearningSystem = switchToEnhancedLearningSystem;
+window.testEnhancedLearningSystem = testEnhancedLearningSystem;
+
+// 学習データ移行機能の統合
+function migrateAndSwitchToEnhanced() {
+    try {
+        console.log('=== 既存データ移行 + 強化システム切り替え ===');
+        
+        // 1. データ移行実行
+        const migrationResult = migrateLearningData();
+        
+        if (migrationResult.success) {
+            console.log('移行成功:', migrationResult);
+            
+            // 2. 強化学習システムに切り替え
+            switchToEnhancedLearningSystem();
+            
+            // 3. グラフ更新
+            if (typeof EnhancedVisualizationSystem !== 'undefined') {
+                setTimeout(() => {
+                    EnhancedVisualizationSystem.updateAllCharts();
+                    showMessage('📊 移行したデータがグラフに反映されました！', 'success', 4000);
+                }, 1500);
+            }
+            
+            showMessage(`✅ 移行完了！${migrationResult.migratedDataCount}件のデータを移行しました`, 'success', 5000);
+            
+        } else {
+            console.log('移行失敗:', migrationResult);
+            showMessage(`❌ 移行失敗: ${migrationResult.reason}`, 'error', 5000);
+            
+            // 移行に失敗しても強化システムは使用可能
+            switchToEnhancedLearningSystem();
+        }
+        
+        return migrationResult;
+        
+    } catch (error) {
+        console.error('移行・切り替えエラー:', error);
+        showMessage(`❌ 処理エラー: ${error.message}`, 'error', 5000);
+    }
+}
+
+// 学習データの確認機能
+function checkExistingLearningData() {
+    try {
+        console.log('=== 既存学習データの確認 ===');
+        
+        // LearningSystemの確認
+        if (typeof LearningSystem !== 'undefined') {
+            const learningData = LearningSystem.getLearningData();
+            console.log('LearningSystem データ:', learningData);
+            
+            if (learningData && learningData.accuracy && learningData.accuracy.totalPredictions > 0) {
+                const stats = {
+                    totalRaces: learningData.accuracy.totalPredictions,
+                    winRate: ((learningData.accuracy.winPredictions / learningData.accuracy.totalPredictions) * 100).toFixed(1),
+                    placeRate: ((learningData.accuracy.placePredictions / learningData.accuracy.totalPredictions) * 100).toFixed(1)
+                };
+                
+                showMessage(`📊 既存データ発見: ${stats.totalRaces}レース分 (勝率${stats.winRate}%, 複勝率${stats.placeRate}%)`, 'info', 6000);
+                return stats;
+            }
+        }
+        
+        // LocalStorageの確認
+        const storedData = localStorage.getItem('keibaLearningData');
+        if (storedData) {
+            const parsed = JSON.parse(storedData);
+            console.log('LocalStorage データ:', parsed);
+            showMessage('💾 LocalStorageに学習データが保存されています', 'info', 4000);
+            return parsed;
+        }
+        
+        showMessage('📝 既存の学習データが見つかりません。新規でデータを蓄積します。', 'info', 4000);
+        return null;
+        
+    } catch (error) {
+        console.error('データ確認エラー:', error);
+        showMessage(`❌ データ確認エラー: ${error.message}`, 'error', 3000);
+        return null;
+    }
+}
+
+// グローバル関数として公開
+window.migrateAndSwitchToEnhanced = migrateAndSwitchToEnhanced;
+window.checkExistingLearningData = checkExistingLearningData;

@@ -1,0 +1,92 @@
+{
+  "stallions": [
+    {
+      "name": "ロードカナロア",
+      "lineage": "ミスタープロスペクター系",
+      "origin": "日本",
+      "JRA_leading_rank_Jul2025": 2,
+      "earnings_million_Yen": 21925.99,
+      "offspring_win_rate": 0.429,
+      "graded_wins": 6,
+      "notable_offspring": ["サートゥルナーリア", "サトノアラジン"],
+      "aptitude": "短距離・ダート適性"
+    },
+    {
+      "name": "キズナ",
+      "lineage": "サンデーサイレンス系",
+      "origin": "日本",
+      "JRA_leading_rank_Jul2025": 1,
+      "earnings_million_Yen": 22191.37,
+      "offspring_win_rate": 0.379,
+      "graded_wins": 6,
+      "notable_offspring": ["ディアドラ", "コントレイル"],
+      "aptitude": "芝中長距離適性"
+    },
+    {
+      "name": "キタサンブラック",
+      "lineage": "ディープインパクト系",
+      "origin": "日本",
+      "JRA_leading_rank_Jul2025": 3,
+      "earnings_million_Yen": 13210.52,
+      "offspring_win_rate": 0.411,
+      "graded_wins": 5,
+      "notable_offspring": ["クリソベリル", "サンライズオネス"],
+      "aptitude": "芝中長距離・ダート適性"
+    },
+    {
+      "name": "エピファネイア",
+      "lineage": "ロベルト系",
+      "origin": "日本",
+      "JRA_leading_rank_Jul2025": 4,
+      "earnings_million_Yen": 11365.82,
+      "offspring_win_rate": 0.392,
+      "graded_wins": 3,
+      "notable_offspring": ["クロノジェネシス", "ダービーフィズ"],
+      "aptitude": "芝中長距離適性"
+    },
+    {
+      "name": "ドゥラメンテ",
+      "lineage": "ミスタープロスペクター系",
+      "origin": "日本",
+      "JRA_leading_rank_Jul2025": 5,
+      "earnings_million_Yen": 11133.80,
+      "offspring_win_rate": 0.398,
+      "graded_wins": 2,
+      "notable_offspring": ["サラキア", "ダノンファンタジー"],
+      "aptitude": "マイル前後適性"
+    },
+    {
+      "name": "ドレフォン",
+      "lineage": "ノーザンダンサー系（ストームキャット系）",
+      "origin": "米国",
+      "JRA_leading_rank_Jul2025": 6,
+      "earnings_million_Yen": 10037.67,
+      "offspring_win_rate": 0.360,
+      "graded_wins": 2,
+      "notable_offspring": ["ダノンスマッシュ", "スティンライクビー"],
+      "aptitude": "短距離スプリント適性"
+    },
+    {
+      "name": "ルーラーシップ",
+      "lineage": "ミスタープロスペクター系",
+      "origin": "日本",
+      "JRA_leading_rank_Jul2025": 7,
+      "earnings_million_Yen": 8624.52,
+      "offspring_win_rate": 0.354,
+      "graded_wins": 2,
+      "notable_offspring": ["マカヒキ", "サトノソルタス"],
+      "aptitude": "マイル～中距離適性"
+    },
+    {
+      "name": "アメリカンファラオ",
+      "lineage": "シアトルスルー系（Tapit）",
+      "origin": "米国",
+      "JRA_leading_rank_Jul2025": 54,
+      "earnings_million_Yen": 1995.5,
+      "offspring_win_rate": null,
+      "graded_wins": 0,
+      "notable_offspring": [],
+      "aptitude": "芝中距離適性"
+    }
+  ]
+}
