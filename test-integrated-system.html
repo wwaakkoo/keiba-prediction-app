@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>統合システムテスト - 収益性+グラフ統合</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .test-section { background: white; padding: 20px; margin: 15px 0; border-radius: 8px; border-left: 4px solid #007bff; }
+        .status { font-weight: bold; padding: 5px 10px; border-radius: 4px; margin: 5px 0; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .warning { background: #fff3cd; color: #856404; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        .btn { padding: 10px 15px; margin: 5px; border: none; border-radius: 4px; cursor: pointer; }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-warning { background: #ffc107; color: #212529; }
+        .result-container { margin-top: 15px; padding: 15px; background: #f8f9fa; border-radius: 5px; }
+        .chart-container { margin-top: 20px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; }
+    </style>
+</head>
+<body>
+    <h1>🔗 統合システムテスト - 収益性+グラフ統合</h1>
+    
+    <div class="test-section">
+        <h2>📋 テスト概要</h2>
+        <p>収益性重視システムとグラフ可視化システムの統合動作を確認します。</p>
+        <div class="status info">
+            <strong>テスト対象:</strong> 収益性学習、投資効率計算、穴馬発見、グラフ表示
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>⚙️ システム初期化テスト</h2>
+        <div class="grid">
+            <div>
+                <h3>1. 基本システム読み込み</h3>
+                <div id="systemLoadStatus"></div>
+                <button class="btn btn-primary" onclick="testSystemLoading()">システム読み込み確認</button>
+            </div>
+            <div>
+                <h3>2. 収益性システム初期化</h3>
+                <div id="profitabilityStatus"></div>
+                <button class="btn btn-primary" onclick="testProfitabilitySystem()">収益性システム確認</button>
+            </div>
+            <div>
+                <h3>3. グラフシステム初期化</h3>
+                <div id="graphSystemStatus"></div>
+                <button class="btn btn-primary" onclick="testGraphSystem()">グラフシステム確認</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>🧪 統合機能テスト</h2>
+        <div class="grid">
+            <div>
+                <h3>4. 収益性データ記録</h3>
+                <div id="recordingStatus"></div>
+                <button class="btn btn-success" onclick="testProfitabilityRecording()">収益性データ記録テスト</button>
+            </div>
+            <div>
+                <h3>5. グラフ表示テスト</h3>
+                <div id="chartStatus"></div>
+                <button class="btn btn-success" onclick="testChartDisplay()">グラフ表示テスト</button>
+            </div>
+            <div>
+                <h3>6. データ移行テスト</h3>
+                <div id="migrationStatus"></div>
+                <button class="btn btn-success" onclick="testDataMigration()">データ移行テスト</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>📊 統合テスト結果</h2>
+        <div id="overallResults"></div>
+        <div class="result-container">
+            <button class="btn btn-warning" onclick="runAllTests()">🚀 全テスト実行</button>
+            <button class="btn btn-success" onclick="resetAllSystems()">🔄 システムリセット</button>
+        </div>
+    </div>
+
+    <!-- グラフ表示エリア -->
+    <div class="test-section">
+        <h2>📈 グラフ表示エリア</h2>
+        <div id="learningGraphsSection" class="chart-container">
+            <!-- グラフはここに動的に生成される -->
+        </div>
+    </div>
+
+    <!-- 必要なスクリプトを読み込み -->
+    <script src="js/config.js"></script>
+    <script src="js/profitabilityMetrics.js"></script>
+    <script src="js/investmentEfficiencyCalculator.js"></script>
+    <script src="js/underdogDiscoveryAlgorithm.js"></script>
+    <script src="js/riskReturnAnalyzer.js"></script>
+    <script src="js/enhancedLearningSystem.js"></script>
+    <script src="js/profitabilityVisualizationSystem.js"></script>
+    <script src="js/enhancedVisualizationSystem.js"></script>
+    <script src="js/learningDataMigration.js"></script>
+
+    <script>
+        // テスト結果を格納
+        let testResults = {};
+
+        // メッセージ表示関数
+        function showMessage(message, type = 'info', duration = 3000) {
+            console.log(`${type.toUpperCase()}: ${message}`);
+        }
+
+        // 1. システム読み込み確認
+        function testSystemLoading() {
+            const statusDiv = document.getElementById('systemLoadStatus');
+            let results = [];
+            
+            // 基本システムの確認
+            const systems = [
+                { name: 'ProfitabilityMetrics', obj: window.ProfitabilityMetrics },
+                { name: 'InvestmentEfficiencyCalculator', obj: window.InvestmentEfficiencyCalculator },
+                { name: 'UnderdogDiscoveryAlgorithm', obj: window.UnderdogDiscoveryAlgorithm },
+                { name: 'EnhancedLearningSystem', obj: window.EnhancedLearningSystem },
+                { name: 'EnhancedVisualizationSystem', obj: window.EnhancedVisualizationSystem },
+                { name: 'LearningDataMigration', obj: window.LearningDataMigration }
+            ];
+
+            systems.forEach(system => {
+                if (system.obj) {
+                    results.push(`<div class="status success">✅ ${system.name} 読み込み成功</div>`);
+                } else {
+                    results.push(`<div class="status error">❌ ${system.name} 読み込み失敗</div>`);
+                }
+            });
+
+            statusDiv.innerHTML = results.join('');
+            testResults.systemLoading = systems.every(s => s.obj);
+        }
+
+        // 2. 収益性システム確認
+        function testProfitabilitySystem() {
+            const statusDiv = document.getElementById('profitabilityStatus');
+            let results = [];
+            
+            try {
+                // 収益性システムの初期化確認
+                if (typeof ProfitabilityMetrics !== 'undefined') {
+                    ProfitabilityMetrics.resetForTest();
+                    results.push('<div class="status success">✅ ProfitabilityMetrics 初期化成功</div>');
+                }
+                
+                if (typeof InvestmentEfficiencyCalculator !== 'undefined') {
+                    const testCalc = InvestmentEfficiencyCalculator.calculateSingleBetEfficiency({
+                        odds: 5.0,
+                        winProbability: 0.3,
+                        betAmount: 1000,
+                        confidence: 0.8,
+                        popularity: 3
+                    });
+                    if (testCalc) {
+                        results.push('<div class="status success">✅ InvestmentEfficiencyCalculator 動作確認成功</div>');
+                    }
+                }
+                
+                testResults.profitabilitySystem = true;
+                
+            } catch (error) {
+                results.push(`<div class="status error">❌ 収益性システムエラー: ${error.message}</div>`);
+                testResults.profitabilitySystem = false;
+            }
+            
+            statusDiv.innerHTML = results.join('');
+        }
+
+        // 3. グラフシステム確認
+        function testGraphSystem() {
+            const statusDiv = document.getElementById('graphSystemStatus');
+            let results = [];
+            
+            try {
+                if (typeof EnhancedVisualizationSystem !== 'undefined') {
+                    // グラフシステムの初期化
+                    EnhancedVisualizationSystem.initialize();
+                    results.push('<div class="status success">✅ EnhancedVisualizationSystem 初期化成功</div>');
+                }
+                
+                if (typeof LearningDataMigration !== 'undefined') {
+                    results.push('<div class="status success">✅ LearningDataMigration 読み込み成功</div>');
+                }
+                
+                testResults.graphSystem = true;
+                
+            } catch (error) {
+                results.push(`<div class="status error">❌ グラフシステムエラー: ${error.message}</div>`);
+                testResults.graphSystem = false;
+            }
+            
+            statusDiv.innerHTML = results.join('');
+        }
+
+        // 4. 収益性データ記録テスト
+        function testProfitabilityRecording() {
+            const statusDiv = document.getElementById('recordingStatus');
+            let results = [];
+            
+            try {
+                if (typeof ProfitabilityMetrics !== 'undefined') {
+                    // テスト用賭け結果データ
+                    const testBetResult = {
+                        horseNumber: '5',
+                        horseName: 'テスト馬',
+                        odds: 8.5,
+                        betAmount: 1000,
+                        isWin: true,
+                        payout: 8500,
+                        raceDate: new Date().toISOString().split('T')[0],
+                        betType: 'win'
+                    };
+                    
+                    const result = ProfitabilityMetrics.recordBetResult(testBetResult);
+                    if (result) {
+                        results.push('<div class="status success">✅ 収益性データ記録成功</div>');
+                        results.push(`<div class="status info">💰 ROI: ${result.analysis.roi.toFixed(2)}%</div>`);
+                    }
+                }
+                
+                testResults.profitabilityRecording = true;
+                
+            } catch (error) {
+                results.push(`<div class="status error">❌ 記録エラー: ${error.message}</div>`);
+                testResults.profitabilityRecording = false;
+            }
+            
+            statusDiv.innerHTML = results.join('');
+        }
+
+        // 5. グラフ表示テスト
+        function testChartDisplay() {
+            const statusDiv = document.getElementById('chartStatus');
+            let results = [];
+            
+            try {
+                if (typeof EnhancedVisualizationSystem !== 'undefined') {
+                    // グラフの更新実行
+                    EnhancedVisualizationSystem.updateAllCharts();
+                    results.push('<div class="status success">✅ グラフ表示テスト成功</div>');
+                }
+                
+                testResults.chartDisplay = true;
+                
+            } catch (error) {
+                results.push(`<div class="status error">❌ グラフ表示エラー: ${error.message}</div>`);
+                testResults.chartDisplay = false;
+            }
+            
+            statusDiv.innerHTML = results.join('');
+        }
+
+        // 6. データ移行テスト
+        function testDataMigration() {
+            const statusDiv = document.getElementById('migrationStatus');
+            let results = [];
+            
+            try {
+                if (typeof migrateLearningData !== 'undefined') {
+                    const migrationResult = migrateLearningData();
+                    if (migrationResult) {
+                        results.push('<div class="status success">✅ データ移行テスト成功</div>');
+                        results.push(`<div class="status info">📊 移行結果: ${migrationResult.success ? '成功' : '失敗'}</div>`);
+                    }
+                }
+                
+                testResults.dataMigration = true;
+                
+            } catch (error) {
+                results.push(`<div class="status error">❌ データ移行エラー: ${error.message}</div>`);
+                testResults.dataMigration = false;
+            }
+            
+            statusDiv.innerHTML = results.join('');
+        }
+
+        // 全テスト実行
+        function runAllTests() {
+            testSystemLoading();
+            setTimeout(() => testProfitabilitySystem(), 500);
+            setTimeout(() => testGraphSystem(), 1000);
+            setTimeout(() => testProfitabilityRecording(), 1500);
+            setTimeout(() => testChartDisplay(), 2000);
+            setTimeout(() => testDataMigration(), 2500);
+            
+            setTimeout(() => {
+                const overallDiv = document.getElementById('overallResults');
+                const passedTests = Object.values(testResults).filter(r => r).length;
+                const totalTests = Object.keys(testResults).length;
+                
+                if (passedTests === totalTests) {
+                    overallDiv.innerHTML = `
+                        <div class="status success">
+                            🎉 全テスト成功！ (${passedTests}/${totalTests})
+                            <br>統合システムは正常に動作しています。
+                        </div>
+                    `;
+                } else {
+                    overallDiv.innerHTML = `
+                        <div class="status warning">
+                            ⚠️ 一部テスト失敗 (${passedTests}/${totalTests})
+                            <br>詳細は各テスト結果を確認してください。
+                        </div>
+                    `;
+                }
+            }, 3000);
+        }
+
+        // システムリセット
+        function resetAllSystems() {
+            try {
+                if (typeof ProfitabilityMetrics !== 'undefined') {
+                    ProfitabilityMetrics.resetForTest();
+                }
+                
+                if (typeof EnhancedVisualizationSystem !== 'undefined') {
+                    EnhancedVisualizationSystem.destroy();
+                    setTimeout(() => {
+                        EnhancedVisualizationSystem.initialize();
+                    }, 500);
+                }
+                
+                // テスト結果リセット
+                testResults = {};
+                
+                // 表示リセット
+                ['systemLoadStatus', 'profitabilityStatus', 'graphSystemStatus', 
+                 'recordingStatus', 'chartStatus', 'migrationStatus', 'overallResults'].forEach(id => {
+                    document.getElementById(id).innerHTML = '';
+                });
+                
+                showMessage('システムリセット完了', 'success');
+                
+            } catch (error) {
+                showMessage(`リセットエラー: ${error.message}`, 'error');
+            }
+        }
+
+        // 初期化
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(() => {
+                testSystemLoading();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>
