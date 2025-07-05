@@ -949,6 +949,158 @@ function checkExistingLearningData() {
     }
 }
 
+// 収益性ダッシュボード表示機能
+function showProfitabilityDashboard() {
+    try {
+        // 既存のチャートエリアを非表示
+        const learningChart = document.getElementById('learningChart');
+        if (learningChart) {
+            learningChart.style.display = 'none';
+        }
+        
+        // 収益性ダッシュボードを表示
+        const profitabilityDashboard = document.getElementById('profitabilityDashboard');
+        if (profitabilityDashboard) {
+            profitabilityDashboard.style.display = 'block';
+            
+            // ProfitabilityVisualizationSystemが利用可能な場合
+            if (typeof ProfitabilityVisualizationSystem !== 'undefined') {
+                // 既に初期化済みでない場合のみ初期化
+                if (!ProfitabilityVisualizationSystem.isInitialized) {
+                    ProfitabilityVisualizationSystem.initialize();
+                }
+                
+                showMessage('💰 収益性分析ダッシュボードを表示しました', 'success', 3000);
+            } else {
+                showMessage('❌ 収益性分析システムが読み込まれていません', 'error', 3000);
+            }
+        }
+        
+        // チャート説明を更新
+        const chartDescription = document.getElementById('chartDescription');
+        if (chartDescription) {
+            chartDescription.innerHTML = '💰 収益性重視の分析結果を表示中。チェックボックスでグラフの表示/非表示を切り替えできます。';
+        }
+        
+    } catch (error) {
+        console.error('収益性ダッシュボード表示エラー:', error);
+        showMessage(`❌ ダッシュボード表示エラー: ${error.message}`, 'error', 4000);
+    }
+}
+
+// 収益性ダッシュボード直接表示機能（独立表示）
+function showProfitabilityDashboardDirect() {
+    console.log('🎯 showProfitabilityDashboardDirect 実行開始');
+    
+    try {
+        // 学習グラフセクションを表示
+        const learningGraphsSection = document.getElementById('learningGraphsSection');
+        if (learningGraphsSection) {
+            learningGraphsSection.style.display = 'block';
+            console.log('✅ learningGraphsSection表示完了');
+        } else {
+            console.error('❌ learningGraphsSectionが見つかりません');
+        }
+        
+        // 既存のチャートエリアを非表示
+        const learningChart = document.getElementById('learningChart');
+        if (learningChart) {
+            learningChart.style.display = 'none';
+        }
+        
+        // 収益性ダッシュボードを表示
+        const profitabilityDashboard = document.getElementById('profitabilityDashboard');
+        console.log('🔍 profitabilityDashboard要素:', profitabilityDashboard);
+        
+        if (profitabilityDashboard) {
+            profitabilityDashboard.style.display = 'block';
+            console.log('✅ profitabilityDashboard表示完了');
+            
+            // ProfitabilityVisualizationSystemが利用可能な場合
+            if (typeof ProfitabilityVisualizationSystem !== 'undefined') {
+                console.log('✅ ProfitabilityVisualizationSystem利用可能');
+                console.log('🔍 初期化状態:', ProfitabilityVisualizationSystem.isInitialized);
+                
+                // 既に初期化済みでない場合のみ初期化
+                if (!ProfitabilityVisualizationSystem.isInitialized) {
+                    console.log('🔧 初期化実行中...');
+                    ProfitabilityVisualizationSystem.initialize();
+                } else {
+                    console.log('📋 既に初期化済み - ダッシュボード作成');
+                    ProfitabilityVisualizationSystem.createProfitabilityDashboard();
+                }
+                
+                showMessage('💰 収益性分析ダッシュボードを表示しました', 'success', 3000);
+            } else {
+                console.error('❌ ProfitabilityVisualizationSystemが未定義');
+                showMessage('❌ 収益性分析システムが読み込まれていません', 'error', 3000);
+            }
+        } else {
+            console.error('❌ profitabilityDashboard要素が見つかりません');
+            console.log('🔧 learningGraphsSection内に直接作成します');
+            
+            // profitabilityDashboard要素が存在しない場合、直接ProfitabilityVisualizationSystemを呼び出し
+            if (typeof ProfitabilityVisualizationSystem !== 'undefined') {
+                console.log('✅ ProfitabilityVisualizationSystem利用可能');
+                console.log('🔍 初期化状態:', ProfitabilityVisualizationSystem.isInitialized);
+                
+                if (!ProfitabilityVisualizationSystem.isInitialized) {
+                    console.log('🔧 初期化実行中...');
+                    ProfitabilityVisualizationSystem.initialize();
+                } else {
+                    console.log('📋 既に初期化済み - ダッシュボード作成');
+                    ProfitabilityVisualizationSystem.createProfitabilityDashboard();
+                }
+                
+                showMessage('💰 収益性分析ダッシュボードを表示しました', 'success', 3000);
+            } else {
+                console.error('❌ ProfitabilityVisualizationSystemが未定義');
+                showMessage('❌ 収益性分析システムが読み込まれていません', 'error', 3000);
+            }
+        }
+        
+        // チャート説明を更新
+        const chartDescription = document.getElementById('chartDescription');
+        if (chartDescription) {
+            chartDescription.innerHTML = '💰 収益性重視の分析結果を表示中。チェックボックスでグラフの表示/非表示を切り替えできます。';
+        }
+        
+    } catch (error) {
+        console.error('収益性ダッシュボード表示エラー:', error);
+        showMessage(`❌ ダッシュボード表示エラー: ${error.message}`, 'error', 4000);
+    }
+}
+
+// 収益性データリセット・再移行機能
+function resetAndRemigrateProfitabilityData() {
+    try {
+        // 収益性データをクリア
+        localStorage.removeItem('profitabilityData');
+        console.log('収益性データをリセットしました');
+        
+        // ProfitabilityMetricsを再初期化
+        if (typeof ProfitabilityMetrics !== 'undefined') {
+            // データをデフォルトに戻す
+            ProfitabilityMetrics.profitabilityData.investment = {
+                totalInvested: 0, totalReturned: 0, totalProfit: 0,
+                totalBets: 0, hitCount: 0, averageBetAmount: 1000
+            };
+            
+            // 再移行実行
+            ProfitabilityMetrics.migrateFromExistingData();
+            
+            showMessage('💰 収益性データを既存データから再移行しました', 'success', 4000);
+        }
+        
+    } catch (error) {
+        console.error('再移行エラー:', error);
+        showMessage(`❌ 再移行エラー: ${error.message}`, 'error', 4000);
+    }
+}
+
 // グローバル関数として公開
 window.migrateAndSwitchToEnhanced = migrateAndSwitchToEnhanced;
 window.checkExistingLearningData = checkExistingLearningData;
+window.showProfitabilityDashboard = showProfitabilityDashboard;
+window.showProfitabilityDashboardDirect = showProfitabilityDashboardDirect;
+window.resetAndRemigrateProfitabilityData = resetAndRemigrateProfitabilityData;
