@@ -24,6 +24,18 @@ function scrollToBottom() {
     });
 }
 
+// 収益性指標説明の表示切り替え
+function toggleMetricsInfo() {
+    const metricsInfo = document.getElementById('metricsInfo');
+    if (metricsInfo) {
+        if (metricsInfo.style.display === 'none' || metricsInfo.style.display === '') {
+            metricsInfo.style.display = 'block';
+        } else {
+            metricsInfo.style.display = 'none';
+        }
+    }
+}
+
 // 人気度推定ヘルパー関数
 function estimatePopularityFromOdds(odds) {
     if (odds < 2.0) return 1;

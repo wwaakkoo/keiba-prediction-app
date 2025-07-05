@@ -81,7 +81,7 @@ class InvestmentEfficiencyCalculator {
             
             // 穴馬評価
             underdogBonus,
-            isUnderdog: odds >= 7.0,
+            isUnderdog: odds >= 5.0, // 穴馬判定を緩和（7.0→5.0）
             popularityScore: this.calculatePopularityScore(odds, popularity),
             
             // 総合評価

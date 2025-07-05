@@ -600,8 +600,22 @@ class PredictionEngine {
                 break;
             case 'underdog':
                 sortedPredictions = [...this.currentPredictions].sort((a, b) => {
+                    // 1. 穴馬判定による優先順位
                     if (a.isUnderdog && !b.isUnderdog) return -1;
                     if (!a.isUnderdog && b.isUnderdog) return 1;
+                    
+                    // 2. 穴馬同士の場合は穴馬ボーナス → 効率スコア順
+                    if (a.isUnderdog && b.isUnderdog) {
+                        const underdogDiff = (b.underdogBonus || 0) - (a.underdogBonus || 0);
+                        if (underdogDiff !== 0) return underdogDiff;
+                        return (b.efficiencyScore || 0) - (a.efficiencyScore || 0);
+                    }
+                    
+                    // 3. 非穴馬同士の場合は、穴馬になりやすさ順（オッズ高い順）
+                    if (!a.isUnderdog && !b.isUnderdog) {
+                        return b.odds - a.odds; // オッズ高い順（大穴順）
+                    }
+                    
                     return (b.efficiencyScore || 0) - (a.efficiencyScore || 0);
                 });
                 sortTitle = '🐎 穴馬候補順';
