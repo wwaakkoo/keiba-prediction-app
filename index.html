@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>競馬予測アプリ（機械学習対応）</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div id="appMessage" style="display:none; position:fixed; top:20px; left:50%; transform:translateX(-50%); background:#ffc; color:#333; padding:12px 24px; border-radius:8px; box-shadow:0 2px 8px #0002; z-index:9999; font-size:1.1em;"></div>
+    <!-- ナビゲーションボタン -->
+    <div class="nav-buttons">
+        <button class="nav-btn" onclick="scrollToTop()" title="一番上へ">↑</button>
+        <button class="nav-btn" onclick="scrollToBottom()" title="一番下へ">↓</button>
+    </div>
+
+    <div class="container">
+        <h1>🏇 競馬予測アプリ（機械学習対応）</h1>
+        
+        <!-- モード切り替えボタン（携帯用） -->
+        <div class="mode-switch" style="text-align: center; margin-bottom: 20px;">
+            <button class="btn" id="modeToggle" style="background: linear-gradient(45deg, #28a745, #20c997); max-width: 200px;">
+                📱 携帯簡易モード
+            </button>
+        </div>
+
+        <!-- レース基本情報入力セクション -->
+        <div class="section" id="raceInfoSection">
+            <h2>🏁 レース基本情報</h2>
+            <div class="race-info-grid">
+                <div class="form-group">
+                    <label>レース名</label>
+                    <input type="text" id="raceName" placeholder="例：大阪杯、天皇賞(春)等">
+                </div>
+                <div class="form-group">
+                    <label>開催日</label>
+                    <input type="date" id="raceDate" placeholder="開催日を選択">
+                </div>
+                <div class="form-group">
+                    <label>コース</label>
+                    <select id="raceCourse">
+                        <optgroup label="中央競馬場">
+                            <option value="中山">中山</option>
+                            <option value="東京">東京</option>
+                            <option value="京都">京都</option>
+                            <option value="阪神">阪神</option>
+                            <option value="新潟">新潟</option>
+                            <option value="福島">福島</option>
+                            <option value="中京">中京</option>
+                            <option value="小倉">小倉</option>
+                            <option value="札幌">札幌</option>
+                            <option value="函館">函館</option>
+                        </optgroup>
+                        <optgroup label="南関東地方競馬">
+                            <option value="大井">大井</option>
+                            <option value="船橋">船橋</option>
+                            <option value="川崎">川崎</option>
+                            <option value="浦和">浦和</option>
+                        </optgroup>
+                        <optgroup label="その他地方競馬">
+                            <option value="門別">門別</option>
+                            <option value="名古屋">名古屋</option>
+                            <option value="笠松">笠松</option>
+                            <option value="園田">園田</option>
+                            <option value="姫路">姫路</option>
+                            <option value="高知">高知</option>
+                            <option value="佐賀">佐賀</option>
+                            <option value="金沢">金沢</option>
+                            <option value="盛岡">盛岡</option>
+                            <option value="水沢">水沢</option>
+                        </optgroup>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>距離</label>
+                    <select id="raceDistance">
+                        <option value="1000">1000m</option>
+                        <option value="1150">1150m</option>
+                        <option value="1200">1200m</option>
+                        <option value="1400">1400m</option>
+                        <option value="1600">1600m</option>
+                        <option value="1700">1700m</option>
+                        <option value="1800">1800m</option>
+                        <option value="1900">1900m</option>
+                        <option value="2000">2000m</option>
+                        <option value="2100">2100m</option>
+                        <option value="2200">2200m</option>
+                        <option value="2400">2400m</option>
+                        <option value="2500">2500m</option>
+                        <option value="2600">2600m</option>
+                        <option value="3000">3000m</option>
+                        <option value="3200">3200m</option>
+                        <option value="3600">3600m</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>馬場種別</label>
+                    <select id="raceTrackType">
+                        <option value="芝" selected>芝</option>
+                        <option value="ダート">ダート</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>馬場状態</label>
+                    <select id="raceTrackCondition">
+                        <option value="良" selected>良</option>
+                        <option value="稍重">稍重</option>
+                        <option value="重">重</option>
+                        <option value="不良">不良</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>レースレベル</label>
+                    <select id="raceLevel">
+                        <option value="G1">G1</option>
+                        <option value="G2">G2</option>
+                        <option value="G3">G3</option>
+                        <option value="重賞（オープン）">重賞（オープン）</option>
+                        <option value="3勝" selected>3勝</option>
+                        <option value="2勝">2勝</option>
+                        <option value="1勝">1勝</option>
+                        <option value="未勝利">未勝利</option>
+                        <option value="新馬">新馬</option>
+                        <option value="障害重賞">障害重賞</option>
+                        <option value="障害オープン">障害オープン</option>
+                        <option value="障害3勝">障害3勝</option>
+                        <option value="障害未勝利">障害未勝利</option>
+                    </select>
+                </div>
+            </div>
+            <div class="button-group">
+                <button class="btn" onclick="DataConverter.applyRaceInfoToAllHorses()">📋 全馬に適用</button>
+                <button class="btn" onclick="DataConverter.recalculateRestDays()">📅 休養日数を再計算</button>
+            </div>
+        </div>
+
+        <!-- 一括入力セクション -->
+        <div class="section" style="background: #fff3cd; border-left: 4px solid #ffc107;">
+            <h3 style="color: #856404;">📋 一括テキスト入力</h3>
+            
+            <!-- データ変換機能 -->
+            <div style="background: #e3f2fd; padding: 12px; margin-bottom: 15px; border-radius: 8px;">
+                <h4 style="margin-bottom: 8px; color: #1976d2;">🔄 競馬データ変換</h4>
+                <div class="form-group">
+                    <label for="rawDataInput">生データを貼り付け（netkeiba等から）</label>
+                    <textarea id="rawDataInput" placeholder="競馬の生データをここに貼り付けてください..." style="height: 120px; font-family: monospace; font-size: 12px;"></textarea>
+                </div>
+                <div class="btn-grid">
+                    <button class="btn" style="background: linear-gradient(45deg, #9c27b0, #673ab7);" onclick="loadSampleRawData()">📝 サンプル生データ</button>
+                </div>
+            </div>
+
+            <div class="btn-grid">
+                <button class="btn" onclick="DataConverter.bulkInput()">📊 一括入力実行</button>
+                <button class="btn" style="background: linear-gradient(45deg, #6c757d, #495057);" onclick="document.getElementById('rawDataInput').value = ''">🗑️ クリア</button>
+            </div>
+        </div>
+
+        <!-- 馬追加セクション -->
+        <div class="section">
+            <h3>🐎 馬を追加</h3>
+            <div class="btn-grid">
+                <button class="btn" onclick="addHorse()">➕ 馬を追加</button>
+                <button class="btn" onclick="addSampleHorses()">📝 サンプルデータ追加</button>
+                <button class="btn" onclick="clearAllHorses()">🗑️ 全クリア</button>
+            </div>
+        </div>
+
+        <!-- 馬データ入力エリア -->
+        <div id="horsesContainer"></div>
+
+        <!-- 予測実行 -->
+        <div class="section">
+            <h3>🔮 予測実行</h3>
+            <div class="btn-grid">
+                <button class="btn" style="background: linear-gradient(45deg, #28a745, #1e7e34);" onclick="calculatePredictions()">🚀 予測開始</button>
+                <button class="btn" style="background: linear-gradient(45deg, #667eea, #764ba2);" onclick="getAIRecommendation()">🤖 AI推奨を取得</button>
+                <button class="btn" style="background: linear-gradient(45deg, #9c27b0, #673ab7);" onclick="AIRecommendationService.showLearningStats()">📈 AI判断分析</button>
+                <button class="btn" style="background: linear-gradient(45deg, #ff9800, #f57c00); font-size: 0.85em;" onclick="AIRecommendationService.generateTestAIData()">🧪 AIテストデータ生成</button>
+            </div>
+            
+            <!-- AI推奨モード切り替え -->
+            <div class="section" style="background: #e3f2fd; border-left: 4px solid #2196f3; margin-top: 15px;">
+                <h4 style="color: #1976d2; margin-bottom: 10px;">🔧 AI推奨モード設定</h4>
+                
+                <!-- APIキー設定とCORS説明 -->
+                <div style="background: #fff3cd; padding: 12px; border-radius: 8px; margin-bottom: 15px;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="font-weight: bold; color: #856404;">🔑 Claude APIキー設定</span>
+                        <span id="apiKeyStatus" style="font-size: 0.9em;">❌ APIキー未設定</span>
+                    </div>
+                    <p style="font-size: 0.85em; color: #856404; margin-bottom: 10px;">
+                        ⚠️ <strong>注意</strong>: ブラウザのCORS制限により、直接API呼び出しは制限されています。<br>
+                        GitHub Pagesなどの静的ホスティングでは<strong>手動モード</strong>をご利用ください。<br>
+                        ローカル環境（localhost:3001）では自動取得モードが利用可能です。
+                    </p>
+                    <button class="btn" style="background: linear-gradient(45deg, #ffc107, #e0a800);" onclick="AIRecommendationService.showAPIKeySettings()">🔧 APIキーを設定</button>
+                </div>
+                
+                <div style="margin-bottom: 15px;">
+                    <label style="display: flex; align-items: center; margin-bottom: 8px;">
+                        <input type="radio" name="aiMode" value="manual" id="manualMode" checked style="margin-right: 8px;">
+                        <span style="font-weight: bold;">✍️ 手動入力</span>
+                        <span style="margin-left: 10px; font-size: 0.9em; color: #666;">（プロンプトを取得してAI回答を手動入力）</span>
+                    </label>
+                    <label style="display: flex; align-items: center;">
+                        <input type="radio" name="aiMode" value="api" id="apiMode" style="margin-right: 8px;">
+                        <span style="font-weight: bold;">🔗 API自動取得</span>
+                        <span style="margin-left: 10px; font-size: 0.9em; color: #666;">（APIキーを使用してClaude AIから自動取得）</span>
+                    </label>
+                </div>
+                
+                <!-- プロンプト取得ボタン -->
+                <div id="promptSection" style="display: block; background: #fff3cd; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                    <h5 style="color: #856404; margin-bottom: 10px;">📋 AIプロンプト取得</h5>
+                    <div style="margin-bottom: 10px;">
+                        <button class="btn" style="background: linear-gradient(45deg, #ffc107, #e0a800);" onclick="AIRecommendationService.generatePromptForUser()">📤 プロンプトを生成</button>
+                        <span style="margin: 0 10px;">または</span>
+                        <button class="btn" style="background: linear-gradient(45deg, #28a745, #1e7e34); font-size: 0.9em;" onclick="loadSampleHorses(); setTimeout(() => calculatePredictions(), 500);">🐎 テスト用馬データ生成</button>
+                    </div>
+                    <div id="promptOutput" style="margin-top: 10px;"></div>
+                </div>
+                
+                <!-- 手動AI回答入力 -->
+                <div id="manualInputSection" style="display: block; background: #d1ecf1; padding: 15px; border-radius: 8px;">
+                    <h5 style="color: #0c5460; margin-bottom: 10px;">🤖 AI回答を入力</h5>
+                    <textarea id="manualAIResponse" placeholder="Claude AIからの回答をここに貼り付けてください..." style="width: 100%; height: 200px; padding: 10px; border: 1px solid #bee5eb; border-radius: 5px; font-family: monospace; font-size: 12px;"></textarea>
+                    <div class="btn-grid" style="margin-top: 10px;">
+                        <button class="btn" style="background: linear-gradient(45deg, #17a2b8, #138496);" onclick="AIRecommendationService.processManualAIResponse()">🚀 手動回答を処理</button>
+                        <button class="btn" style="background: linear-gradient(45deg, #6c757d, #495057);" onclick="document.getElementById('manualAIResponse').value = ''">🗑️ クリア</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            // AI推奨モード切り替え
+            document.addEventListener('DOMContentLoaded', function() {
+                const apiMode = document.getElementById('apiMode');
+                const manualMode = document.getElementById('manualMode');
+                const promptSection = document.getElementById('promptSection');
+                const manualInputSection = document.getElementById('manualInputSection');
+                
+                function updateAIMode() {
+                    if (manualMode.checked) {
+                        promptSection.style.display = 'block';
+                        manualInputSection.style.display = 'block';
+                    } else {
+                        promptSection.style.display = 'none';
+                        manualInputSection.style.display = 'none';
+                    }
+                }
+                
+                apiMode.addEventListener('change', updateAIMode);
+                manualMode.addEventListener('change', updateAIMode);
+                updateAIMode(); // 初期状態を設定
+            });
+        </script>
+
+        <!-- 予測結果 -->
+        <div id="results" class="results hidden">
+            <h3>📊 予測結果</h3>
+            <div id="sortControls" class="section" style="margin-bottom: 15px; display: none;">
+                <label for="sortSelect" style="font-weight: bold; margin-right: 10px;">並び順:</label>
+                <select id="sortSelect" onchange="PredictionEngine.changeSortOrder(this.value)">
+                    <option value="score">スコア順</option>
+                    <option value="place">複勝率順</option>
+                    <option value="win">勝率順</option>
+                    <option value="odds">オッズ順</option>
+                    <option value="efficiency">💎 投資効率順</option>
+                    <option value="underdog">🐎 穴馬候補順</option>
+                </select>
+            </div>
+            <div id="resultsContainer"></div>
+            
+            <!-- 統合学習セクション -->
+            <div id="learningSection" class="section" style="background: #f0f8ff; border-left: 4px solid #2196f3; margin-top: 20px;">
+                <h3 style="color: #1976d2;">📝 レース結果を入力して学習（統計・AI統合）</h3>
+                <div class="form-group">
+                    <label>実際の着順結果（1着, 2着, 3着の馬名または馬番を入力）</label>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                        <input type="text" id="unifiedFirst" placeholder="1着（馬名 または 馬番）">
+                        <input type="text" id="unifiedSecond" placeholder="2着（馬名 または 馬番）">
+                        <input type="text" id="unifiedThird" placeholder="3着（馬名 または 馬番）">
+                    </div>
+                    <p style="color: #1976d2; font-size: 0.85em; margin-bottom: 15px;">
+                        💡 <strong>入力方法:</strong><br>
+                        ・馬名: ベラジオ（一部でもOK）<br>
+                        ・馬番: 5（数字のみ）<br>
+                        ・一度の入力で統計学習とAI学習の両方に反映されます
+                    </p>
+                </div>
+                <div class="btn-grid">
+                    <button class="btn" style="background: linear-gradient(45deg, #2196f3, #667eea);" onclick="processUnifiedRaceResult()">🧠 統合学習に反映</button>
+                    <button class="btn" style="background: linear-gradient(45deg, #4caf50, #2e7d32);" onclick="showLearningStats()">📈 統計学習状況</button>
+                    <button class="btn" style="background: linear-gradient(45deg, #667eea, #764ba2);" onclick="AIRecommendationService.showLearningStats()">📊 AI判断分析</button>
+                    <button class="btn" style="background: linear-gradient(45deg, #e67e22, #d35400);" onclick="LearningSystem.showSleeperStats()">💎 穴馬学習統計</button>
+                    <button class="btn" style="background: linear-gradient(45deg, #2e8b57, #228b22);" onclick="showProfitabilityDashboardDirect()">💰 収益性分析</button>
+                    <button class="btn" style="background: linear-gradient(45deg, #ff9800, #f57c00);" onclick="AIRecommendationService.showLearningGraphs()">📈 AI分析グラフ</button>
+                    <button class="btn" style="background: linear-gradient(45deg, #f44336, #d32f2f); font-size: 0.9em;" onclick="resetAllLearningData()">🔄 全学習データリセット</button>
+                </div>
+                
+                <!-- 学習データ移行セクション -->
+                <div class="section" style="background: #f3e5f5; border-left: 4px solid #9c27b0; margin-top: 15px;">
+                    <h4 style="color: #7b1fa2; margin-bottom: 10px;">📦 学習データの移行</h4>
+                    
+                    <!-- 全体データ移行 -->
+                    <div style="margin-bottom: 15px;">
+                        <h5 style="color: #7b1fa2; margin-bottom: 8px; font-size: 1em;">🗂️ 全データ（統計・AI・設定）</h5>
+                        <div class="btn-grid" style="grid-template-columns: 1fr 1fr;">
+                            <button class="btn" style="background: linear-gradient(45deg, #9c27b0, #7b1fa2);" onclick="exportLearningData()">📤 全データエクスポート</button>
+                            <button class="btn" style="background: linear-gradient(45deg, #673ab7, #512da8);" onclick="document.getElementById('importFile').click()">📥 全データインポート</button>
+                        </div>
+                        <input type="file" id="importFile" accept=".json" style="display: none;" onchange="importLearningData(event)">
+                    </div>
+                    
+                    <!-- AI学習データ専用移行 -->
+                    <div style="margin-bottom: 10px;">
+                        <h5 style="color: #667eea; margin-bottom: 8px; font-size: 1em;">🤖 AI学習データのみ</h5>
+                        <div class="btn-grid" style="grid-template-columns: 1fr 1fr;">
+                            <button class="btn" style="background: linear-gradient(45deg, #667eea, #764ba2);" onclick="exportAILearningData()">📤 AI データエクスポート</button>
+                            <button class="btn" style="background: linear-gradient(45deg, #5a6fd8, #6b4b9d);" onclick="document.getElementById('importAIFile').click()">📥 AI データインポート</button>
+                        </div>
+                        <input type="file" id="importAIFile" accept=".json" style="display: none;" onchange="importAILearningData(event)">
+                    </div>
+                    
+                    <p style="font-size: 0.85em; color: #7b1fa2; margin-top: 8px; margin-bottom: 0;">
+                        💡 端末間で学習データを移行できます。AI学習データのみの移行も可能です（JSONファイル形式）
+                    </p>
+                </div>
+                <div id="learningFeedback" style="margin-top: 15px;"></div>
+                
+                <!-- AI判断分析グラフ表示エリア -->
+                <div id="learningGraphsSection" class="section" style="display: none; background: #f8f9fa; border-left: 4px solid #ff9800; margin-top: 20px;">
+                    <h3 style="color: #e65100;">📊 AI判断パターン分析グラフ</h3>
+                    
+                    <!-- グラフ制御ボタン -->
+                    <div class="btn-grid" style="margin-bottom: 20px;">
+                        <button class="btn" style="background: linear-gradient(45deg, #4caf50, #2e7d32);" onclick="AIRecommendationService.showSuccessRateChart()">📈 成功率推移</button>
+                        <button class="btn" style="background: linear-gradient(45deg, #2196f3, #1976d2);" onclick="AIRecommendationService.showConfidenceChart()">🎯 信頼度分析</button>
+                        <button class="btn" style="background: linear-gradient(45deg, #9c27b0, #7b1fa2);" onclick="AIRecommendationService.showOddsChart()">💰 オッズ分布</button>
+                        <button class="btn" style="background: linear-gradient(45deg, #ff9800, #f57c00);" onclick="AIRecommendationService.showBettingStrategyChart()">🎯 買い目成功率</button>
+                        <button class="btn" style="background: linear-gradient(45deg, #e67e22, #d35400);" onclick="LearningSystem.showSleeperStats()">💎 穴馬学習統計</button>
+                        <button class="btn" style="background: linear-gradient(45deg, #2e8b57, #228b22);" onclick="showProfitabilityDashboard()">💰 収益性分析</button>
+                        <button class="btn" style="background: linear-gradient(45deg, #f44336, #d32f2f);" onclick="document.getElementById('learningGraphsSection').style.display='none'">❌ 閉じる</button>
+                    </div>
+                    
+                    <!-- グラフキャンバス -->
+                    <div style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                        <canvas id="learningChart" width="400" height="200"></canvas>
+                    </div>
+                    
+                    <!-- 収益性ダッシュボード（収益性分析ボタン用） -->
+                    <div id="profitabilityDashboard" style="display: none; margin-top: 20px;">
+                        <!-- ProfitabilityVisualizationSystemによって動的に生成される -->
+                    </div>
+                    
+                    <!-- グラフ説明 -->
+                    <div id="chartDescription" style="margin-top: 15px; padding: 15px; background: rgba(255,152,0,0.1); border-radius: 8px; color: #e65100;">
+                        📊 グラフを選択して学習状況を可視化できます
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 買い目推奨セクション -->
+            <div id="bettingRecommendations" class="section" style="background: #fff8e1; border-left: 4px solid #ff9800; margin-top: 20px;">
+                <h3 style="color: #f57c00;">🎯 買い目おすすめ</h3>
+                <div id="bettingContainer"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/config.js"></script>
+    <script src="js/pedigreeDatabase.js"></script>
+    <script src="js/dataConverter.js"></script>
+    <script src="js/horseManager.js"></script>
+    <script src="js/dataManager.js"></script>
+    <script src="js/raceAnalysisEngine.js"></script>
+    <script src="js/predictionEngine.js"></script>
+    <script src="js/bettingRecommender.js"></script>
+    <script src="js/learningSystem.js"></script>
+    <script src="js/hybridLearningSystem.js"></script>
+    <script src="js/enhancedLearningSystem.js"></script>
+    <script src="js/learningDataMigration.js"></script>
+    <script src="js/enhancedVisualizationSystem.js"></script>
+    <script src="js/aiRecommendationService.js"></script>
+    <script src="js/profitabilityMetrics.js"></script>
+    <script src="js/investmentEfficiencyCalculator.js"></script>
+    <script src="js/underdogDiscoveryAlgorithm.js"></script>
+    <script src="js/riskReturnAnalyzer.js"></script>
+    <script src="js/profitabilityVisualizationSystem.js"></script>
+    <script src="js/errorHandlingSystem.js"></script>
+    <script src="js/systemIntegration.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html> 
