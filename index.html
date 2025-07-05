@@ -268,8 +268,6 @@
                     <option value="place">複勝率順</option>
                     <option value="win">勝率順</option>
                     <option value="odds">オッズ順</option>
-                    <option value="efficiency">💎 投資効率順</option>
-                    <option value="underdog">🐎 穴馬候補順</option>
                 </select>
             </div>
             <div id="resultsContainer"></div>
@@ -296,6 +294,7 @@
                     <button class="btn" style="background: linear-gradient(45deg, #4caf50, #2e7d32);" onclick="showLearningStats()">📈 統計学習状況</button>
                     <button class="btn" style="background: linear-gradient(45deg, #667eea, #764ba2);" onclick="AIRecommendationService.showLearningStats()">📊 AI判断分析</button>
                     <button class="btn" style="background: linear-gradient(45deg, #e67e22, #d35400);" onclick="LearningSystem.showSleeperStats()">💎 穴馬学習統計</button>
+                    <button class="btn" style="background: linear-gradient(45deg, #2e8b57, #228b22);" onclick="showProfitabilityDashboardDirect()">💰 収益性分析</button>
                     <button class="btn" style="background: linear-gradient(45deg, #ff9800, #f57c00);" onclick="AIRecommendationService.showLearningGraphs()">📈 AI分析グラフ</button>
                     <button class="btn" style="background: linear-gradient(45deg, #f44336, #d32f2f); font-size: 0.9em;" onclick="resetAllLearningData()">🔄 全学習データリセット</button>
                 </div>
@@ -341,12 +340,18 @@
                         <button class="btn" style="background: linear-gradient(45deg, #9c27b0, #7b1fa2);" onclick="AIRecommendationService.showOddsChart()">💰 オッズ分布</button>
                         <button class="btn" style="background: linear-gradient(45deg, #ff9800, #f57c00);" onclick="AIRecommendationService.showBettingStrategyChart()">🎯 買い目成功率</button>
                         <button class="btn" style="background: linear-gradient(45deg, #e67e22, #d35400);" onclick="LearningSystem.showSleeperStats()">💎 穴馬学習統計</button>
+                        <button class="btn" style="background: linear-gradient(45deg, #2e8b57, #228b22);" onclick="showProfitabilityDashboard()">💰 収益性分析</button>
                         <button class="btn" style="background: linear-gradient(45deg, #f44336, #d32f2f);" onclick="document.getElementById('learningGraphsSection').style.display='none'">❌ 閉じる</button>
                     </div>
                     
                     <!-- グラフキャンバス -->
                     <div style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
                         <canvas id="learningChart" width="400" height="200"></canvas>
+                    </div>
+                    
+                    <!-- 収益性ダッシュボード（収益性分析ボタン用） -->
+                    <div id="profitabilityDashboard" style="display: none; margin-top: 20px;">
+                        <!-- ProfitabilityVisualizationSystemによって動的に生成される -->
                     </div>
                     
                     <!-- グラフ説明 -->
@@ -374,18 +379,15 @@
     <script src="js/bettingRecommender.js"></script>
     <script src="js/learningSystem.js"></script>
     <script src="js/hybridLearningSystem.js"></script>
-    <!-- 収益性重視システム -->
+    <script src="js/enhancedLearningSystem.js"></script>
+    <script src="js/learningDataMigration.js"></script>
+    <script src="js/enhancedVisualizationSystem.js"></script>
+    <script src="js/aiRecommendationService.js"></script>
     <script src="js/profitabilityMetrics.js"></script>
     <script src="js/investmentEfficiencyCalculator.js"></script>
     <script src="js/underdogDiscoveryAlgorithm.js"></script>
     <script src="js/riskReturnAnalyzer.js"></script>
-    <script src="js/enhancedLearningSystem.js"></script>
     <script src="js/profitabilityVisualizationSystem.js"></script>
-    <!-- グラフ可視化システム -->
-    <script src="js/enhancedVisualizationSystem.js"></script>
-    <script src="js/learningDataMigration.js"></script>
-    <!-- 既存システム -->
-    <script src="js/aiRecommendationService.js"></script>
     <script src="js/errorHandlingSystem.js"></script>
     <script src="js/systemIntegration.js"></script>
     <script src="js/main.js"></script>
