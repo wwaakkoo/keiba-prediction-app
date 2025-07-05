@@ -24,6 +24,18 @@ function scrollToBottom() {
     });
 }
 
+// 人気度推定ヘルパー関数
+function estimatePopularityFromOdds(odds) {
+    if (odds < 2.0) return 1;
+    if (odds < 3.0) return 2;
+    if (odds < 5.0) return 3;
+    if (odds < 7.0) return 4;
+    if (odds < 10.0) return 6;
+    if (odds < 15.0) return 8;
+    if (odds < 25.0) return 11;
+    return 15;
+}
+
 // 統合レース結果処理（統計学習とAI学習の両方に反映）
 function processUnifiedRaceResult() {
     const currentPredictions = PredictionEngine.getCurrentPredictions();
@@ -94,8 +106,81 @@ function processUnifiedRaceResult() {
         showMessage('🤖 AI学習にも結果を反映しました', 'success');
     }
 
+    // 3. 収益性学習システムに反映
+    if (typeof ProfitabilityMetrics !== 'undefined') {
+        console.log('=== 収益性学習システム統合開始 ===');
+        
+        // 賭け結果データを構築（オッズ情報を含む）
+        const betResult = {
+            horseNumber: firstHorse.number || '1',
+            horseName: firstHorse.name,
+            odds: firstHorse.odds || firstHorse.singleOdds || 5.0,
+            popularity: firstHorse.popularity || estimatePopularityFromOdds(firstHorse.odds || 5.0),
+            betType: '単勝', // デフォルト単勝
+            betAmount: 1000, // デフォルト賭け金
+            isHit: true, // 1着なので的中
+            returnAmount: (firstHorse.odds || firstHorse.singleOdds || 5.0) * 1000,
+            raceConditions: {
+                distance: document.getElementById('raceDistance')?.value || '1600',
+                trackType: document.getElementById('raceTrackType')?.value || '芝',
+                trackCondition: document.getElementById('raceTrackCondition')?.value || '良'
+            }
+        };
+        
+        // 収益性データを記録
+        const profitabilityReport = ProfitabilityMetrics.recordBetResult(betResult);
+        
+        if (profitabilityReport) {
+            console.log('収益性分析結果:', profitabilityReport);
+            showMessage(`💰 収益性学習更新: ROI ${profitabilityReport.summary.roi.toFixed(1)}%, 利益 ${profitabilityReport.summary.totalProfit.toLocaleString()}円`, 'success');
+        }
+        
+        // 投資効率分析
+        if (typeof InvestmentEfficiencyCalculator !== 'undefined') {
+            const efficiencyData = {
+                odds: firstHorse.odds || firstHorse.singleOdds || 5.0,
+                winProbability: 1.0, // 的中したので勝率1.0
+                betAmount: 1000,
+                confidence: 0.8, // 的中実績から高信頼度
+                popularity: firstHorse.popularity || estimatePopularityFromOdds(firstHorse.odds || 5.0)
+            };
+            
+            const efficiencyResult = InvestmentEfficiencyCalculator.calculateSingleBetEfficiency(efficiencyData);
+            console.log('投資効率分析:', efficiencyResult);
+            
+            if (efficiencyResult.isUnderdog) {
+                showMessage(`🐎 穴馬的中！効率スコア: ${efficiencyResult.efficiencyScore}, グレード: ${efficiencyResult.investmentGrade}`, 'success');
+            }
+        }
+        
+        // 強化学習システムに結果反映
+        if (typeof EnhancedLearningSystem !== 'undefined') {
+            const actualResults = {
+                winner: { 
+                    name: firstHorse.name, 
+                    odds: firstHorse.odds || firstHorse.singleOdds || 5.0,
+                    popularity: firstHorse.popularity || estimatePopularityFromOdds(firstHorse.odds || 5.0)
+                },
+                placeHorses: [firstHorse, secondHorse, thirdHorse].filter(h => h)
+            };
+            
+            const currentPredictions = PredictionEngine.getCurrentPredictions() || [];
+            if (currentPredictions.length > 0) {
+                const learningResults = EnhancedLearningSystem.processLearning(actualResults, currentPredictions);
+                console.log('強化学習結果:', learningResults);
+                
+                if (learningResults.investmentLearning) {
+                    showMessage('📈 投資効率学習が更新されました', 'info');
+                }
+            }
+        }
+        
+    } else {
+        console.warn('収益性システムが利用できません');
+    }
+
     // 統合処理完了メッセージ
-    showMessage('🧠 統合学習に結果を反映しました（統計・AI両方）', 'success');
+    showMessage('🧠 統合学習に結果を反映しました（統計・AI・収益性）', 'success');
 
     // 入力フィールドをクリア
     document.getElementById('unifiedFirst').value = '';

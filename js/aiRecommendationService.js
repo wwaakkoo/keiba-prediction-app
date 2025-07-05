@@ -136,6 +136,17 @@ class AIRecommendationService {
             trackCondition: horse.trackCondition,
             // 血統データを含める
             pedigreeData: horse.pedigreeData,
+            // 投資効率データを含める（Phase 3統合）
+            investmentEfficiency: horse.investmentEfficiency ? {
+                efficiencyScore: horse.efficiencyScore,
+                investmentGrade: horse.investmentGrade,
+                isUnderdog: horse.isUnderdog,
+                underdogBonus: horse.underdogBonus,
+                kellyFraction: horse.kellyFraction,
+                optimalBetAmount: horse.optimalBetAmount,
+                riskReturnRatio: horse.investmentEfficiency.riskReturnRatio,
+                expectedValue: horse.investmentEfficiency.expectedValue
+            } : null,
             // 過去5走データを含める（指数関数的減衰重み対応）
             raceHistory: {
                 lastRace: {
@@ -363,6 +374,25 @@ class AIRecommendationService {
                 horseInfo += `]`;
             }
             
+            // 投資効率情報を追加（Phase 3統合）
+            if (horse.investmentEfficiency) {
+                const ie = horse.investmentEfficiency;
+                horseInfo += ` [投資効率:${ie.efficiencyScore?.toFixed(1) || '?'}点 ${ie.investmentGrade || '?'}級`;
+                if (ie.isUnderdog) {
+                    horseInfo += ` 🐎穴馬候補(+${ie.underdogBonus || 0})`;
+                }
+                if (ie.kellyFraction > 0) {
+                    horseInfo += ` ケリー:${(ie.kellyFraction * 100).toFixed(1)}%`;
+                    if (ie.optimalBetAmount > 0) {
+                        horseInfo += ` 推奨:${Math.round(ie.optimalBetAmount).toLocaleString()}円`;
+                    }
+                }
+                if (ie.riskReturnRatio) {
+                    horseInfo += ` リスク・リターン:${ie.riskReturnRatio.toFixed(2)}`;
+                }
+                horseInfo += `]`;
+            }
+            
             return horseInfo;
         }).join('\n');
         
@@ -390,21 +420,23 @@ ${horseList}
 3. **レースレベルの昇降級** - クラス変更による影響分析
 4. **騎手・オッズの妥当性** - 人気と実力の乖離
 5. **血統評価と適性分析** - 父系・母父系の特性、配合相性、距離・馬場血統適性
+6. **💰投資効率分析（Phase 3重視項目）** - 効率スコア・投資グレード・穴馬判定・ケリー基準・リスク・リターン分析
 
 **【AI独自分析（統計では捉えきれない要素）】**
-6. **心理的・精神的要因** - 馬の気性、集中力、プレッシャー対応、大舞台適性
-7. **戦術的・展開要素** - 騎手の戦術選択、ポジション取り、レース運びの巧拙
-8. **複合的相互作用** - 複数要因の組み合わせ効果、非線形な関係性
-9. **質的・直感的判断** - 馬体バランス、気配、調教の質的評価
-10. **レース全体の文脈** - 他馬との相性、レース全体のレベル感、特殊条件
+7. **心理的・精神的要因** - 馬の気性、集中力、プレッシャー対応、大舞台適性
+8. **戦術的・展開要素** - 騎手の戦術選択、ポジション取り、レース運びの巧拙
+9. **複合的相互作用** - 複数要因の組み合わせ効果、非線形な関係性
+10. **質的・直感的判断** - 馬体バランス、気配、調教の質的評価
+11. **レース全体の文脈** - 他馬との相性、レース全体のレベル感、特殊条件
 
 **具体的分析ポイント:**
 - **数値分析**: 前5走トレンド、脚質適性、レースレベル分析、上がり3F一貫性
 - **血統分析**: 父系・母父系の系統特性、配合パターン評価、距離・馬場血統適性、種牡馬ランク
+- **💰投資効率分析**: 効率スコア優秀馬、穴馬候補、ケリー基準推奨額、リスク・リターン比、投資グレード評価
 - **戦術分析**: 想定ペース、ポジション争い、直線での加速タイミング
 - **心理分析**: 馬の性格（闘争心・臆病さ）、騎手との相性、環境適応力
 - **質的判断**: 調教内容の充実度、馬体の張り・気配、近況の変化
-- **相互作用**: 脚質×展開、騎手×馬の相性、血統×条件、オッズ×実力の総合判断
+- **相互作用**: 脚質×展開、騎手×馬の相性、血統×条件、オッズ×実力、投資効率×人気度の総合判断
 - **経験則**: ベテラン的な勘、パターン認識、例外的な好走可能性
 
 ## 📊 回答フォーマット
