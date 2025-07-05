@@ -1,4 +1,16 @@
 // 予測エンジン機能
+// 人気度推定ヘルパー関数（予測エンジン用）
+function estimatePopularityFromOdds(odds) {
+    if (odds < 2.0) return 1;
+    if (odds < 3.0) return 2;
+    if (odds < 5.0) return 3;
+    if (odds < 7.0) return 4;
+    if (odds < 10.0) return 6;
+    if (odds < 15.0) return 8;
+    if (odds < 25.0) return 11;
+    return 15;
+}
+
 class PredictionEngine {
     static currentPredictions = [];
 
