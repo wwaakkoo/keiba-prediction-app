@@ -8,28 +8,33 @@ class DataManager {
             const learningData = localStorage.getItem('keibaLearningData');
             const bettingHistory = localStorage.getItem('keibaAppBettingHistory');
             const aiRecommendationHistory = localStorage.getItem('aiRecommendationHistory');
+            const profitabilityData = localStorage.getItem('profitabilityData');
+            const enhancedLearningData = localStorage.getItem('enhancedLearningData');
             const mobileMode = localStorage.getItem('mobileMode');
             
             // エクスポート用データを構築
             const exportData = {
-                version: "2.0", // AI統合版
+                version: "3.0", // 収益性分析統合版
                 exportDate: new Date().toISOString(),
                 metadata: {
-                    appName: "競馬予測アプリ（Claude AI統合版）",
-                    description: "学習データ・AI推奨履歴・ユーザー設定のバックアップ",
-                    features: ["統計的学習", "AI推奨履歴", "適応的分析"]
+                    appName: "競馬予測アプリ（Claude AI・収益性分析統合版）",
+                    description: "学習データ・AI推奨履歴・収益性分析・ユーザー設定のバックアップ",
+                    features: ["統計的学習", "AI推奨履歴", "収益性分析", "投資効率計算", "適応的分析"]
                 },
                 learningData: learningData ? JSON.parse(learningData) : null,
                 bettingHistory: bettingHistory ? JSON.parse(bettingHistory) : null,
                 aiRecommendationHistory: aiRecommendationHistory ? JSON.parse(aiRecommendationHistory) : null,
+                profitabilityData: profitabilityData ? JSON.parse(profitabilityData) : null,
+                enhancedLearningData: enhancedLearningData ? JSON.parse(enhancedLearningData) : null,
                 userSettings: {
                     mobileMode: mobileMode === 'true'
                 }
             };
             
             // データの有効性をチェック
-            if (!exportData.learningData && !exportData.bettingHistory && !exportData.aiRecommendationHistory) {
-                showMessage('エクスポートする学習データが見つかりません。', 'warning');
+            if (!exportData.learningData && !exportData.bettingHistory && !exportData.aiRecommendationHistory && 
+                !exportData.profitabilityData && !exportData.enhancedLearningData) {
+                showMessage('エクスポートするデータが見つかりません。', 'warning');
                 return;
             }
             
@@ -103,6 +108,14 @@ class DataManager {
                     localStorage.setItem('aiRecommendationHistory', JSON.stringify(importData.aiRecommendationHistory));
                 }
                 
+                if (importData.profitabilityData) {
+                    localStorage.setItem('profitabilityData', JSON.stringify(importData.profitabilityData));
+                }
+                
+                if (importData.enhancedLearningData) {
+                    localStorage.setItem('enhancedLearningData', JSON.stringify(importData.enhancedLearningData));
+                }
+                
                 if (importData.userSettings && typeof importData.userSettings.mobileMode === 'boolean') {
                     localStorage.setItem('mobileMode', importData.userSettings.mobileMode.toString());
                 }
@@ -153,6 +166,20 @@ class DataManager {
             }
         }
         
+        if (exportData.profitabilityData) {
+            const profitData = exportData.profitabilityData;
+            if (profitData.investment) {
+                stats.push(`💰 収益性データ: ${profitData.investment.totalBets}回投資`);
+                stats.push(`📈 ROI: ${(profitData.coreMetrics?.roi || 0).toFixed(1)}%`);
+                stats.push(`💸 総投資額: ${(profitData.investment.totalInvested || 0).toLocaleString()}円`);
+                stats.push(`💵 総利益: ${(profitData.investment.totalProfit || 0).toLocaleString()}円`);
+            }
+        }
+        
+        if (exportData.enhancedLearningData) {
+            stats.push(`🧠 強化学習データ: 含む`);
+        }
+        
         return stats.join('\\n');
     }
     
@@ -184,6 +211,20 @@ class DataManager {
             const successRate = aiHistory.length > 0 ? Math.round((successCount / aiHistory.length) * 100) : 0;
             stats.push(`🤖 AI推奨履歴: ${aiHistory.length}件をインポート`);
             stats.push(`✅ AI成功率: ${successRate}% (${successCount}/${aiHistory.length})`);
+        }
+        
+        if (importData.profitabilityData) {
+            const profitData = importData.profitabilityData;
+            if (profitData.investment) {
+                stats.push(`💰 収益性データ: ${profitData.investment.totalBets}回投資をインポート`);
+                stats.push(`📈 ROI: ${(profitData.coreMetrics?.roi || 0).toFixed(1)}%`);
+                stats.push(`💸 総投資額: ${(profitData.investment.totalInvested || 0).toLocaleString()}円`);
+                stats.push(`💵 総利益: ${(profitData.investment.totalProfit || 0).toLocaleString()}円`);
+            }
+        }
+        
+        if (importData.enhancedLearningData) {
+            stats.push(`🧠 強化学習データ: インポートします`);
         }
         
         return stats.join('\\n');
