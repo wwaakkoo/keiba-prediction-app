@@ -178,7 +178,7 @@ function processUnifiedRaceResult() {
             
             const currentPredictions = PredictionEngine.getCurrentPredictions() || [];
             if (currentPredictions.length > 0) {
-                const learningResults = EnhancedLearningSystem.processLearning(actualResults, currentPredictions);
+                const learningResults = EnhancedLearningSystem.processEnhancedRaceResult(actualResults, currentPredictions, {});
                 console.log('強化学習結果:', learningResults);
                 
                 if (learningResults.investmentLearning) {
