@@ -241,7 +241,8 @@ class EnhancedLearningSystem {
             pedigreeLearning: this.processPedigreeLearning(actualResults, predictions, raceConditions),
             patternLearning: this.processPatternLearning(actualResults, predictions),
             metaLearning: this.processMetaLearning(actualResults, predictions),
-            bettingLearning: this.processBettingLearning(actualResults, predictions)
+            bettingLearning: this.processBettingLearning(actualResults, predictions),
+            investmentLearning: this.processInvestmentLearning(actualResults, predictions)
         };
         
         this.updateAccuracyMetrics(actualResults, predictions);
@@ -251,25 +252,807 @@ class EnhancedLearningSystem {
         return learningResults;
     }
     
-    // 基本学習処理（従来のロジック改良版）
+    // 基本学習処理（収益性重視版）
     static processBasicLearning(actualResults, predictions) {
         const adj = this.learningData.adjustments;
         const learningRate = this.calculateAdaptiveLearningRate();
         const results = { adjustments: {} };
+        
+        // 収益性重視の学習処理
+        return this.processProfitabilityBasedLearning(actualResults, predictions, learningRate, results);
+    }
+    
+    // 適応学習率計算
+    static calculateAdaptiveLearningRate() {
+        const baseRate = (typeof CONFIG !== 'undefined' && CONFIG.LEARNING_RATE) ? CONFIG.LEARNING_RATE : 0.05;
+        const accuracy = this.learningData.accuracy;
+        
+        // 精度に基づく調整（精度が低い場合、学習率を上げる）
+        if (accuracy.totalPredictions > 10) {
+            const currentAccuracy = accuracy.winPredictions / accuracy.totalPredictions;
+            if (currentAccuracy < 0.15) {
+                return baseRate * 1.5; // 学習率を50%増加
+            } else if (currentAccuracy > 0.25) {
+                return baseRate * 0.8; // 学習率を20%減少
+            }
+        }
+        
+        return baseRate;
+    }
+    
+    // 収益性ベース学習処理（新実装）
+    static processProfitabilityBasedLearning(actualResults, predictions, learningRate, results) {
+        console.log('=== 収益性ベース学習開始 ===');
+        
+        // ProfitabilityMetricsとの連携
+        if (typeof ProfitabilityMetrics === 'undefined') {
+            console.warn('ProfitabilityMetricsが利用できません');
+            return this.fallbackBasicLearning(actualResults, predictions, learningRate, results);
+        }
+        
+        const profitabilityData = ProfitabilityMetrics.getProfitabilityData();
+        const coreMetrics = profitabilityData.coreMetrics;
+        
+        // 予測結果を収益性で評価
+        predictions.forEach((prediction, index) => {
+            const betResult = this.simulateBetResult(prediction, actualResults);
+            const profitImpact = this.calculateProfitImpact(betResult, coreMetrics);
+            
+            // 収益性に基づいた重み調整
+            this.adjustWeightsBasedOnProfitability(prediction, profitImpact, learningRate, results);
+        });
+        
+        // 穴馬発見効率の学習
+        this.learnUnderdogDiscoveryEfficiency(actualResults, predictions, profitabilityData.underdogEfficiency, results);
+        
+        // オッズ帯別効率の学習
+        this.learnOddsRangeEfficiency(actualResults, predictions, profitabilityData.oddsAnalysis, results);
+        
+        console.log('収益性ベース学習完了:', results);
+        return results;
+    }
+    
+    // 賭け結果シミュレーション
+    static simulateBetResult(prediction, actualResults) {
+        const horse = prediction;
+        const isWinner = actualResults.winner.name === horse.name;
+        const isPlace = actualResults.placeHorses?.some(p => p.name === horse.name) || isWinner;
+        
+        // デフォルト賭け金（1000円と仮定）
+        const betAmount = 1000;
+        
+        return {
+            horseNumber: horse.number,
+            horseName: horse.name,
+            odds: horse.odds || horse.singleOdds || 5.0,
+            popularity: horse.popularity,
+            betType: 'win', // 単勝と仮定
+            betAmount: betAmount,
+            isHit: isWinner,
+            returnAmount: isWinner ? betAmount * (horse.odds || horse.singleOdds || 5.0) : 0,
+            isPlace: isPlace
+        };
+    }
+    
+    // 利益インパクト計算
+    static calculateProfitImpact(betResult, coreMetrics) {
+        const profit = betResult.returnAmount - betResult.betAmount;
+        const profitRate = profit / betResult.betAmount;
+        
+        // 現在のROIとの比較
+        const currentROI = coreMetrics.roi / 100;
+        const relativeProfitability = profitRate - currentROI;
+        
+        return {
+            absoluteProfit: profit,
+            profitRate: profitRate,
+            relativeProfitability: relativeProfitability,
+            isOutperforming: relativeProfitability > 0,
+            contributionScore: this.calculateContributionScore(betResult, profitRate)
+        };
+    }
+    
+    // 貢献度スコア計算
+    static calculateContributionScore(betResult, profitRate) {
+        let score = 0;
+        
+        // 基本利益スコア
+        score += profitRate * 50;
+        
+        // 穴馬ボーナス（7倍以上で追加スコア）
+        if (betResult.odds >= 7.0) {
+            score += Math.min(30, (betResult.odds - 7) * 3);
+        }
+        
+        // 的中時の追加ボーナス
+        if (betResult.isHit) {
+            score += 20;
+        }
+        
+        return Math.max(-100, Math.min(100, score));
+    }
+    
+    // 収益性に基づく重み調整
+    static adjustWeightsBasedOnProfitability(prediction, profitImpact, learningRate, results) {
+        const adj = this.learningData.adjustments;
+        const adjustmentFactor = profitImpact.contributionScore * learningRate * 0.01;
+        
+        // オッズ重みの調整
+        if (prediction.odds) {
+            const oddsAdjustment = this.calculateOddsAdjustment(prediction.odds, profitImpact);
+            adj.oddsWeight += oddsAdjustment * adjustmentFactor;
+            adj.oddsWeight = Math.max(0.1, Math.min(3.0, adj.oddsWeight));
+            results.adjustments.oddsWeight = oddsAdjustment;
+        }
+        
+        // 血統重みの調整
+        if (prediction.pedigreeData || prediction.sire) {
+            const pedigreeAdjustment = this.calculatePedigreeAdjustment(prediction, profitImpact);
+            adj.pedigreeWeight += pedigreeAdjustment * adjustmentFactor;
+            adj.pedigreeWeight = Math.max(0.1, Math.min(3.0, adj.pedigreeWeight));
+            results.adjustments.pedigreeWeight = pedigreeAdjustment;
+        }
+        
+        // 脚質重みの調整
+        if (prediction.runningStyle) {
+            const styleAdjustment = this.calculateRunningStyleAdjustment(prediction.runningStyle, profitImpact);
+            adj.runningStyleWeight += styleAdjustment * adjustmentFactor;
+            adj.runningStyleWeight = Math.max(0.1, Math.min(3.0, adj.runningStyleWeight));
+            results.adjustments.runningStyleWeight = styleAdjustment;
+        }
+        
+        // 騎手重みの調整
+        if (prediction.jockey) {
+            const jockeyAdjustment = this.calculateJockeyAdjustment(prediction.jockey, profitImpact);
+            adj.jockeyWeight += jockeyAdjustment * adjustmentFactor;
+            adj.jockeyWeight = Math.max(0.1, Math.min(3.0, adj.jockeyWeight));
+            results.adjustments.jockeyWeight = jockeyAdjustment;
+        }
+    }
+    
+    // オッズ調整計算
+    static calculateOddsAdjustment(odds, profitImpact) {
+        if (profitImpact.isOutperforming) {
+            // 穴馬（7倍以上）で収益性が良い場合、重みを増加
+            if (odds >= 7.0) {
+                return 0.1 + (odds - 7) * 0.02;
+            }
+            // 中程度のオッズで収益性が良い場合
+            else if (odds >= 3.0) {
+                return 0.05;
+            }
+            // 低オッズで収益性が良い場合（あまり重要視しない）
+            else {
+                return 0.02;
+            }
+        } else {
+            // 収益性が悪い場合、該当オッズ帯の重みを減少
+            if (odds >= 7.0) {
+                return -0.05;
+            } else if (odds <= 2.0) {
+                return -0.1; // 低オッズの失敗を重く見る
+            } else {
+                return -0.03;
+            }
+        }
+    }
+    
+    // 血統調整計算
+    static calculatePedigreeAdjustment(prediction, profitImpact) {
+        if (profitImpact.isOutperforming) {
+            // 血統が収益に貢献した場合
+            return 0.08 + Math.max(0, profitImpact.contributionScore * 0.001);
+        } else {
+            // 血統が収益に貢献しなかった場合
+            return -0.04;
+        }
+    }
+    
+    // 脚質調整計算
+    static calculateRunningStyleAdjustment(runningStyle, profitImpact) {
+        if (profitImpact.isOutperforming) {
+            // 特定の脚質で穴馬的中した場合、大きくプラス
+            return 0.06 + Math.max(0, profitImpact.contributionScore * 0.0008);
+        } else {
+            return -0.03;
+        }
+    }
+    
+    // 騎手調整計算
+    static calculateJockeyAdjustment(jockey, profitImpact) {
+        if (profitImpact.isOutperforming) {
+            // 騎手が穴馬で結果を出した場合
+            return 0.05 + Math.max(0, profitImpact.contributionScore * 0.0006);
+        } else {
+            return -0.025;
+        }
+    }
+    
+    // 穴馬発見効率の学習
+    static learnUnderdogDiscoveryEfficiency(actualResults, predictions, underdogEfficiency, results) {
+        console.log('=== 穴馬発見効率学習 ===');
+        
+        const winner = actualResults.winner;
+        const winnerPrediction = predictions.find(p => p.name === winner.name);
+        
+        // 勝利馬が穴馬（7倍以上）だった場合の学習
+        if (winner.odds >= 7.0 && winnerPrediction) {
+            console.log(`穴馬的中: ${winner.name} (${winner.odds}倍)`);
+            
+            // 穴馬発見につながった要因を分析
+            const underdogFactors = this.analyzeUnderdogFactors(winnerPrediction);
+            
+            // 穴馬発見力を強化
+            this.reinforceUnderdogDiscoveryFactors(underdogFactors, results);
+            
+            // 穴馬ROIの更新（underdogEfficiencyから取得）
+            if (underdogEfficiency.underdogROI > underdogEfficiency.totalROI) {
+                results.underdogLearning = {
+                    message: '穴馬効率が全体効率を上回っており、穴馬重視戦略を強化',
+                    action: '穴馬関連要因の重みを増加'
+                };
+                
+                // 穴馬に関連する重みを全体的に強化
+                this.enhanceUnderdogWeights(0.05, results);
+            }
+        }
+        
+        // 予測した穴馬が外れた場合の学習
+        predictions.forEach(prediction => {
+            if (prediction.odds >= 7.0 && prediction.name !== winner.name) {
+                const underdogFactors = this.analyzeUnderdogFactors(prediction);
+                this.penalizeUnderdogDiscoveryFactors(underdogFactors, results);
+            }
+        });
+        
+        console.log('穴馬発見効率学習完了');
+    }
+    
+    // 穴馬要因分析
+    static analyzeUnderdogFactors(horse) {
+        const factors = {
+            pedigree: horse.pedigreeData || horse.sire ? 1.0 : 0.0,
+            runningStyle: horse.runningStyle ? 1.0 : 0.0,
+            jockey: horse.jockey ? 1.0 : 0.0,
+            form: horse.lastRaceResult ? 1.0 : 0.0,
+            age: horse.age ? 1.0 : 0.0
+        };
+        
+        return factors;
+    }
+    
+    // 穴馬発見要因の強化
+    static reinforceUnderdogDiscoveryFactors(factors, results) {
+        const adj = this.learningData.adjustments;
+        const reinforcementRate = 0.08; // 穴馬成功時は大きく強化
+        
+        if (factors.pedigree > 0) {
+            adj.pedigreeWeight += reinforcementRate;
+            adj.pedigreeWeight = Math.min(3.0, adj.pedigreeWeight);
+        }
+        
+        if (factors.runningStyle > 0) {
+            adj.runningStyleWeight += reinforcementRate;
+            adj.runningStyleWeight = Math.min(3.0, adj.runningStyleWeight);
+        }
+        
+        if (factors.jockey > 0) {
+            adj.jockeyWeight += reinforcementRate;
+            adj.jockeyWeight = Math.min(3.0, adj.jockeyWeight);
+        }
+        
+        results.underdogReinforcement = {
+            pedigree: factors.pedigree > 0 ? reinforcementRate : 0,
+            runningStyle: factors.runningStyle > 0 ? reinforcementRate : 0,
+            jockey: factors.jockey > 0 ? reinforcementRate : 0
+        };
+    }
+    
+    // 穴馬発見要因のペナルティ
+    static penalizeUnderdogDiscoveryFactors(factors, results) {
+        const adj = this.learningData.adjustments;
+        const penaltyRate = 0.03; // 穴馬失敗時は軽いペナルティ
+        
+        if (factors.pedigree > 0) {
+            adj.pedigreeWeight -= penaltyRate;
+            adj.pedigreeWeight = Math.max(0.1, adj.pedigreeWeight);
+        }
+        
+        if (factors.runningStyle > 0) {
+            adj.runningStyleWeight -= penaltyRate;
+            adj.runningStyleWeight = Math.max(0.1, adj.runningStyleWeight);
+        }
+        
+        if (factors.jockey > 0) {
+            adj.jockeyWeight -= penaltyRate;
+            adj.jockeyWeight = Math.max(0.1, adj.jockeyWeight);
+        }
+    }
+    
+    // 穴馬重み全体強化
+    static enhanceUnderdogWeights(enhancementRate, results) {
+        const adj = this.learningData.adjustments;
+        
+        // 穴馬発見に重要な要因を強化
+        adj.pedigreeWeight += enhancementRate;
+        adj.runningStyleWeight += enhancementRate;
+        adj.oddsWeight += enhancementRate * 0.5; // オッズはやや控えめ
+        
+        // 上限チェック
+        adj.pedigreeWeight = Math.min(3.0, adj.pedigreeWeight);
+        adj.runningStyleWeight = Math.min(3.0, adj.runningStyleWeight);
+        adj.oddsWeight = Math.min(3.0, adj.oddsWeight);
+        
+        results.globalUnderdogEnhancement = {
+            pedigreeWeight: enhancementRate,
+            runningStyleWeight: enhancementRate,
+            oddsWeight: enhancementRate * 0.5
+        };
+    }
+    
+    // オッズ帯別効率の学習
+    static learnOddsRangeEfficiency(actualResults, predictions, oddsAnalysis, results) {
+        console.log('=== オッズ帯別効率学習 ===');
+        
+        const winner = actualResults.winner;
+        const winnerPrediction = predictions.find(p => p.name === winner.name);
+        
+        if (!winnerPrediction) return;
+        
+        // 勝利馬のオッズ帯を特定
+        const oddsRange = this.classifyOddsRange(winnerPrediction.odds);
+        const rangeAnalysis = oddsAnalysis[oddsRange];
+        
+        if (rangeAnalysis) {
+            console.log(`${oddsRange}帯 (${rangeAnalysis.range}) で的中`);
+            
+            // そのオッズ帯のROIが良好な場合、関連重みを強化
+            if (rangeAnalysis.roi > 0) {
+                const enhancementRate = this.calculateOddsRangeEnhancement(rangeAnalysis.roi, winnerPrediction.odds);
+                this.enhanceOddsRangeWeights(oddsRange, enhancementRate, results);
+                
+                results.oddsRangeLearning = {
+                    range: rangeAnalysis.range,
+                    roi: rangeAnalysis.roi,
+                    enhancement: enhancementRate,
+                    message: `${rangeAnalysis.range}で良好な収益性、重みを強化`
+                };
+            }
+        }
+        
+        // 予測して外れたオッズ帯の重みを軽微に減少
+        predictions.forEach(prediction => {
+            if (prediction.name !== winner.name) {
+                const failedOddsRange = this.classifyOddsRange(prediction.odds);
+                this.penalizeOddsRangeWeights(failedOddsRange, 0.02, results);
+            }
+        });
+        
+        console.log('オッズ帯別効率学習完了');
+    }
+    
+    // オッズ帯分類
+    static classifyOddsRange(odds) {
+        if (odds < 1.6) return 'ultraLow';
+        if (odds < 3.1) return 'low';
+        if (odds < 7.1) return 'medium';
+        if (odds < 15.1) return 'high';
+        if (odds < 50.1) return 'veryHigh';
+        return 'extreme';
+    }
+    
+    // オッズ帯強化率計算
+    static calculateOddsRangeEnhancement(roi, odds) {
+        let baseRate = Math.min(0.1, roi * 0.005); // ROIに基づく基本強化率
+        
+        // 穴馬オッズの場合はボーナス
+        if (odds >= 7.0) {
+            baseRate *= 1.5;
+        }
+        
+        return baseRate;
+    }
+    
+    // オッズ帯重み強化
+    static enhanceOddsRangeWeights(oddsRange, enhancementRate, results) {
+        const adj = this.learningData.adjustments;
+        
+        // オッズ帯に応じて異なる要因を強化
+        switch (oddsRange) {
+            case 'high':
+            case 'veryHigh':
+            case 'extreme':
+                // 高オッズ帯では穴馬発見能力を強化
+                adj.pedigreeWeight += enhancementRate;
+                adj.runningStyleWeight += enhancementRate;
+                adj.jockeyWeight += enhancementRate * 0.8;
+                break;
+            
+            case 'medium':
+                // 中オッズ帯ではバランスよく強化
+                adj.pedigreeWeight += enhancementRate * 0.8;
+                adj.runningStyleWeight += enhancementRate * 0.8;
+                adj.lastRaceWeight += enhancementRate * 0.6;
+                break;
+            
+            case 'low':
+            case 'ultraLow':
+                // 低オッズ帯では基本能力を強化
+                adj.lastRaceWeight += enhancementRate;
+                adj.ageWeight += enhancementRate * 0.6;
+                break;
+        }
+        
+        // 上限チェック
+        Object.keys(adj).forEach(key => {
+            adj[key] = Math.min(3.0, adj[key]);
+        });
+        
+        results.oddsRangeEnhancement = results.oddsRangeEnhancement || {};
+        results.oddsRangeEnhancement[oddsRange] = enhancementRate;
+    }
+    
+    // オッズ帯重みペナルティ
+    static penalizeOddsRangeWeights(oddsRange, penaltyRate, results) {
+        const adj = this.learningData.adjustments;
+        
+        // 失敗したオッズ帯の重みを軽微に減少
+        switch (oddsRange) {
+            case 'high':
+            case 'veryHigh':
+            case 'extreme':
+                adj.pedigreeWeight -= penaltyRate;
+                adj.runningStyleWeight -= penaltyRate;
+                break;
+            
+            case 'medium':
+                adj.pedigreeWeight -= penaltyRate * 0.8;
+                adj.lastRaceWeight -= penaltyRate * 0.6;
+                break;
+            
+            case 'low':
+            case 'ultraLow':
+                adj.lastRaceWeight -= penaltyRate;
+                break;
+        }
+        
+        // 下限チェック
+        Object.keys(adj).forEach(key => {
+            adj[key] = Math.max(0.1, adj[key]);
+        });
+    }
+    
+    // フォールバック学習処理
+    static fallbackBasicLearning(actualResults, predictions, learningRate, results) {
+        console.log('フォールバック学習処理を実行');
         
         const winner = actualResults.winner;
         const predictedWinner = predictions[0];
         const isCorrect = winner.name === predictedWinner.name;
         
         if (isCorrect) {
-            // 成功時の強化学習
             this.reinforceSuccessPatterns(winner, predictedWinner, learningRate, results);
         } else {
-            // 失敗時の修正学習
             this.correctFailurePatterns(winner, predictedWinner, learningRate, results);
         }
         
         return results;
+    }
+    
+    // 投資効率学習処理
+    static processInvestmentLearning(actualResults, predictions) {
+        console.log('=== 投資効率学習開始 ===');
+        const results = { investmentAdjustments: {} };
+        
+        // InvestmentEfficiencyCalculatorとの連携
+        if (typeof InvestmentEfficiencyCalculator === 'undefined') {
+            console.warn('InvestmentEfficiencyCalculatorが利用できません');
+            return results;
+        }
+        
+        // 予測に対する投資効率を評価
+        predictions.forEach((prediction, index) => {
+            const betResult = this.simulateBetResult(prediction, actualResults);
+            
+            // 投資効率計算
+            const betData = {
+                odds: prediction.odds || prediction.singleOdds || 5.0,
+                winProbability: this.estimateWinProbability(prediction, index),
+                betAmount: 1000,
+                confidence: this.calculatePredictionConfidence(prediction),
+                popularity: prediction.popularity
+            };
+            
+            const efficiencyResult = InvestmentEfficiencyCalculator.calculateSingleBetEfficiency(betData);
+            
+            // 効率結果に基づく学習
+            this.learnFromInvestmentEfficiency(prediction, betResult, efficiencyResult, results);
+        });
+        
+        console.log('投資効率学習完了:', results);
+        return results;
+    }
+    
+    // 勝率推定
+    static estimateWinProbability(prediction, predictionRank) {
+        // 予測順位に基づく基本勝率
+        let baseProbability;
+        switch (predictionRank) {
+            case 0: baseProbability = 0.25; break; // 本命
+            case 1: baseProbability = 0.15; break; // 対抗
+            case 2: baseProbability = 0.10; break; // 穴
+            default: baseProbability = 0.05; break;
+        }
+        
+        // オッズによる調整
+        const odds = prediction.odds || prediction.singleOdds || 5.0;
+        const oddsAdjustment = Math.min(1.0, 1.0 / odds);
+        
+        return Math.min(0.8, baseProbability * (1 + oddsAdjustment));
+    }
+    
+    // 予測信頼度計算
+    static calculatePredictionConfidence(prediction) {
+        let confidence = 0.5; // ベース信頼度
+        
+        // 血統データがある場合
+        if (prediction.pedigreeData || prediction.sire) {
+            confidence += 0.1;
+        }
+        
+        // 脚質データがある場合
+        if (prediction.runningStyle) {
+            confidence += 0.1;
+        }
+        
+        // 前走結果がある場合
+        if (prediction.lastRaceResult) {
+            confidence += 0.1;
+        }
+        
+        // 騎手データがある場合
+        if (prediction.jockey) {
+            confidence += 0.1;
+        }
+        
+        return Math.min(1.0, confidence);
+    }
+    
+    // 投資効率から学習
+    static learnFromInvestmentEfficiency(prediction, betResult, efficiencyResult, results) {
+        const adj = this.learningData.adjustments;
+        const learningRate = 0.05;
+        
+        // 高効率かつ的中した場合、大きく強化
+        if (betResult.isHit && efficiencyResult.efficiencyScore >= 70) {
+            const enhancementRate = (efficiencyResult.efficiencyScore / 100) * learningRate;
+            
+            // 穴馬かつ高効率の場合、特に強化
+            if (efficiencyResult.isUnderdog) {
+                adj.pedigreeWeight += enhancementRate * 1.5;
+                adj.runningStyleWeight += enhancementRate * 1.5;
+                adj.jockeyWeight += enhancementRate;
+                
+                results.investmentAdjustments.underdogEnhancement = enhancementRate * 1.5;
+            } else {
+                adj.lastRaceWeight += enhancementRate;
+                adj.ageWeight += enhancementRate * 0.8;
+                
+                results.investmentAdjustments.basicEnhancement = enhancementRate;
+            }
+            
+            console.log(`高効率的中による強化: ${prediction.name}, 効率スコア: ${efficiencyResult.efficiencyScore}`);
+        }
+        
+        // 低効率で外れた場合、軽微に減少
+        else if (!betResult.isHit && efficiencyResult.efficiencyScore < 30) {
+            const penaltyRate = learningRate * 0.3;
+            
+            adj.oddsWeight -= penaltyRate;
+            adj.oddsWeight = Math.max(0.1, adj.oddsWeight);
+            
+            results.investmentAdjustments.lowEfficiencyPenalty = penaltyRate;
+        }
+        
+        // ケリー基準との比較学習
+        if (efficiencyResult.kellyFraction > 0.1) {
+            const kellyAdjustment = efficiencyResult.kellyFraction * learningRate * 0.5;
+            adj.oddsWeight += kellyAdjustment;
+            adj.oddsWeight = Math.min(3.0, adj.oddsWeight);
+            
+            results.investmentAdjustments.kellyBasedAdjustment = kellyAdjustment;
+        }
+        
+        // 投資グレードによる学習
+        if (['AAA', 'AA', 'A'].includes(efficiencyResult.investmentGrade) && betResult.isHit) {
+            const gradeEnhancement = 0.1;
+            this.enhanceAllWeights(gradeEnhancement * 0.5, results);
+            
+            results.investmentAdjustments.gradeEnhancement = {
+                grade: efficiencyResult.investmentGrade,
+                enhancement: gradeEnhancement
+            };
+        }
+    }
+    
+    // 全重み強化
+    static enhanceAllWeights(enhancementRate, results) {
+        const adj = this.learningData.adjustments;
+        
+        Object.keys(adj).forEach(key => {
+            adj[key] += enhancementRate;
+            adj[key] = Math.min(3.0, adj[key]);
+        });
+        
+        results.globalEnhancement = enhancementRate;
+    }
+    
+    // 買い目戦略学習処理
+    static processBettingLearning(actualResults, predictions) {
+        console.log('=== 買い目戦略学習開始 ===');
+        const results = { bettingStrategy: {} };
+        
+        const bettingLearning = this.learningData.bettingLearning;
+        const winner = actualResults.winner;
+        
+        // 勝利馬の投資戦略を分析
+        const winnerPrediction = predictions.find(p => p.name === winner.name);
+        if (winnerPrediction) {
+            const strategy = this.determineOptimalStrategy(winnerPrediction);
+            
+            // 成功戦略の記録
+            this.updateStrategySuccess(strategy, true, winnerPrediction.odds, results);
+            
+            // 期待値の追跡
+            const expectedValue = winnerPrediction.odds; // 的中時の期待値は実際のオッズ
+            this.updateExpectedValueTracking(strategy, expectedValue, results);
+            
+            console.log(`成功戦略記録: ${strategy}, オッズ: ${winnerPrediction.odds}`);
+        }
+        
+        // 失敗した予測の戦略分析
+        predictions.forEach(prediction => {
+            if (prediction.name !== winner.name) {
+                const strategy = this.determineOptimalStrategy(prediction);
+                this.updateStrategySuccess(strategy, false, prediction.odds, results);
+            }
+        });
+        
+        // リスク・リターン分析の更新
+        this.updateRiskReturnAnalysis(actualResults, predictions, results);
+        
+        console.log('買い目戦略学習完了:', results);
+        return results;
+    }
+    
+    // 最適戦略決定
+    static determineOptimalStrategy(prediction) {
+        const odds = prediction.odds || prediction.singleOdds || 5.0;
+        
+        if (odds >= 15.0) return 'HIGH_RISK_HIGH_REWARD';
+        if (odds >= 7.0) return 'MODERATE_UNDERDOG';
+        if (odds >= 3.0) return 'BALANCED_MIDDLE';
+        if (odds >= 2.0) return 'CONSERVATIVE_FAVORITE';
+        return 'ULTRA_CONSERVATIVE';
+    }
+    
+    // 戦略成功率更新
+    static updateStrategySuccess(strategy, isSuccess, odds, results) {
+        const strategyMap = this.learningData.bettingLearning.strategySuccess;
+        
+        if (!strategyMap.has(strategy)) {
+            strategyMap.set(strategy, {
+                total: 0,
+                success: 0,
+                totalOdds: 0,
+                successRate: 0,
+                averageOdds: 0,
+                roi: 0
+            });
+        }
+        
+        const strategyData = strategyMap.get(strategy);
+        strategyData.total++;
+        strategyData.totalOdds += odds;
+        
+        if (isSuccess) {
+            strategyData.success++;
+            strategyData.roi += (odds - 1); // 利益
+        } else {
+            strategyData.roi -= 1; // 損失
+        }
+        
+        strategyData.successRate = strategyData.success / strategyData.total;
+        strategyData.averageOdds = strategyData.totalOdds / strategyData.total;
+        
+        results.bettingStrategy[strategy] = {
+            successRate: strategyData.successRate,
+            roi: strategyData.roi,
+            total: strategyData.total
+        };
+    }
+    
+    // 期待値追跡更新
+    static updateExpectedValueTracking(strategy, expectedValue, results) {
+        const trackingMap = this.learningData.bettingLearning.expectedValueTracking;
+        
+        if (!trackingMap.has(strategy)) {
+            trackingMap.set(strategy, {
+                values: [],
+                average: 0,
+                volatility: 0
+            });
+        }
+        
+        const tracking = trackingMap.get(strategy);
+        tracking.values.push(expectedValue);
+        
+        // 最新20件のみ保持
+        if (tracking.values.length > 20) {
+            tracking.values.shift();
+        }
+        
+        // 平均とボラティリティの計算
+        tracking.average = tracking.values.reduce((sum, v) => sum + v, 0) / tracking.values.length;
+        
+        if (tracking.values.length > 1) {
+            const variance = tracking.values.reduce((sum, v) => sum + Math.pow(v - tracking.average, 2), 0) / tracking.values.length;
+            tracking.volatility = Math.sqrt(variance);
+        }
+        
+        results.expectedValueTracking = results.expectedValueTracking || {};
+        results.expectedValueTracking[strategy] = {
+            average: tracking.average,
+            volatility: tracking.volatility
+        };
+    }
+    
+    // リスク・リターン分析更新
+    static updateRiskReturnAnalysis(actualResults, predictions, results) {
+        const analysisMap = this.learningData.bettingLearning.riskReturnAnalysis;
+        const winner = actualResults.winner;
+        
+        predictions.forEach(prediction => {
+            const riskLevel = this.classifyRiskLevel(prediction.odds);
+            const isWin = prediction.name === winner.name;
+            const returnValue = isWin ? prediction.odds : 0;
+            
+            if (!analysisMap.has(riskLevel)) {
+                analysisMap.set(riskLevel, {
+                    bets: 0,
+                    wins: 0,
+                    totalReturn: 0,
+                    averageReturn: 0,
+                    winRate: 0,
+                    sharpeRatio: 0
+                });
+            }
+            
+            const analysis = analysisMap.get(riskLevel);
+            analysis.bets++;
+            
+            if (isWin) {
+                analysis.wins++;
+                analysis.totalReturn += returnValue;
+            }
+            
+            analysis.winRate = analysis.wins / analysis.bets;
+            analysis.averageReturn = analysis.totalReturn / analysis.bets;
+            
+            // 簡易シャープレシオ計算
+            analysis.sharpeRatio = analysis.winRate > 0 ? analysis.averageReturn / Math.sqrt(analysis.winRate * (1 - analysis.winRate)) : 0;
+        });
+        
+        results.riskReturnAnalysis = 'リスク・リターン分析を更新';
+    }
+    
+    // リスクレベル分類
+    static classifyRiskLevel(odds) {
+        if (odds >= 20.0) return 'VERY_HIGH_RISK';
+        if (odds >= 10.0) return 'HIGH_RISK';
+        if (odds >= 5.0) return 'MEDIUM_RISK';
+        if (odds >= 2.0) return 'LOW_RISK';
+        return 'VERY_LOW_RISK';
     }
     
     // 血統学習処理（新機能）

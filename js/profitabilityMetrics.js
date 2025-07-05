@@ -593,6 +593,155 @@ class ProfitabilityMetrics {
         };
     }
     
+    // テスト用データリセット
+    static resetForTest() {
+        this.profitabilityData = {
+            // 投資・回収記録
+            investment: {
+                totalInvested: 0,           // 総投資額
+                totalReturned: 0,           // 総回収額
+                totalProfit: 0,             // 総利益（回収-投資）
+                totalBets: 0,               // 総賭け回数
+                hitCount: 0,                // 的中回数
+                averageBetAmount: 1000      // 平均賭け金（デフォルト1000円）
+            },
+            
+            // 核心指標
+            coreMetrics: {
+                roi: 0,                     // ROI（投資収益率）= 利益/投資額×100
+                recoveryRate: 0,            // 回収率 = 回収額/投資額×100
+                expectedValue: 0,           // 期待値 = 平均回収額/平均投資額
+                profitPerBet: 0,           // 1回あたり平均利益
+                hitRate: 0,                // 的中率
+                averageOdds: 0,            // 的中時平均オッズ
+                averageReturn: 0           // 的中時平均回収額
+            },
+            
+            // 人気度別分析
+            popularityAnalysis: {
+                favorite: {                 // 1-3番人気
+                    bets: 0, hits: 0, invested: 0, returned: 0,
+                    hitRate: 0, roi: 0, avgOdds: 0
+                },
+                semifavorite: {             // 4-6番人気
+                    bets: 0, hits: 0, invested: 0, returned: 0,
+                    hitRate: 0, roi: 0, avgOdds: 0
+                },
+                underdog: {                 // 7-10番人気
+                    bets: 0, hits: 0, invested: 0, returned: 0,
+                    hitRate: 0, roi: 0, avgOdds: 0
+                },
+                longshot: {                 // 11番人気以下
+                    bets: 0, hits: 0, invested: 0, returned: 0,
+                    hitRate: 0, roi: 0, avgOdds: 0
+                }
+            },
+            
+            // オッズ帯別分析
+            oddsAnalysis: {
+                ultraLow: {                 // 1.0-1.5倍
+                    range: '1.0-1.5倍',
+                    bets: 0, hits: 0, invested: 0, returned: 0,
+                    hitRate: 0, roi: 0, expectedValue: 0
+                },
+                low: {                      // 1.6-3.0倍
+                    range: '1.6-3.0倍',
+                    bets: 0, hits: 0, invested: 0, returned: 0,
+                    hitRate: 0, roi: 0, expectedValue: 0
+                },
+                medium: {                   // 3.1-7.0倍
+                    range: '3.1-7.0倍',
+                    bets: 0, hits: 0, invested: 0, returned: 0,
+                    hitRate: 0, roi: 0, expectedValue: 0
+                },
+                high: {                     // 7.1-15.0倍
+                    range: '7.1-15.0倍',
+                    bets: 0, hits: 0, invested: 0, returned: 0,
+                    hitRate: 0, roi: 0, expectedValue: 0
+                },
+                veryHigh: {                 // 15.1-50.0倍
+                    range: '15.1-50.0倍',
+                    bets: 0, hits: 0, invested: 0, returned: 0,
+                    hitRate: 0, roi: 0, expectedValue: 0
+                },
+                extreme: {                  // 50.1倍以上
+                    range: '50.1倍以上',
+                    bets: 0, hits: 0, invested: 0, returned: 0,
+                    hitRate: 0, roi: 0, expectedValue: 0
+                }
+            },
+            
+            // 券種別収益性
+            betTypeAnalysis: {
+                win: {                      // 単勝
+                    bets: 0, hits: 0, invested: 0, returned: 0,
+                    hitRate: 0, roi: 0, avgReturn: 0
+                },
+                place: {                    // 複勝
+                    bets: 0, hits: 0, invested: 0, returned: 0,
+                    hitRate: 0, roi: 0, avgReturn: 0
+                },
+                exacta: {                   // 馬単
+                    bets: 0, hits: 0, invested: 0, returned: 0,
+                    hitRate: 0, roi: 0, avgReturn: 0
+                },
+                quinella: {                 // 馬連
+                    bets: 0, hits: 0, invested: 0, returned: 0,
+                    hitRate: 0, roi: 0, avgReturn: 0
+                },
+                wide: {                     // ワイド
+                    bets: 0, hits: 0, invested: 0, returned: 0,
+                    hitRate: 0, roi: 0, avgReturn: 0
+                },
+                trifecta: {                 // 3連単
+                    bets: 0, hits: 0, invested: 0, returned: 0,
+                    hitRate: 0, roi: 0, avgReturn: 0
+                },
+                trio: {                     // 3連複
+                    bets: 0, hits: 0, invested: 0, returned: 0,
+                    hitRate: 0, roi: 0, avgReturn: 0
+                }
+            },
+            
+            // リスク分析
+            riskAnalysis: {
+                volatility: 0,              // 収益のボラティリティ（標準偏差）
+                maxDrawdown: 0,             // 最大ドローダウン
+                consecutiveLosses: 0,       // 最大連続損失回数
+                lossStreakLength: 0,        // 現在の連続損失
+                winStreakLength: 0,         // 現在の連続勝利
+                maxWinStreak: 0,           // 最大連続勝利回数
+                riskAdjustedReturn: 0,     // リスク調整済みリターン
+                sharpeRatio: 0,            // シャープレシオ
+                profitFactor: 0            // プロフィットファクター = 総利益/総損失
+            },
+            
+            // 時系列データ
+            timeSeriesData: {
+                dailyProfits: [],          // 日別損益
+                cumulativeProfit: [],      // 累積損益
+                rollingROI: [],            // 移動平均ROI
+                recentPerformance: []      // 直近パフォーマンス履歴
+            },
+            
+            // 穴馬発見効率
+            underdogEfficiency: {
+                totalUnderdogBets: 0,      // 穴馬への賭け回数（7倍以上）
+                underdogHits: 0,           // 穴馬的中回数
+                underdogProfit: 0,         // 穴馬からの利益
+                underdogROI: 0,            // 穴馬投資のROI
+                avgUnderdogOdds: 0,        // 穴馬的中時平均オッズ
+                underdogContribution: 0,   // 穴馬利益の全体貢献度（％）
+                bigHitCount: 0,            // 大的中回数（15倍以上）
+                bigHitProfit: 0           // 大的中からの利益
+            }
+        };
+        
+        // localStorageもクリア
+        localStorage.removeItem('profitabilityData');
+        console.log('テスト用データリセット完了');
+    }
+    
     // 時系列データ生成（実データベース）
     static generateTimeSeriesData() {
         const investment = this.profitabilityData.investment;

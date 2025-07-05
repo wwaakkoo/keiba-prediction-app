@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>収益性システム TDD テスト</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin-bottom: 30px; padding: 15px; border: 1px solid #ddd; }
+        .test-passed { color: green; }
+        .test-failed { color: red; }
+        .test-result { margin: 10px 0; padding: 5px; }
+        pre { background: #f5f5f5; padding: 10px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>収益性重視システム TDD テスト</h1>
+    
+    <div id="test-results"></div>
+    
+    <!-- 必要なスクリプトの読み込み -->
+    <script src="js/config.js"></script>
+    <script src="js/profitabilityMetrics.js"></script>
+    <script src="js/investmentEfficiencyCalculator.js"></script>
+    <script src="js/underdogDiscoveryAlgorithm.js"></script>
+    <script src="js/riskReturnAnalyzer.js"></script>
+    <script src="js/enhancedLearningSystem.js"></script>
+    
+    <script>
+        // テスト実行エンジン
+        class TDDTestRunner {
+            constructor() {
+                this.results = [];
+            }
+            
+            test(name, testFunction) {
+                try {
+                    const result = testFunction();
+                    if (result === true || result === undefined) {
+                        this.results.push({ name, status: 'PASSED', message: 'テスト成功' });
+                        console.log(`✅ ${name}: PASSED`);
+                    } else {
+                        this.results.push({ name, status: 'FAILED', message: result || 'テスト失敗' });
+                        console.log(`❌ ${name}: FAILED - ${result}`);
+                    }
+                } catch (error) {
+                    this.results.push({ name, status: 'ERROR', message: error.message });
+                    console.log(`💥 ${name}: ERROR - ${error.message}`);
+                }
+            }
+            
+            assertEqual(actual, expected, message = '') {
+                if (actual !== expected) {
+                    throw new Error(`${message} - Expected: ${expected}, Actual: ${actual}`);
+                }
+            }
+            
+            assertTrue(condition, message = '') {
+                if (!condition) {
+                    throw new Error(`${message} - Expected: true, Actual: ${condition}`);
+                }
+            }
+            
+            assertGreaterThan(actual, expected, message = '') {
+                if (actual <= expected) {
+                    throw new Error(`${message} - Expected > ${expected}, Actual: ${actual}`);
+                }
+            }
+            
+            displayResults() {
+                const container = document.getElementById('test-results');
+                const passed = this.results.filter(r => r.status === 'PASSED').length;
+                const total = this.results.length;
+                
+                container.innerHTML = `
+                    <h2>テスト結果: ${passed}/${total} 成功</h2>
+                    ${this.results.map(result => `
+                        <div class="test-result test-${result.status.toLowerCase()}">
+                            <strong>${result.status}</strong>: ${result.name}<br>
+                            ${result.message}
+                        </div>
+                    `).join('')}
+                `;
+            }
+        }
+        
+        // テスト実行
+        document.addEventListener('DOMContentLoaded', () => {
+            const runner = new TDDTestRunner();
+            
+            // 1. ProfitabilityMetrics テスト
+            runner.test('ProfitabilityMetrics - 基本初期化', () => {
+                // テスト用データリセット
+                ProfitabilityMetrics.resetForTest();
+                
+                const data = ProfitabilityMetrics.getProfitabilityData();
+                runner.assertTrue(data !== undefined, 'データが初期化されている');
+                runner.assertTrue(data.investment !== undefined, '投資データが存在');
+                runner.assertEqual(data.investment.totalInvested, 0, '初期投資額は0');
+            });
+            
+            runner.test('ProfitabilityMetrics - 的中時の収益記録', () => {
+                // テスト用データリセット
+                ProfitabilityMetrics.resetForTest();
+                
+                const betResult = {
+                    horseNumber: '1',
+                    horseName: 'テスト馬',
+                    odds: 10.0,
+                    popularity: 8,
+                    betType: '単勝',
+                    betAmount: 1000,
+                    isHit: true,
+                    returnAmount: 10000
+                };
+                
+                ProfitabilityMetrics.recordBetResult(betResult);
+                const data = ProfitabilityMetrics.getProfitabilityData();
+                
+                runner.assertEqual(data.investment.totalInvested, 1000, '投資額が記録される');
+                runner.assertEqual(data.investment.totalReturned, 10000, '回収額が記録される');
+                runner.assertEqual(data.investment.totalProfit, 9000, '利益が正しく計算される');
+                runner.assertEqual(data.coreMetrics.roi, 900, 'ROIが正しく計算される（900%）');
+            });
+            
+            runner.test('ProfitabilityMetrics - 外れ時の損失記録', () => {
+                const betResult = {
+                    horseNumber: '2',
+                    horseName: 'テスト馬2',
+                    odds: 5.0,
+                    popularity: 3,
+                    betType: '単勝',
+                    betAmount: 1000,
+                    isHit: false,
+                    returnAmount: 0
+                };
+                
+                ProfitabilityMetrics.recordBetResult(betResult);
+                const data = ProfitabilityMetrics.getProfitabilityData();
+                
+                runner.assertEqual(data.investment.totalInvested, 2000, '累積投資額が正しい');
+                runner.assertEqual(data.investment.totalReturned, 10000, '累積回収額が正しい');
+                runner.assertEqual(data.investment.totalProfit, 8000, '累積利益が正しい');
+                runner.assertEqual(data.coreMetrics.roi, 400, 'ROIが正しく再計算される（400%）');
+            });
+            
+            // 2. InvestmentEfficiencyCalculator テスト
+            runner.test('InvestmentEfficiencyCalculator - 期待値計算', () => {
+                const expectedValue = InvestmentEfficiencyCalculator.calculateExpectedValue(10.0, 0.15);
+                runner.assertEqual(expectedValue, 1.5, '期待値計算が正しい（10×0.15=1.5）');
+            });
+            
+            runner.test('InvestmentEfficiencyCalculator - ケリー基準計算', () => {
+                const kellyFraction = InvestmentEfficiencyCalculator.calculateKellyFraction(10.0, 0.15);
+                runner.assertTrue(kellyFraction >= 0, 'ケリー基準は非負値');
+                runner.assertTrue(kellyFraction <= 0.25, 'ケリー基準は25%以下に制限');
+            });
+            
+            runner.test('InvestmentEfficiencyCalculator - 穴馬ボーナス計算', () => {
+                const bonus1 = InvestmentEfficiencyCalculator.calculateUnderdogBonus(15.0, 12);
+                const bonus2 = InvestmentEfficiencyCalculator.calculateUnderdogBonus(3.0, 2);
+                
+                runner.assertGreaterThan(bonus1, bonus2, '高オッズ・低人気ほど高ボーナス');
+                runner.assertTrue(bonus1 <= 20, 'ボーナスは20以下');
+            });
+            
+            runner.test('InvestmentEfficiencyCalculator - 投資効率計算', () => {
+                const betData = {
+                    odds: 8.0,
+                    winProbability: 0.2,
+                    betAmount: 1000,
+                    confidence: 0.7,
+                    popularity: 9
+                };
+                
+                const result = InvestmentEfficiencyCalculator.calculateSingleBetEfficiency(betData);
+                
+                runner.assertTrue(result.expectedValue > 0, '期待値が計算される');
+                runner.assertTrue(result.efficiencyScore >= 0 && result.efficiencyScore <= 100, '効率スコアが0-100範囲');
+                runner.assertTrue(result.investmentGrade !== undefined, '投資グレードが付与される');
+                runner.assertTrue(result.underdogBonus > 0, '穴馬ボーナスが付与される');
+            });
+            
+            // 3. UnderdogDiscoveryAlgorithm テスト
+            runner.test('UnderdogDiscoveryAlgorithm - 穴馬候補フィルタリング', () => {
+                const horses = [
+                    { name: '人気馬', odds: 2.5, popularity: 1 },
+                    { name: '中人気', odds: 5.0, popularity: 4 },
+                    { name: '穴馬1', odds: 12.0, popularity: 8, age: 4 },
+                    { name: '穴馬2', odds: 20.0, popularity: 12, age: 5 },
+                    { name: '高齢馬', odds: 15.0, popularity: 10, age: 9 }
+                ];
+                
+                const candidates = UnderdogDiscoveryAlgorithm.filterUnderdogCandidates(horses);
+                
+                runner.assertEqual(candidates.length, 2, '穴馬候補が正しく抽出される');
+                runner.assertTrue(candidates.some(h => h.name === '穴馬1'), '穴馬1が含まれる');
+                runner.assertTrue(candidates.some(h => h.name === '穴馬2'), '穴馬2が含まれる');
+            });
+            
+            runner.test('UnderdogDiscoveryAlgorithm - オッズレベル分類', () => {
+                runner.assertEqual(UnderdogDiscoveryAlgorithm.categorizeUnderdogLevel(25.0), 'BIG', '25倍は大穴');
+                runner.assertEqual(UnderdogDiscoveryAlgorithm.categorizeUnderdogLevel(60.0), 'EXTREME', '60倍は超大穴');
+                runner.assertEqual(UnderdogDiscoveryAlgorithm.categorizeUnderdogLevel(8.0), 'MEDIUM', '8倍は中穴');
+            });
+            
+            // 4. RiskReturnAnalyzer テスト
+            runner.test('RiskReturnAnalyzer - 基本統計計算', () => {
+                const investments = [
+                    { betAmount: 1000, returnAmount: 1500, profit: 500 },
+                    { betAmount: 1000, returnAmount: 0, profit: -1000 },
+                    { betAmount: 1000, returnAmount: 3000, profit: 2000 }
+                ];
+                
+                const stats = RiskReturnAnalyzer.calculateBasicStatistics(investments);
+                
+                runner.assertEqual(stats.totalAmount, 3000, '総投資額が正しい');
+                runner.assertTrue(stats.avgReturn !== undefined, '平均リターンが計算される');
+                runner.assertTrue(stats.standardDeviation >= 0, '標準偏差が非負値');
+                runner.assertEqual(stats.positiveReturns, 2, 'プラスリターン数が正しい');
+            });
+            
+            runner.test('RiskReturnAnalyzer - VaR計算', () => {
+                const returns = [-0.5, -0.2, 0.1, 0.3, 0.8, 1.5, -0.8, 0.2, -0.1, 0.4];
+                const var95 = RiskReturnAnalyzer.calculateVaR(returns, 0.95);
+                
+                runner.assertTrue(var95 <= 0, 'VaRは通常負の値');
+                runner.assertTrue(typeof var95 === 'number', 'VaRは数値');
+            });
+            
+            // 5. EnhancedLearningSystem テスト
+            runner.test('EnhancedLearningSystem - 収益性ベース学習', () => {
+                const actualResults = {
+                    winner: { name: 'テスト勝馬', odds: 12.0, popularity: 8 },
+                    allResults: [
+                        { name: 'テスト勝馬', odds: 12.0, popularity: 8 }
+                    ]
+                };
+                
+                const predictions = [
+                    { name: 'テスト勝馬', odds: 12.0, popularity: 8, pedigreeData: true, runningStyle: '先行' },
+                    { name: 'テスト2着', odds: 5.0, popularity: 3 }
+                ];
+                
+                const learningResults = EnhancedLearningSystem.processBasicLearning(actualResults, predictions);
+                
+                runner.assertTrue(learningResults !== undefined, '学習結果が返される');
+                runner.assertTrue(learningResults.adjustments !== undefined, '調整結果が含まれる');
+            });
+            
+            runner.test('EnhancedLearningSystem - 穴馬要因分析', () => {
+                const horse = {
+                    name: 'テスト穴馬',
+                    pedigreeData: true,
+                    runningStyle: '差し',
+                    jockey: 'テスト騎手',
+                    lastRaceResult: { finish: 3 },
+                    age: 4
+                };
+                
+                const factors = EnhancedLearningSystem.analyzeUnderdogFactors(horse);
+                
+                runner.assertEqual(factors.pedigree, 1.0, '血統要因が検出される');
+                runner.assertEqual(factors.runningStyle, 1.0, '脚質要因が検出される');
+                runner.assertEqual(factors.jockey, 1.0, '騎手要因が検出される');
+                runner.assertEqual(factors.form, 1.0, '調教・状態要因が検出される');
+            });
+            
+            runner.test('EnhancedLearningSystem - オッズ帯分類', () => {
+                runner.assertEqual(EnhancedLearningSystem.classifyOddsRange(1.2), 'ultraLow', '1.2倍は超低オッズ');
+                runner.assertEqual(EnhancedLearningSystem.classifyOddsRange(2.5), 'low', '2.5倍は低オッズ');
+                runner.assertEqual(EnhancedLearningSystem.classifyOddsRange(5.0), 'medium', '5.0倍は中オッズ');
+                runner.assertEqual(EnhancedLearningSystem.classifyOddsRange(10.0), 'high', '10.0倍は高オッズ');
+                runner.assertEqual(EnhancedLearningSystem.classifyOddsRange(25.0), 'veryHigh', '25.0倍は超高オッズ');
+                runner.assertEqual(EnhancedLearningSystem.classifyOddsRange(100.0), 'extreme', '100.0倍は極端オッズ');
+            });
+            
+            // 6. 統合テスト
+            runner.test('統合テスト - 収益性重視ワークフロー', () => {
+                // 1. 賭け結果を記録
+                const betResult = {
+                    horseNumber: '1',
+                    horseName: '統合テスト馬',
+                    odds: 15.0,
+                    popularity: 9,
+                    betType: '単勝',
+                    betAmount: 1000,
+                    isHit: true,
+                    returnAmount: 15000
+                };
+                
+                ProfitabilityMetrics.recordBetResult(betResult);
+                
+                // 2. 投資効率を計算
+                const betData = {
+                    odds: 15.0,
+                    winProbability: 0.1,
+                    betAmount: 1000,
+                    confidence: 0.8,
+                    popularity: 9
+                };
+                
+                const efficiencyResult = InvestmentEfficiencyCalculator.calculateSingleBetEfficiency(betData);
+                
+                // 3. 穴馬分析
+                const horses = [{ name: '統合テスト馬', odds: 15.0, popularity: 9, age: 5 }];
+                const underdogCandidates = UnderdogDiscoveryAlgorithm.filterUnderdogCandidates(horses);
+                
+                // 4. 統合検証
+                runner.assertTrue(efficiencyResult.isUnderdog, '穴馬として認識される');
+                runner.assertEqual(underdogCandidates.length, 1, '穴馬候補として抽出される');
+                runner.assertGreaterThan(efficiencyResult.underdogBonus, 0, '穴馬ボーナスが付与される');
+                
+                const profitData = ProfitabilityMetrics.getProfitabilityData();
+                runner.assertGreaterThan(profitData.coreMetrics.roi, 0, 'ROIがプラス');
+            });
+            
+            // テスト結果を表示
+            runner.displayResults();
+        });
+    </script>
+</body>
+</html>

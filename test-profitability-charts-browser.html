@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TDD Green Phase: 収益性グラフ ブラウザテスト</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .test-passed { color: green; font-weight: bold; }
+        .test-failed { color: red; font-weight: bold; }
+        .test-result { margin: 5px 0; padding: 3px; }
+        .summary { background: #f0f0f0; padding: 15px; border-radius: 5px; margin-top: 20px; }
+        #learningGraphsSection { margin-top: 20px; }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <h1>🟢 TDD Green Phase: 収益性グラフシステム検証</h1>
+    
+    <div id="test-container"></div>
+    <div class="summary" id="test-summary"></div>
+    
+    <!-- グラフ表示エリア -->
+    <div id="learningGraphsSection"></div>
+    
+    <!-- 必要なスクリプト読み込み -->
+    <script src="js/config.js"></script>
+    <script src="js/profitabilityMetrics.js"></script>
+    <script src="js/investmentEfficiencyCalculator.js"></script>
+    <script src="js/underdogDiscoveryAlgorithm.js"></script>
+    <script src="js/riskReturnAnalyzer.js"></script>
+    <script src="js/profitabilityVisualizationSystem.js"></script>
+    
+    <script>
+        // テスト実行エンジン
+        class BrowserTDDTest {
+            constructor() {
+                this.passed = 0;
+                this.failed = 0;
+                this.total = 0;
+                this.results = [];
+            }
+            
+            test(name, testFunction) {
+                this.total++;
+                try {
+                    const result = testFunction();
+                    if (result !== false) {
+                        this.results.push({ name, status: 'PASSED', message: 'テスト成功' });
+                        this.passed++;
+                        return true;
+                    } else {
+                        this.results.push({ name, status: 'FAILED', message: 'テスト失敗' });
+                        this.failed++;
+                        return false;
+                    }
+                } catch (error) {
+                    this.results.push({ name, status: 'ERROR', message: error.message });
+                    this.failed++;
+                    return false;
+                }
+            }
+            
+            assertEqual(actual, expected, message = '') {
+                if (actual !== expected) {
+                    throw new Error(`${message} - Expected: ${expected}, Actual: ${actual}`);
+                }
+            }
+            
+            assertTrue(condition, message = '') {
+                if (!condition) {
+                    throw new Error(`${message} - Expected: true, Actual: ${condition}`);
+                }
+            }
+            
+            displayResults() {
+                const container = document.getElementById('test-container');
+                const summary = document.getElementById('test-summary');
+                
+                let html = '';
+                let currentSection = '';
+                
+                this.results.forEach(result => {
+                    const statusClass = result.status === 'PASSED' ? 'test-passed' : 'test-failed';
+                    const icon = result.status === 'PASSED' ? '✅' : '❌';
+                    
+                    html += `
+                        <div class="test-result ${statusClass}">
+                            ${icon} ${result.name}: ${result.message}
+                        </div>
+                    `;
+                });
+                
+                container.innerHTML = html;
+                
+                const successRate = ((this.passed / this.total) * 100).toFixed(1);
+                summary.innerHTML = `
+                    <h3>📊 TDD Green Phase テスト結果</h3>
+                    <p><strong>成功: ${this.passed}/${this.total} (${successRate}%)</strong></p>
+                    <p>失敗: ${this.failed}</p>
+                    ${this.passed === this.total ? 
+                        '<p style="color: green; font-weight: bold;">🎉 すべてのテストが成功しました！TDD Green Phase完了！</p>' : 
+                        '<p style="color: red; font-weight: bold;">⚠️ 一部テストが失敗しました。</p>'
+                    }
+                `;
+                
+                return this.passed === this.total;
+            }
+        }
+        
+        // テスト実行
+        document.addEventListener('DOMContentLoaded', () => {
+            const tdd = new BrowserTDDTest();
+            
+            console.log('=== TDD Green Phase: ブラウザ環境テスト開始 ===');
+            
+            // 1. 基本クラステスト
+            tdd.test('ProfitabilityVisualizationSystemクラス存在', () => {
+                tdd.assertTrue(typeof ProfitabilityVisualizationSystem !== 'undefined', 'クラスが定義されている');
+                tdd.assertTrue(ProfitabilityVisualizationSystem.charts instanceof Map, 'chartsプロパティがMap');
+                tdd.assertTrue(typeof ProfitabilityVisualizationSystem.config === 'object', 'configプロパティがオブジェクト');
+            });
+            
+            tdd.test('Chart.js読み込み確認', () => {
+                tdd.assertTrue(typeof Chart !== 'undefined', 'Chart.jsが読み込まれている');
+                tdd.assertTrue(typeof Chart.register === 'function', 'Chart.js API利用可能');
+            });
+            
+            tdd.test('依存システム読み込み確認', () => {
+                tdd.assertTrue(typeof ProfitabilityMetrics !== 'undefined', 'ProfitabilityMetrics読み込み済み');
+                tdd.assertTrue(typeof InvestmentEfficiencyCalculator !== 'undefined', 'InvestmentEfficiencyCalculator読み込み済み');
+                tdd.assertTrue(typeof UnderdogDiscoveryAlgorithm !== 'undefined', 'UnderdogDiscoveryAlgorithm読み込み済み');
+                tdd.assertTrue(typeof RiskReturnAnalyzer !== 'undefined', 'RiskReturnAnalyzer読み込み済み');
+            });
+            
+            // 2. データ処理テスト
+            tdd.test('収益性データ取得機能', () => {
+                const data = ProfitabilityVisualizationSystem.getProfitabilityChartData();
+                tdd.assertTrue(data !== undefined, 'データが取得される');
+                tdd.assertTrue(data.timeSeriesData !== undefined, '時系列データ構造');
+                tdd.assertTrue(Array.isArray(data.timeSeriesData.dailyProfits), '日別データが配列');
+            });
+            
+            tdd.test('ROI時系列変換機能', () => {
+                const testData = {
+                    timeSeriesData: {
+                        dailyProfits: [
+                            { date: '2024-01-01', roi: 100 },
+                            { date: '2024-01-02', roi: -50 },
+                            { date: '2024-01-03', roi: 75 }
+                        ]
+                    }
+                };
+                
+                const chartData = ProfitabilityVisualizationSystem.convertToROITimeSeriesData(testData);
+                
+                tdd.assertEqual(chartData.labels.length, 3, 'ラベル数が正しい');
+                tdd.assertEqual(chartData.datasets[0].data.length, 3, 'データ数が正しい');
+                tdd.assertTrue(chartData.datasets[0].data.includes(100), 'ROIデータが含まれる');
+            });
+            
+            tdd.test('穴馬効率データ変換機能', () => {
+                const testData = {
+                    medium: { range: '3.1-7.0倍', roi: 15.5, hitRate: 0.25 },
+                    high: { range: '7.1-15.0倍', roi: 45.2, hitRate: 0.15 }
+                };
+                
+                const chartData = ProfitabilityVisualizationSystem.convertToUnderdogBarData(testData);
+                
+                tdd.assertEqual(chartData.labels.length, 2, 'カテゴリ数が正しい');
+                tdd.assertTrue(chartData.datasets[0].data.includes(15.5), 'ROIデータが含まれる');
+            });
+            
+            // 3. UI統合テスト
+            tdd.test('ダッシュボード作成機能', () => {
+                ProfitabilityVisualizationSystem.createProfitabilityDashboard();
+                
+                const section = document.getElementById('learningGraphsSection');
+                tdd.assertTrue(section.innerHTML.includes('収益性分析ダッシュボード'), 'ダッシュボードタイトル');
+                tdd.assertTrue(section.innerHTML.includes('roiChart'), 'ROIチャートキャンバス');
+                tdd.assertTrue(section.innerHTML.includes('underdogChart'), '穴馬チャートキャンバス');
+                tdd.assertTrue(section.innerHTML.includes('riskReturnChart'), 'リスク・リターンチャート');
+                tdd.assertTrue(section.innerHTML.includes('efficiencyChart'), '投資効率チャート');
+            });
+            
+            // 4. 実際のチャート作成テスト
+            tdd.test('ROI推移グラフ作成（実際のChart.js）', () => {
+                const chart = ProfitabilityVisualizationSystem.createROITrendChart();
+                tdd.assertTrue(chart !== undefined, 'チャートオブジェクトが返される');
+                
+                // Chart.jsチャートかMockチャートかを確認
+                if (chart.type !== 'mock') {
+                    tdd.assertTrue(chart.config !== undefined, 'Chart.js設定が存在');
+                    tdd.assertEqual(chart.config.type, 'line', 'グラフタイプが線グラフ');
+                }
+            });
+            
+            tdd.test('穴馬効率グラフ作成（実際のChart.js）', () => {
+                const chart = ProfitabilityVisualizationSystem.createUnderdogEfficiencyChart();
+                tdd.assertTrue(chart !== undefined, 'チャートオブジェクトが返される');
+                
+                if (chart.type !== 'mock') {
+                    tdd.assertEqual(chart.config.type, 'bar', 'グラフタイプが棒グラフ');
+                }
+            });
+            
+            tdd.test('リスク・リターン散布図作成', () => {
+                const chart = ProfitabilityVisualizationSystem.createRiskReturnScatterChart();
+                tdd.assertTrue(chart !== undefined, 'チャートオブジェクトが返される');
+                
+                if (chart.type !== 'mock') {
+                    tdd.assertEqual(chart.config.type, 'scatter', 'グラフタイプが散布図');
+                }
+            });
+            
+            tdd.test('投資効率スコア散布図作成', () => {
+                const chart = ProfitabilityVisualizationSystem.createEfficiencyScatterChart();
+                tdd.assertTrue(chart !== undefined, 'チャートオブジェクトが返される');
+                
+                if (chart.type !== 'mock') {
+                    tdd.assertEqual(chart.config.type, 'scatter', 'グラフタイプが散布図');
+                }
+            });
+            
+            // 5. ユーティリティ機能テスト
+            tdd.test('ROI色分け機能', () => {
+                const colors = ProfitabilityVisualizationSystem.config.colors;
+                
+                tdd.assertEqual(ProfitabilityVisualizationSystem.getColorByROI(75), colors.excellent, '75%は優秀色');
+                tdd.assertEqual(ProfitabilityVisualizationSystem.getColorByROI(25), colors.good, '25%は良好色');
+                tdd.assertEqual(ProfitabilityVisualizationSystem.getColorByROI(-10), colors.poor, '-10%は不良色');
+            });
+            
+            tdd.test('カスタムツールチップ機能', () => {
+                const context = { parsed: { y: 25.5, x: 10.2 } };
+                
+                const roiTooltip = ProfitabilityVisualizationSystem.customTooltipFormatter(context, 'ROI');
+                const efficiencyTooltip = ProfitabilityVisualizationSystem.customTooltipFormatter(context, '投資効率');
+                
+                tdd.assertTrue(roiTooltip.includes('25.5%'), 'ROIツールチップ形式');
+                tdd.assertTrue(efficiencyTooltip.includes('26点'), '投資効率ツールチップ形式');
+            });
+            
+            // 6. 統合システムテスト
+            tdd.test('収益性データとの統合', () => {
+                // テスト用賭け結果を記録
+                const betResult = {
+                    horseNumber: '1',
+                    horseName: 'TDDテスト馬',
+                    odds: 12.0,
+                    popularity: 8,
+                    betType: '単勝',
+                    betAmount: 1000,
+                    isHit: true,
+                    returnAmount: 12000
+                };
+                
+                ProfitabilityMetrics.recordBetResult(betResult);
+                
+                // データを取得してグラフに反映
+                const chartData = ProfitabilityVisualizationSystem.getProfitabilityChartData();
+                tdd.assertTrue(chartData.investment.totalProfit > 0, '利益が記録されている');
+                
+                // グラフ更新
+                ProfitabilityVisualizationSystem.refreshAllCharts();
+                tdd.assertTrue(true, 'データ統合とグラフ更新が成功');
+            });
+            
+            tdd.test('初期化・更新・破棄サイクル', () => {
+                // 初期化
+                ProfitabilityVisualizationSystem.initialize();
+                tdd.assertTrue(ProfitabilityVisualizationSystem.isInitialized, '初期化完了');
+                
+                // チャート作成
+                ProfitabilityVisualizationSystem.refreshAllCharts();
+                tdd.assertTrue(ProfitabilityVisualizationSystem.charts.size > 0, 'チャートが作成される');
+                
+                // 統計サマリー更新
+                ProfitabilityVisualizationSystem.updateProfitabilitySummary();
+                const summaryElement = document.getElementById('profitabilitySummary');
+                tdd.assertTrue(summaryElement.innerHTML.includes('現在ROI'), '統計サマリー更新');
+                
+                // 破棄
+                ProfitabilityVisualizationSystem.destroy();
+                tdd.assertTrue(!ProfitabilityVisualizationSystem.isInitialized, '破棄完了');
+            });
+            
+            // 7. エクスポート機能テスト
+            tdd.test('CSV出力機能（ブラウザ環境）', () => {
+                // テスト時は自動ダウンロードを無効化
+                const csvData = ProfitabilityVisualizationSystem.exportToCSV(false);
+                
+                tdd.assertTrue(typeof csvData === 'string', 'CSV文字列返却');
+                tdd.assertTrue(csvData.includes('日付,ROI(%),利益(円),的中率(%)'), 'CSVヘッダー');
+                tdd.assertTrue(csvData.split('\n').length > 1, '複数行データ');
+            });
+            
+            // 8. レスポンシブ対応テスト
+            tdd.test('レスポンシブ制御機能', () => {
+                // ウィンドウサイズ変更をシミュレート
+                ProfitabilityVisualizationSystem.handleResize();
+                tdd.assertTrue(true, 'リサイズ処理でエラーなし');
+                
+                // デバウンシング機能
+                ProfitabilityVisualizationSystem.debouncedUpdate();
+                tdd.assertTrue(true, 'デバウンシング処理でエラーなし');
+            });
+            
+            // テスト結果表示
+            const success = tdd.displayResults();
+            
+            if (success) {
+                console.log('🎉 TDD Green Phase完了！すべてのテストが成功しました！');
+                
+                // 成功時はシステムを再初期化して実際のグラフを表示
+                setTimeout(() => {
+                    ProfitabilityVisualizationSystem.initialize();
+                    console.log('💎 収益性グラフシステムが稼働中です');
+                }, 1000);
+            } else {
+                console.log('⚠️ 一部テストが失敗しました。');
+            }
+        });
+    </script>
+</body>
+</html>
