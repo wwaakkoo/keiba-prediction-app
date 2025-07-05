@@ -973,3 +973,6 @@ class PedigreeDatabase {
         return Math.round(ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length * 10) / 10;
     }
 }
+
+// グローバル公開
+window.PedigreeDatabase = PedigreeDatabase;

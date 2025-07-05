@@ -2148,6 +2148,8 @@ class HorseManager {
 
 // グローバル関数として公開
 window.addHorse = HorseManager.addHorse.bind(HorseManager);
+// グローバル公開
+window.HorseManager = HorseManager;
 window.removeHorse = HorseManager.removeHorse.bind(HorseManager);
 window.clearAllHorses = HorseManager.clearAllHorses.bind(HorseManager);
 window.addSampleHorses = HorseManager.addSampleHorses.bind(HorseManager);

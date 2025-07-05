@@ -1365,6 +1365,8 @@ class LearningSystem {
 
 // グローバル関数として公開
 window.processRaceResult = LearningSystem.processRaceResult.bind(LearningSystem);
+// グローバル公開
+window.LearningSystem = LearningSystem;
 window.showLearningStats = LearningSystem.showLearningStats.bind(LearningSystem);
 window.resetLearningData = LearningSystem.resetLearningData.bind(LearningSystem);
 window.saveLearningData = LearningSystem.saveLearningData.bind(LearningSystem);

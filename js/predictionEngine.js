@@ -2151,6 +2151,8 @@ class PredictionEngine {
     }
 }
 
-// グローバル関数として公開
+// グローバル公開
+window.PredictionEngine = PredictionEngine;
 window.calculatePredictions = PredictionEngine.calculatePredictions.bind(PredictionEngine);
-window.getAIRecommendation = PredictionEngine.requestAIRecommendation.bind(PredictionEngine); console.log('勝率正規化機能が追加されました。勝率合計が100%になるように自動調整されます。');
+window.getAIRecommendation = PredictionEngine.requestAIRecommendation.bind(PredictionEngine); 
+console.log('勝率正規化機能が追加されました。勝率合計が100%になるように自動調整されます。');

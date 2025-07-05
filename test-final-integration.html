@@ -208,7 +208,7 @@
                     
                     const result = ProfitabilityMetrics.recordBetResult(testBet);
                     if (result) {
-                        results.push(`<div class="status success">✅ 統合データ記録成功 (ROI: ${result.analysis.roi.toFixed(1)}%)</div>`);
+                        results.push(`<div class="status success">✅ 統合データ記録成功 (ROI: ${result.summary.roi.toFixed(1)}%)</div>`);
                     }
                 }
 
@@ -296,7 +296,7 @@
                         { name: 'テスト馬γ', score: 65 }
                     ];
                     
-                    const learningResult = EnhancedLearningSystem.processLearning(testResults, testPredictions);
+                    const learningResult = EnhancedLearningSystem.processEnhancedRaceResult(testResults, testPredictions, {});
                     if (learningResult) {
                         results.push('<div class="status success">✅ 強化学習システム動作確認</div>');
                     }
