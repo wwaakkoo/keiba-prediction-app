@@ -392,13 +392,35 @@ class PredictionEngine {
             const winExpectedValue = (winProbability / 100 * horse.odds - 1);
             const placeExpectedValue = (placeProbability / 100 * placeOdds - 1);
 
+            // 投資効率計算の統合
+            let investmentEfficiency = null;
+            if (typeof InvestmentEfficiencyCalculator !== 'undefined') {
+                const betData = {
+                    odds: horse.odds,
+                    winProbability: winProbability / 100,
+                    betAmount: 1000, // 標準賭け金
+                    confidence: Math.min(0.9, Math.max(0.1, score / 100)),
+                    popularity: estimatePopularityFromOdds(horse.odds)
+                };
+                
+                investmentEfficiency = InvestmentEfficiencyCalculator.calculateSingleBetEfficiency(betData);
+            }
+
             return {
                 ...horse,
                 score: Math.round(score * 10) / 10,
                 winProbability: Math.round(winProbability * 10) / 10,
                 placeProbability: Math.round(placeProbability * 10) / 10,
                 winExpectedValue: Math.round(winExpectedValue * 100) / 100,
-                placeExpectedValue: Math.round(placeExpectedValue * 100) / 100
+                placeExpectedValue: Math.round(placeExpectedValue * 100) / 100,
+                // 投資効率情報を追加
+                investmentEfficiency: investmentEfficiency,
+                efficiencyScore: investmentEfficiency ? investmentEfficiency.efficiencyScore : null,
+                investmentGrade: investmentEfficiency ? investmentEfficiency.investmentGrade : null,
+                isUnderdog: investmentEfficiency ? investmentEfficiency.isUnderdog : false,
+                underdogBonus: investmentEfficiency ? investmentEfficiency.underdogBonus : 0,
+                kellyFraction: investmentEfficiency ? investmentEfficiency.kellyFraction : 0,
+                optimalBetAmount: investmentEfficiency ? investmentEfficiency.optimalBetAmount : 0
             };
         });
         
@@ -416,6 +438,26 @@ class PredictionEngine {
                 
                 // 期待値も再計算
                 prediction.winExpectedValue = Math.round((prediction.winProbability / 100 * prediction.odds - 1) * 100) / 100;
+                
+                // 投資効率も再計算
+                if (typeof InvestmentEfficiencyCalculator !== 'undefined' && prediction.investmentEfficiency) {
+                    const updatedBetData = {
+                        odds: prediction.odds,
+                        winProbability: prediction.winProbability / 100,
+                        betAmount: 1000,
+                        confidence: Math.min(0.9, Math.max(0.1, prediction.score / 100)),
+                        popularity: estimatePopularityFromOdds(prediction.odds)
+                    };
+                    
+                    const updatedEfficiency = InvestmentEfficiencyCalculator.calculateSingleBetEfficiency(updatedBetData);
+                    prediction.investmentEfficiency = updatedEfficiency;
+                    prediction.efficiencyScore = updatedEfficiency.efficiencyScore;
+                    prediction.investmentGrade = updatedEfficiency.investmentGrade;
+                    prediction.isUnderdog = updatedEfficiency.isUnderdog;
+                    prediction.underdogBonus = updatedEfficiency.underdogBonus;
+                    prediction.kellyFraction = updatedEfficiency.kellyFraction;
+                    prediction.optimalBetAmount = updatedEfficiency.optimalBetAmount;
+                }
                 
                 console.log(`${prediction.name}: ${originalWinProb.toFixed(1)}% → ${prediction.winProbability}%`);
             });
@@ -540,6 +582,18 @@ class PredictionEngine {
                 sortedPredictions = [...this.currentPredictions].sort((a, b) => a.odds - b.odds);
                 sortTitle = '💰 オッズ順（人気順）';
                 break;
+            case 'efficiency':
+                sortedPredictions = [...this.currentPredictions].sort((a, b) => (b.efficiencyScore || 0) - (a.efficiencyScore || 0));
+                sortTitle = '💎 投資効率順';
+                break;
+            case 'underdog':
+                sortedPredictions = [...this.currentPredictions].sort((a, b) => {
+                    if (a.isUnderdog && !b.isUnderdog) return -1;
+                    if (!a.isUnderdog && b.isUnderdog) return 1;
+                    return (b.efficiencyScore || 0) - (a.efficiencyScore || 0);
+                });
+                sortTitle = '🐎 穴馬候補順';
+                break;
             default:
                 sortedPredictions = [...this.currentPredictions].sort((a, b) => b.score - a.score);
                 sortTitle = '🏆 スコア順';
@@ -553,15 +607,33 @@ class PredictionEngine {
             html += '<p style="color: #f57c00; font-weight: bold; margin-bottom: 15px;">📊 複勝予測上位3頭</p>';
         }
         
+        // 穴馬候補順の場合は説明を追加（Phase 4追加）
+        if (sortBy === 'underdog') {
+            html += '<p style="color: #4caf50; font-weight: bold; margin-bottom: 15px;">🐎💎 穴馬候補が上位表示されています（緑色背景 = 穴馬候補）</p>';
+        }
+        
+        // 投資効率順の場合は説明を追加
+        if (sortBy === 'efficiency') {
+            html += '<p style="color: #2196f3; font-weight: bold; margin-bottom: 15px;">💎 投資効率スコア順表示（効率重視選択）</p>';
+        }
+        
         sortedPredictions.forEach((horse, index) => {
             const confidence = horse.score >= CONFIG.SCORE_RANGES.HIGH ? 'high' : 
                              horse.score >= CONFIG.SCORE_RANGES.MEDIUM ? 'medium' : 'low';
             
             // 複勝率順で上位3頭の場合は特別な背景色
             const isTopThreePlace = sortBy === 'place' && index < 3;
-            const extraStyle = isTopThreePlace ? 'background: linear-gradient(135deg, #fff3e0, #ffe0b2); border: 2px solid #ff9800;' : '';
+            // 穴馬候補の場合は特別な背景色とスタイル（Phase 4追加）
+            const isUnderdog = horse.isUnderdog;
+            let extraStyle = '';
+            if (isTopThreePlace) {
+                extraStyle = 'background: linear-gradient(135deg, #fff3e0, #ffe0b2); border: 2px solid #ff9800;';
+            } else if (isUnderdog) {
+                extraStyle = 'background: linear-gradient(135deg, #e8f5e8, #c8e6c9); border: 2px solid #4caf50; box-shadow: 0 0 10px rgba(76, 175, 80, 0.3);';
+            }
             
             const horseNumberDisplay = horse.horseNumber ? `${horse.horseNumber}番 ` : '';
+            const underdogIcon = isUnderdog ? ' 🐎💎' : '';
             
             // 血統情報の表示文字列を生成（強化版・エラーハンドリング対応）
             let pedigreeInfo = '';
@@ -633,11 +705,12 @@ class PredictionEngine {
             
             html += `
                 <div class="result-item confidence-${confidence}" style="${extraStyle}">
-                    <div><strong>${index + 1}位: ${horseNumberDisplay}${horse.name}${isTopThreePlace ? ' ⭐' : ''}</strong></div>
+                    <div><strong>${index + 1}位: ${horseNumberDisplay}${horse.name}${isTopThreePlace ? ' ⭐' : ''}${underdogIcon}</strong></div>
                     <div>スコア: ${horse.score}</div>
                     <div>勝率: ${horse.winProbability}%</div>
                     <div>複勝率: ${horse.placeProbability}%</div>
                     <div>オッズ: ${horse.odds}倍</div>
+                    ${this.generateInvestmentEfficiencyDisplay(horse)}
                     ${pedigreeInfo}
                 </div>
             `;
@@ -649,6 +722,122 @@ class PredictionEngine {
 
     static changeSortOrder(sortBy) {
         this.renderSortedResults(sortBy);
+    }
+
+    // 投資効率情報の表示HTML生成
+    static generateInvestmentEfficiencyDisplay(horse) {
+        try {
+            if (!horse.investmentEfficiency) {
+                return '';
+            }
+            
+            const efficiency = horse.investmentEfficiency;
+            if (!efficiency || typeof efficiency !== 'object') {
+                return '';
+            }
+            
+            const gradeColor = this.getInvestmentGradeColor(efficiency.investmentGrade || 'C');
+            
+            let html = '<div class="investment-efficiency" style="background: rgba(33, 150, 243, 0.1); padding: 8px; margin: 5px 0; border-radius: 5px; border-left: 4px solid #2196f3;">';
+            
+            // 投資効率スコアとグレード
+            const score = efficiency.efficiencyScore || 0;
+            const grade = efficiency.investmentGrade || 'C';
+            html += `<div style="font-weight: bold; color: ${gradeColor};">💰 効率: ${score.toFixed(1)} (${grade})</div>`;
+            
+            // 穴馬判定
+            if (efficiency.isUnderdog) {
+                const bonus = efficiency.underdogBonus || 0;
+                html += `<div style="color: #ff9800; font-weight: bold;">🐎 穴馬候補 (+${bonus})</div>`;
+            }
+            
+            // オッズ帯別推奨度表示（Phase 4追加）
+            const oddsRecommendation = this.getOddsRecommendation(horse.odds, efficiency.isUnderdog);
+            if (oddsRecommendation) {
+                html += `<div style="color: ${oddsRecommendation.color}; font-size: 0.9em;">${oddsRecommendation.icon} ${oddsRecommendation.text}</div>`;
+            }
+            
+            // ケリー基準
+            const kellyFraction = efficiency.kellyFraction || 0;
+            if (kellyFraction > 0) {
+                html += `<div>📊 ケリー: ${(kellyFraction * 100).toFixed(1)}%</div>`;
+                const optimalAmount = efficiency.optimalBetAmount || 0;
+                if (optimalAmount > 0) {
+                    html += `<div>💡 推奨額: ${Math.round(optimalAmount).toLocaleString()}円</div>`;
+                }
+            }
+            
+            html += '</div>';
+            return html;
+        } catch (error) {
+            console.error('投資効率表示エラー:', error);
+            return '<div style="color: #dc3545; font-size: 0.9em;">💰 効率データ取得エラー</div>';
+        }
+    }
+    
+    // オッズ帯別推奨度を取得（Phase 4追加）
+    static getOddsRecommendation(odds, isUnderdog) {
+        if (odds <= 3.0) {
+            return {
+                icon: '🔥',
+                text: '人気馬ゾーン',
+                color: '#f44336'
+            };
+        } else if (odds <= 7.0) {
+            return {
+                icon: '⚡',
+                text: '中堅ゾーン',
+                color: '#ff9800'
+            };
+        } else if (odds <= 15.0) {
+            if (isUnderdog) {
+                return {
+                    icon: '💎',
+                    text: '狙い目ゾーン',
+                    color: '#4caf50'
+                };
+            } else {
+                return {
+                    icon: '📈',
+                    text: '中穴ゾーン',
+                    color: '#2196f3'
+                };
+            }
+        } else if (odds <= 30.0) {
+            if (isUnderdog) {
+                return {
+                    icon: '🎯',
+                    text: '大穴狙いゾーン',
+                    color: '#9c27b0'
+                };
+            } else {
+                return {
+                    icon: '🎲',
+                    text: '大穴ゾーン',
+                    color: '#607d8b'
+                };
+            }
+        } else {
+            return {
+                icon: '💥',
+                text: '超大穴ゾーン',
+                color: '#795548'
+            };
+        }
+    }
+    
+    // 投資グレードに応じた色を取得
+    static getInvestmentGradeColor(grade) {
+        switch(grade) {
+            case 'AAA': return '#d4af37'; // ゴールド
+            case 'AA': return '#e74c3c'; // 赤
+            case 'A': return '#ff9800'; // オレンジ
+            case 'BBB': return '#2196f3'; // 青
+            case 'BB': return '#4caf50'; // 緑
+            case 'B': return '#9c27b0'; // 紫
+            case 'CCC': case 'CC': case 'C': return '#6c757d'; // グレー
+            default: return '#6c757d'; // デフォルトグレー
+        }
     }
 
     // 血統グレードに応じた色を取得
