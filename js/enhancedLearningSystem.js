@@ -1124,7 +1124,8 @@ class EnhancedLearningSystem {
         results.patterns.combination = `複合パターン${combinationKey}を記録`;
         
         // 2. 失敗パターンの記録（予測されたが当たらなかった馬）
-        predictions.slice(0, 3).forEach((prediction, index) => {
+        if (predictions && Array.isArray(predictions)) {
+            predictions.slice(0, 3).forEach((prediction, index) => {
             if (prediction.name !== winner.name) {
                 if (prediction.sire) {
                     this.updateSuccessPattern(successPatterns.pedigree, prediction.sire, false);
@@ -1133,7 +1134,8 @@ class EnhancedLearningSystem {
                     this.updateSuccessPattern(successPatterns.runningStyle, prediction.runningStyle, false);
                 }
             }
-        });
+            });
+        }
         
         return results;
     }
@@ -1772,9 +1774,11 @@ class EnhancedLearningSystem {
         }
         
         // 3着以内的中判定
-        const top3Names = actualResults.allResults.slice(0, 3).map(h => h.name);
-        if (top3Names.includes(predictions[0].name)) {
-            accuracy.placePredictions++;
+        if (actualResults.allResults && Array.isArray(actualResults.allResults)) {
+            const top3Names = actualResults.allResults.slice(0, 3).map(h => h.name);
+            if (top3Names.includes(predictions[0].name)) {
+                accuracy.placePredictions++;
+            }
         }
         
         accuracy.winRate = accuracy.winPredictions / accuracy.totalPredictions;
