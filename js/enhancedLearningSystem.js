@@ -1103,7 +1103,7 @@ class EnhancedLearningSystem {
         const winner = actualResults.winner;
         
         // 1. 成功パターンの記録
-        const winnerKey = this.generatePatternKey(winner);
+        const winnerKey = `${winner.name}_${winner.sire || '不明'}_${winner.runningStyle || '不明'}`;
         const successPatterns = this.learningData.successPatterns;
         
         // 血統パターン学習
@@ -1844,6 +1844,15 @@ class EnhancedLearningSystem {
             }));
             
         return topPedigrees;
+    }
+    
+    // オブジェクトをMapに変換するヘルパー関数
+    static convertObjectToMap(obj, targetMap) {
+        if (obj && typeof obj === 'object') {
+            Object.entries(obj).forEach(([key, value]) => {
+                targetMap.set(key, value);
+            });
+        }
     }
 }
 
