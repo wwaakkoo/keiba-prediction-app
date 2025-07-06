@@ -1479,15 +1479,24 @@ class LearningSystem {
     
     // 穴馬候補見落とし学習
     static learnSleeperOversights(predictions, actualTop3, recommendedSleeper, expandedLearning) {
+        console.log('=== 見落とし学習開始 ===');
+        console.log('推奨穴馬:', recommendedSleeper);
+        console.log('実際の上位3頭:', actualTop3.map(h => h.name));
+        
         // 緑背景表示馬（穴馬候補）のうち、推奨されなかった馬を分析
         const underdogCandidates = predictions.filter(horse => 
             horse.isUnderdog && // 緑背景表示（穴馬候補）
             horse.name !== recommendedSleeper // 推奨されなかった馬
         );
         
+        console.log('穴馬候補数:', underdogCandidates.length);
+        console.log('穴馬候補:', underdogCandidates.map(h => `${h.name}(${h.odds}倍,穴馬:${h.isUnderdog})`));
+        
         underdogCandidates.forEach(horse => {
             const isHit = actualTop3.some(topHorse => topHorse.name === horse.name);
             const position = isHit ? actualTop3.findIndex(h => h.name === horse.name) + 1 : null;
+            
+            console.log(`${horse.name}: 的中=${isHit}, オッズ=${horse.odds}, 高オッズ条件=${horse.odds >= 15}`);
             
             // 高オッズ（15倍以上）で的中した場合は重要な見落としとして記録
             if (isHit && horse.odds >= 15) {
@@ -1508,6 +1517,8 @@ class LearningSystem {
                         date: new Date().toISOString().split('T')[0]
                     });
                 });
+                
+                console.log(`✅ 見落とし学習記録: ${horse.name} (${horse.odds}倍) → ${position}着`);
                 
                 // 学習パターンを記録
                 const pattern = {
