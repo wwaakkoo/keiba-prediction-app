@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔍 収益性グラフデバッグテスト</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; }
+        .test-section { background: #f8f9fa; padding: 15px; margin: 15px 0; border-radius: 8px; border-left: 4px solid #dc3545; }
+        .success { color: #28a745; font-weight: bold; }
+        .error { color: #dc3545; font-weight: bold; }
+        .warning { color: #ffc107; font-weight: bold; }
+        .code-block { background: #f8f9fa; padding: 10px; margin: 10px 0; border-radius: 5px; font-family: monospace; font-size: 12px; border: 1px solid #dee2e6; }
+        button { padding: 10px 15px; margin: 5px; border: none; border-radius: 5px; cursor: pointer; background: #007bff; color: white; }
+        .btn-danger { background: #dc3545; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 収益性グラフデバッグテスト</h1>
+        
+        <div class="test-section">
+            <h2>❌ 確認された問題</h2>
+            <ul>
+                <li class="error">リスクリターンチャート: 何も表示されない</li>
+                <li class="error">投資効率グラフ: デフォルト値から変わらない</li>
+            </ul>
+        </div>
+        
+        <div class="test-section">
+            <h2>🔧 デバッグテスト</h2>
+            
+            <h3>1. ProfitabilityVisualizationSystem 存在確認</h3>
+            <button onclick="testSystemExistence()">システム存在確認</button>
+            <div id="system-test-result"></div>
+            
+            <h3>2. データ取得関数確認</h3>
+            <button onclick="testDataFunctions()">データ関数確認</button>
+            <div id="data-test-result"></div>
+            
+            <h3>3. Chart.js 利用可能性確認</h3>
+            <button onclick="testChartJS()">Chart.js確認</button>
+            <div id="chartjs-test-result"></div>
+            
+            <h3>4. HTML要素確認</h3>
+            <button onclick="testHTMLElements()">HTML要素確認</button>
+            <div id="html-test-result"></div>
+            
+            <h3>5. 関数実行テスト</h3>
+            <button onclick="testFunctionExecution()">関数実行テスト</button>
+            <div id="function-test-result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>🚀 手動テスト</h2>
+            <button onclick="manualTestRiskReturn()">リスクリターンチャート手動作成</button>
+            <button onclick="manualTestEfficiency()">投資効率チャート手動作成</button>
+            <div id="manual-test-result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>📊 問題分析結果</h2>
+            <div id="analysis-result">
+                <div class="code-block">
+                    分析実行中...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 1. システム存在確認
+        function testSystemExistence() {
+            const result = document.getElementById('system-test-result');
+            let output = '<h4>システム存在確認結果</h4>';
+            
+            const tests = [
+                { name: 'ProfitabilityVisualizationSystem', check: () => typeof ProfitabilityVisualizationSystem !== 'undefined' },
+                { name: 'showProfitabilityDashboard', check: () => typeof showProfitabilityDashboard !== 'undefined' },
+                { name: 'Chart', check: () => typeof Chart !== 'undefined' },
+                { name: 'RiskReturnAnalyzer', check: () => typeof RiskReturnAnalyzer !== 'undefined' },
+                { name: 'InvestmentEfficiencyCalculator', check: () => typeof InvestmentEfficiencyCalculator !== 'undefined' }
+            ];
+            
+            tests.forEach(test => {
+                const exists = test.check();
+                const statusClass = exists ? 'success' : 'error';
+                const statusIcon = exists ? '✅' : '❌';
+                output += `<div class="${statusClass}">${statusIcon} ${test.name}: ${exists ? '存在' : '未定義'}</div>`;
+            });
+            
+            result.innerHTML = output;
+        }
+        
+        // 2. データ取得関数確認
+        function testDataFunctions() {
+            const result = document.getElementById('data-test-result');
+            let output = '<h4>データ関数確認結果</h4>';
+            
+            try {
+                if (typeof ProfitabilityVisualizationSystem !== 'undefined') {
+                    const methods = [
+                        'getRiskReturnData',
+                        'getInvestmentEfficiencyData',
+                        'getProfitabilityChartData',
+                        'createRiskReturnScatterChart',
+                        'createEfficiencyScatterChart'
+                    ];
+                    
+                    methods.forEach(method => {
+                        const exists = typeof ProfitabilityVisualizationSystem[method] === 'function';
+                        const statusClass = exists ? 'success' : 'error';
+                        const statusIcon = exists ? '✅' : '❌';
+                        output += `<div class="${statusClass}">${statusIcon} ${method}: ${exists ? '定義済み' : '未定義'}</div>`;
+                    });
+                } else {
+                    output += '<div class="error">❌ ProfitabilityVisualizationSystemが未定義</div>';
+                }
+            } catch (error) {
+                output += `<div class="error">❌ エラー: ${error.message}</div>`;
+            }
+            
+            result.innerHTML = output;
+        }
+        
+        // 3. Chart.js確認
+        function testChartJS() {
+            const result = document.getElementById('chartjs-test-result');
+            let output = '<h4>Chart.js確認結果</h4>';
+            
+            if (typeof Chart !== 'undefined') {
+                output += '<div class="success">✅ Chart.js利用可能</div>';
+                output += `<div class="success">✅ バージョン: ${Chart.version || '不明'}</div>`;
+            } else {
+                output += '<div class="error">❌ Chart.js未読み込み</div>';
+            }
+            
+            result.innerHTML = output;
+        }
+        
+        // 4. HTML要素確認
+        function testHTMLElements() {
+            const result = document.getElementById('html-test-result');
+            let output = '<h4>HTML要素確認結果</h4>';
+            
+            const elements = [
+                'profitabilityDashboard',
+                'riskReturnChart',
+                'efficiencyChart',
+                'learningGraphsSection'
+            ];
+            
+            elements.forEach(id => {
+                const element = document.getElementById(id);
+                const exists = element !== null;
+                const statusClass = exists ? 'success' : 'error';
+                const statusIcon = exists ? '✅' : '❌';
+                output += `<div class="${statusClass}">${statusIcon} ${id}: ${exists ? '存在' : '未発見'}</div>`;
+            });
+            
+            result.innerHTML = output;
+        }
+        
+        // 5. 関数実行テスト
+        function testFunctionExecution() {
+            const result = document.getElementById('function-test-result');
+            let output = '<h4>関数実行テスト結果</h4>';
+            
+            try {
+                if (typeof ProfitabilityVisualizationSystem !== 'undefined') {
+                    // 初期化テスト
+                    output += '<div class="warning">⚠️ 初期化テスト実行中...</div>';
+                    
+                    // データ取得テスト
+                    const testMethods = [
+                        'createProfitabilityDashboard',
+                        'refreshAllCharts'
+                    ];
+                    
+                    testMethods.forEach(method => {
+                        try {
+                            if (typeof ProfitabilityVisualizationSystem[method] === 'function') {
+                                output += `<div class="success">✅ ${method}: 関数として実行可能</div>`;
+                            } else {
+                                output += `<div class="error">❌ ${method}: 関数として定義されていない</div>`;
+                            }
+                        } catch (error) {
+                            output += `<div class="error">❌ ${method}: ${error.message}</div>`;
+                        }
+                    });
+                } else {
+                    output += '<div class="error">❌ システム未定義のため実行不可</div>';
+                }
+            } catch (error) {
+                output += `<div class="error">❌ テスト実行エラー: ${error.message}</div>`;
+            }
+            
+            result.innerHTML = output;
+        }
+        
+        // 手動テスト: リスクリターン
+        function manualTestRiskReturn() {
+            const result = document.getElementById('manual-test-result');
+            let output = '<h4>リスクリターンチャート手動作成テスト</h4>';
+            
+            try {
+                // モックデータでテスト
+                const mockData = {
+                    datasets: [{
+                        label: 'テストデータ',
+                        data: [
+                            { x: 0.1, y: 5 },
+                            { x: 0.3, y: 15 },
+                            { x: 0.5, y: 25 }
+                        ],
+                        backgroundColor: 'rgba(255, 99, 132, 0.6)'
+                    }]
+                };
+                
+                output += '<div class="success">✅ モックデータ作成成功</div>';
+                output += `<div class="success">✅ データポイント数: ${mockData.datasets[0].data.length}</div>`;
+            } catch (error) {
+                output += `<div class="error">❌ テスト失敗: ${error.message}</div>`;
+            }
+            
+            result.innerHTML = output;
+        }
+        
+        // 手動テスト: 投資効率
+        function manualTestEfficiency() {
+            const result = document.getElementById('manual-test-result');
+            let output = '<h4>投資効率チャート手動作成テスト</h4>';
+            
+            try {
+                // InvestmentEfficiencyCalculator使用テスト
+                if (typeof InvestmentEfficiencyCalculator !== 'undefined') {
+                    const testData = {
+                        odds: 5.0,
+                        winProbability: 0.2,
+                        betAmount: 1000,
+                        confidence: 0.7
+                    };
+                    
+                    const result = InvestmentEfficiencyCalculator.calculateSingleBetEfficiency(testData);
+                    output += '<div class="success">✅ 投資効率計算成功</div>';
+                    output += `<div class="success">✅ 効率スコア: ${result.efficiencyScore}</div>`;
+                } else {
+                    output += '<div class="error">❌ InvestmentEfficiencyCalculator未定義</div>';
+                }
+            } catch (error) {
+                output += `<div class="error">❌ テスト失敗: ${error.message}</div>`;
+            }
+            
+            document.getElementById('manual-test-result').innerHTML = output;
+        }
+        
+        // 初期分析実行
+        window.onload = function() {
+            setTimeout(() => {
+                const analysisResult = document.getElementById('analysis-result');
+                
+                let analysis = '<h4>問題分析結果</h4>';
+                analysis += '<div class="code-block">';
+                analysis += '想定される問題:<br>';
+                analysis += '1. データ取得関数（getRiskReturnData, getInvestmentEfficiencyData）が未実装<br>';
+                analysis += '2. 実際のレースデータがグラフシステムに連携されていない<br>';
+                analysis += '3. Chart.jsの初期化タイミング問題<br>';
+                analysis += '4. HTML要素の動的生成が不完全<br>';
+                analysis += '</div>';
+                
+                analysisResult.innerHTML = analysis;
+            }, 1000);
+        };
+    </script>
+</body>
+</html>

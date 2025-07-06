@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔍 リスクリターンデータデバッグ</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 1000px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; }
+        .step { background: #f8f9fa; padding: 15px; margin: 15px 0; border-radius: 8px; border-left: 4px solid #dc3545; }
+        .code-block { background: #f8f9fa; padding: 10px; margin: 10px 0; border-radius: 5px; font-family: monospace; font-size: 12px; border: 1px solid #dee2e6; }
+        .success { color: #28a745; font-weight: bold; }
+        .error { color: #dc3545; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 リスクリターンデータデバッグ</h1>
+        
+        <div class="step">
+            <h2>🎯 問題分析</h2>
+            <p class="error">ROI 2000%という異常値により、グラフの点が表示範囲外に描画されている可能性</p>
+        </div>
+        
+        <div class="step">
+            <h2>📊 データ取得テスト</h2>
+            <p>メインアプリで「💰 収益性分析」表示後、コンソールで以下を実行：</p>
+            
+            <div class="code-block">
+// 1. RiskReturnAnalyzer確認
+console.log('RiskReturnAnalyzer存在:', typeof RiskReturnAnalyzer);
+
+// 2. リスクリターンデータ取得
+const riskReturnData = ProfitabilityVisualizationSystem.getRiskReturnData();
+console.log('リスクリターンデータ:', riskReturnData);
+
+// 3. 散布図データ変換確認
+const scatterData = ProfitabilityVisualizationSystem.convertToScatterData(riskReturnData);
+console.log('散布図データ:', scatterData);
+
+// 4. 実際のY軸範囲確認
+const yValues = scatterData.datasets[0]?.data?.map(d => d.y) || [];
+console.log('Y軸値:', yValues);
+console.log('Y軸最小値:', Math.min(...yValues));
+console.log('Y軸最大値:', Math.max(...yValues));
+            </div>
+        </div>
+        
+        <div class="step">
+            <h2>🔧 ROI統計確認</h2>
+            <p>収益性統計の実際の値を確認：</p>
+            
+            <div class="code-block">
+// 収益性メトリクス確認
+if (typeof ProfitabilityMetrics !== 'undefined') {
+    const profitData = ProfitabilityMetrics.getProfitabilityData();
+    console.log('収益性データ:', profitData);
+    console.log('コア指標:', profitData.coreMetrics);
+    console.log('現在ROI:', profitData.coreMetrics?.roi);
+} else {
+    console.log('ProfitabilityMetrics未定義');
+}
+            </div>
+        </div>
+        
+        <div class="step">
+            <h2>📈 グラフ軸設定確認</h2>
+            <p>実際のチャート設定を確認：</p>
+            
+            <div class="code-block">
+// Chart.jsインスタンス確認
+const chart = ProfitabilityVisualizationSystem.getChartById('riskReturnChart');
+if (chart) {
+    console.log('リスクリターンチャート設定:', {
+        data: chart.data,
+        scales: chart.options.scales,
+        yMin: chart.scales?.y?.min,
+        yMax: chart.scales?.y?.max
+    });
+} else {
+    console.log('リスクリターンチャートなし');
+}
+            </div>
+        </div>
+        
+        <div class="step">
+            <h2>🛠️ 手動修正テスト</h2>
+            <p>Y軸範囲を手動で調整：</p>
+            
+            <div class="code-block">
+// Y軸範囲を手動設定
+const chart = ProfitabilityVisualizationSystem.getChartById('riskReturnChart');
+if (chart) {
+    chart.options.scales.y.min = -100;
+    chart.options.scales.y.max = 2500; // ROI 2000%に対応
+    chart.update();
+    console.log('✅ Y軸範囲を調整しました (-100% ~ 2500%)');
+} else {
+    console.log('❌ チャートが見つかりません');
+}
+            </div>
+        </div>
+        
+        <div class="step">
+            <h2>🎨 点のスタイル確認</h2>
+            <p>散布図の点が正しく設定されているか確認：</p>
+            
+            <div class="code-block">
+// 点のスタイル確認
+const chart = ProfitabilityVisualizationSystem.getChartById('riskReturnChart');
+if (chart && chart.data.datasets[0]) {
+    const dataset = chart.data.datasets[0];
+    console.log('点のスタイル:', {
+        pointRadius: dataset.pointRadius,
+        pointHoverRadius: dataset.pointHoverRadius,
+        backgroundColor: dataset.backgroundColor,
+        borderColor: dataset.borderColor,
+        dataCount: dataset.data?.length || 0
+    });
+    
+    // 個別データポイント確認
+    dataset.data?.forEach((point, index) => {
+        console.log(`点${index + 1}:`, point);
+    });
+} else {
+    console.log('データセットなし');
+}
+            </div>
+        </div>
+        
+        <div style="margin-top: 30px; padding: 20px; background: #fff3cd; border-radius: 10px;">
+            <h3>🎯 期待される結果</h3>
+            <ul>
+                <li class="success">Y軸値に2000%近い値が含まれている</li>
+                <li class="success">グラフの軸範囲が自動調整される</li>
+                <li class="success">データポイントが正しく表示される</li>
+            </ul>
+        </div>
+        
+        <div style="margin-top: 20px; padding: 20px; background: #f8d7da; border-radius: 10px;">
+            <h3>⚠️ 問題の可能性</h3>
+            <ul>
+                <li><strong>Y軸範囲不適切</strong> → 手動調整で解決</li>
+                <li><strong>データ変換エラー</strong> → 変換関数の修正が必要</li>
+                <li><strong>点のサイズ問題</strong> → pointRadiusの調整が必要</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>

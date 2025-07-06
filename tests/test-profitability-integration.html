@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔍 収益性グラフ統合テスト</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 1000px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; }
+        .step { background: #f8f9fa; padding: 15px; margin: 15px 0; border-radius: 8px; border-left: 4px solid #007bff; }
+        .step-number { background: #007bff; color: white; padding: 5px 10px; border-radius: 50%; font-weight: bold; margin-right: 10px; }
+        .success { color: #28a745; font-weight: bold; }
+        .error { color: #dc3545; font-weight: bold; }
+        .warning { color: #ffc107; font-weight: bold; }
+        button { padding: 10px 15px; margin: 5px; border: none; border-radius: 5px; cursor: pointer; background: #007bff; color: white; }
+        .code-block { background: #f8f9fa; padding: 10px; margin: 10px 0; border-radius: 5px; font-family: monospace; font-size: 12px; border: 1px solid #dee2e6; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 収益性グラフ統合テスト</h1>
+        
+        <div class="step">
+            <h2><span class="step-number">1</span>メインアプリを開く</h2>
+            <p>最初にメインアプリケーションを開いて、全てのJSライブラリを読み込んでください。</p>
+            <a href="./index.html" target="_blank" style="display: inline-block; padding: 10px 20px; background: #28a745; color: white; text-decoration: none; border-radius: 5px;">
+                🏇 メインアプリを開く
+            </a>
+        </div>
+        
+        <div class="step">
+            <h2><span class="step-number">2</span>開発者ツール準備</h2>
+            <p>メインアプリで<strong>F12</strong>を押して開発者ツールのコンソールを開いてください。</p>
+        </div>
+        
+        <div class="step">
+            <h2><span class="step-number">3</span>システム存在確認</h2>
+            <p>コンソールで以下のコマンドを実行して、システムの存在を確認してください：</p>
+            
+            <div class="code-block">
+// システム存在確認
+console.log('ProfitabilityVisualizationSystem:', typeof ProfitabilityVisualizationSystem);
+console.log('showProfitabilityDashboard:', typeof showProfitabilityDashboard);
+console.log('Chart.js:', typeof Chart);
+console.log('RiskReturnAnalyzer:', typeof RiskReturnAnalyzer);
+console.log('InvestmentEfficiencyCalculator:', typeof InvestmentEfficiencyCalculator);
+            </div>
+        </div>
+        
+        <div class="step">
+            <h2><span class="step-number">4</span>グラフダッシュボード表示テスト</h2>
+            <p>コンソールで以下のコマンドを実行して、収益性ダッシュボードを表示してください：</p>
+            
+            <div class="code-block">
+// ダッシュボード表示
+showProfitabilityDashboard();
+
+// または直接表示
+showProfitabilityDashboardDirect();
+            </div>
+        </div>
+        
+        <div class="step">
+            <h2><span class="step-number">5</span>HTML要素確認</h2>
+            <p>ダッシュボード表示後、HTML要素が生成されているか確認：</p>
+            
+            <div class="code-block">
+// HTML要素確認
+console.log('profitabilityDashboard:', document.getElementById('profitabilityDashboard'));
+console.log('riskReturnChart:', document.getElementById('riskReturnChart'));
+console.log('efficiencyChart:', document.getElementById('efficiencyChart'));
+console.log('learningGraphsSection:', document.getElementById('learningGraphsSection'));
+            </div>
+        </div>
+        
+        <div class="step">
+            <h2><span class="step-number">6</span>データ取得テスト</h2>
+            <p>データ取得関数の動作確認：</p>
+            
+            <div class="code-block">
+// データ取得テスト
+console.log('リスクリターンデータ:', ProfitabilityVisualizationSystem.getRiskReturnData());
+console.log('投資効率データ:', ProfitabilityVisualizationSystem.getInvestmentEfficiencyData());
+console.log('収益性データ:', ProfitabilityVisualizationSystem.getProfitabilityChartData());
+            </div>
+        </div>
+        
+        <div class="step">
+            <h2><span class="step-number">7</span>チャート作成テスト</h2>
+            <p>個別チャート作成をテスト：</p>
+            
+            <div class="code-block">
+// チャート個別作成テスト
+try {
+    ProfitabilityVisualizationSystem.createRiskReturnScatterChart();
+    console.log('✅ リスクリターンチャート作成成功');
+} catch (error) {
+    console.error('❌ リスクリターンチャート作成失敗:', error);
+}
+
+try {
+    ProfitabilityVisualizationSystem.createEfficiencyScatterChart();
+    console.log('✅ 投資効率チャート作成成功');
+} catch (error) {
+    console.error('❌ 投資効率チャート作成失敗:', error);
+}
+            </div>
+        </div>
+        
+        <div class="step">
+            <h2><span class="step-number">8</span>手動初期化テスト</h2>
+            <p>システムを手動で初期化してテスト：</p>
+            
+            <div class="code-block">
+// 手動初期化
+try {
+    ProfitabilityVisualizationSystem.initialize();
+    console.log('✅ システム初期化成功');
+} catch (error) {
+    console.error('❌ システム初期化失敗:', error);
+}
+
+// 全チャート更新
+try {
+    ProfitabilityVisualizationSystem.refreshAllCharts();
+    console.log('✅ 全チャート更新成功');
+} catch (error) {
+    console.error('❌ 全チャート更新失敗:', error);
+}
+            </div>
+        </div>
+        
+        <div class="step">
+            <h2><span class="step-number">9</span>結果確認</h2>
+            <p>各ステップの実行結果を記録して、以下の情報を確認してください：</p>
+            <ul>
+                <li>どのシステムが読み込まれているか</li>
+                <li>HTML要素が正しく生成されているか</li>
+                <li>データが正しく取得できているか</li>
+                <li>エラーメッセージの内容</li>
+            </ul>
+        </div>
+        
+        <div style="margin-top: 30px; padding: 20px; background: #fff3cd; border-radius: 10px;">
+            <h3>📝 期待される結果</h3>
+            <p>正常な場合、以下が確認できるはずです：</p>
+            <ul>
+                <li>✅ 全システムが 'function' または 'object' として定義</li>
+                <li>✅ HTML要素が存在（null でない）</li>
+                <li>✅ データ取得関数が配列/オブジェクトを返す</li>
+                <li>✅ チャート作成がエラーなく完了</li>
+            </ul>
+        </div>
+        
+        <div style="margin-top: 20px; padding: 20px; background: #f8d7da; border-radius: 10px;">
+            <h3>⚠️ 問題発生時の対処</h3>
+            <p>エラーが発生した場合：</p>
+            <ol>
+                <li>エラーメッセージをコピーして報告</li>
+                <li>どのステップで失敗したかを特定</li>
+                <li>ブラウザの更新（Ctrl+F5）を試す</li>
+                <li>Chart.jsの読み込み状況を確認</li>
+            </ol>
+        </div>
+    </div>
+</body>
+</html>
