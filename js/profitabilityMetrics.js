@@ -367,6 +367,13 @@ class ProfitabilityMetrics {
     // 時系列データの更新
     static updateTimeSeriesData(betResult) {
         const timeSeries = this.profitabilityData.timeSeriesData;
+        
+        // betResultがない場合は処理をスキップ
+        if (!betResult) {
+            console.log('⚠️ betResult未定義のため時系列データ更新をスキップ');
+            return;
+        }
+        
         const profit = betResult.isHit ? (betResult.returnAmount - betResult.betAmount) : -betResult.betAmount;
         const today = new Date().toISOString().split('T')[0];
         
@@ -411,7 +418,18 @@ class ProfitabilityMetrics {
         const investment = this.profitabilityData.investment;
         const core = this.profitabilityData.coreMetrics;
         
-        if (investment.totalInvested === 0) return;
+        console.log('🔍 投資データ確認:', {
+            totalInvested: investment.totalInvested,
+            totalProfit: investment.totalProfit,
+            totalReturned: investment.totalReturned,
+            totalBets: investment.totalBets,
+            hitCount: investment.hitCount
+        });
+        
+        if (investment.totalInvested === 0) {
+            console.log('⚠️ 投資額0のためROI計算スキップ');
+            return;
+        }
         
         // ROI（投資収益率）
         core.roi = (investment.totalProfit / investment.totalInvested) * 100;
@@ -423,10 +441,10 @@ class ProfitabilityMetrics {
         core.expectedValue = investment.totalReturned / investment.totalInvested;
         
         // 1回あたり平均利益
-        core.profitPerBet = investment.totalProfit / investment.totalBets;
+        core.profitPerBet = investment.totalBets > 0 ? investment.totalProfit / investment.totalBets : 0;
         
         // 的中率
-        core.hitRate = (investment.hitCount / investment.totalBets) * 100;
+        core.hitRate = investment.totalBets > 0 ? (investment.hitCount / investment.totalBets) * 100 : 0;
         
         // 的中時平均回収額
         if (investment.hitCount > 0) {
@@ -434,6 +452,7 @@ class ProfitabilityMetrics {
             core.averageOdds = core.averageReturn / investment.averageBetAmount;
         }
         
+        console.log('💰 ROI計算:', `${investment.totalProfit} / ${investment.totalInvested} * 100 = ${core.roi.toFixed(2)}%`);
         console.log('核心指標再計算完了:', core);
     }
     
@@ -874,14 +893,35 @@ class ProfitabilityMetrics {
                 const estimatedPlaceReturn = (placePredictions - winPredictions) * estimatedBetAmount * 1.8; // 複勝1.8倍
                 const estimatedTotalReturn = estimatedWinReturn + estimatedPlaceReturn;
                 
-                // 収益性データに反映
+                const winRate = (winPredictions / totalPredictions * 100).toFixed(1);
+                const placeRate = (placePredictions / totalPredictions * 100).toFixed(1);
+                
+                console.log('📊 既存データ移行計算:', {
+                    totalPredictions,
+                    winPredictions: `${winPredictions}回 (${winRate}%)`,
+                    placePredictions: `${placePredictions}回 (${placeRate}%)`,
+                    '的中基準': '単勝=1着的中, 複勝=予測上位3頭のうち1頭でも3着以内',
+                    estimatedInvestment,
+                    estimatedWinReturn,
+                    estimatedPlaceReturn,
+                    estimatedTotalReturn,
+                    estimatedProfit: estimatedTotalReturn - estimatedInvestment
+                });
+                
+                // 収益性データに反映（推定データとして記録）
                 this.profitabilityData.investment = {
                     totalInvested: estimatedInvestment,
                     totalReturned: estimatedTotalReturn,
                     totalProfit: estimatedTotalReturn - estimatedInvestment,
                     totalBets: totalPredictions,
                     hitCount: placePredictions, // 複勝的中を基準
-                    averageBetAmount: estimatedBetAmount
+                    averageBetAmount: estimatedBetAmount,
+                    isEstimated: true, // 推定データフラグ
+                    // 詳細的中データ
+                    winHitCount: winPredictions,
+                    placeHitCount: placePredictions,
+                    winHitRate: winRate,
+                    placeHitRate: placeRate
                 };
                 
                 // 核心指標を計算
@@ -898,10 +938,117 @@ class ProfitabilityMetrics {
             console.error('既存データ移行エラー:', error);
         }
     }
+    
+    // データリセット（デバッグ用）
+    static resetProfitabilityData() {
+        console.log('🔄 収益性データリセット実行');
+        this.profitabilityData = {
+            investment: {
+                totalInvested: 0,
+                totalReturned: 0,
+                totalProfit: 0,
+                totalBets: 0,
+                hitCount: 0,
+                averageBetAmount: 1000
+            },
+            coreMetrics: {
+                roi: 0,
+                recoveryRate: 0,
+                expectedValue: 0,
+                profitPerBet: 0,
+                hitRate: 0,
+                averageOdds: 0,
+                averageReturn: 0
+            },
+            popularityAnalysis: {
+                favorite: { bets: 0, hits: 0, invested: 0, returned: 0, hitRate: 0, roi: 0, avgOdds: 0 },
+                semifavorite: { bets: 0, hits: 0, invested: 0, returned: 0, hitRate: 0, roi: 0, avgOdds: 0 },
+                underdog: { bets: 0, hits: 0, invested: 0, returned: 0, hitRate: 0, roi: 0, avgOdds: 0 },
+                longshot: { bets: 0, hits: 0, invested: 0, returned: 0, hitRate: 0, roi: 0, avgOdds: 0 }
+            },
+            oddsAnalysis: {
+                ultraLow: { range: '1.0-1.5倍', bets: 0, hits: 0, invested: 0, returned: 0, hitRate: 0, roi: 0, expectedValue: 0 },
+                low: { range: '1.6-3.0倍', bets: 0, hits: 0, invested: 0, returned: 0, hitRate: 0, roi: 0, expectedValue: 0 },
+                medium: { range: '3.1-7.0倍', bets: 0, hits: 0, invested: 0, returned: 0, hitRate: 0, roi: 0, expectedValue: 0 },
+                high: { range: '7.1-15.0倍', bets: 0, hits: 0, invested: 0, returned: 0, hitRate: 0, roi: 0, expectedValue: 0 },
+                veryHigh: { range: '15.1-50.0倍', bets: 0, hits: 0, invested: 0, returned: 0, hitRate: 0, roi: 0, expectedValue: 0 },
+                extreme: { range: '50.1倍以上', bets: 0, hits: 0, invested: 0, returned: 0, hitRate: 0, roi: 0, expectedValue: 0 }
+            },
+            betTypeAnalysis: {
+                win: { bets: 0, hits: 0, invested: 0, returned: 0, hitRate: 0, roi: 0, avgReturn: 0 },
+                place: { bets: 0, hits: 0, invested: 0, returned: 0, hitRate: 0, roi: 0, avgReturn: 0 },
+                exacta: { bets: 0, hits: 0, invested: 0, returned: 0, hitRate: 0, roi: 0, avgReturn: 0 },
+                quinella: { bets: 0, hits: 0, invested: 0, returned: 0, hitRate: 0, roi: 0, avgReturn: 0 },
+                wide: { bets: 0, hits: 0, invested: 0, returned: 0, hitRate: 0, roi: 0, avgReturn: 0 },
+                trifecta: { bets: 0, hits: 0, invested: 0, returned: 0, hitRate: 0, roi: 0, avgReturn: 0 },
+                trio: { bets: 0, hits: 0, invested: 0, returned: 0, hitRate: 0, roi: 0, avgReturn: 0 }
+            },
+            riskAnalysis: {
+                volatility: 0,
+                maxDrawdown: 0,
+                consecutiveLosses: 0,
+                lossStreakLength: 0,
+                winStreakLength: 0,
+                maxWinStreak: 0,
+                riskAdjustedReturn: 0,
+                sharpeRatio: 0,
+                profitFactor: 0
+            },
+            timeSeriesData: {
+                dailyProfits: [],
+                cumulativeProfit: [],
+                rollingROI: [],
+                recentPerformance: []
+            },
+            underdogEfficiency: {
+                totalUnderdogBets: 0,
+                underdogHits: 0,
+                underdogProfit: 0,
+                underdogROI: 0,
+                avgUnderdogOdds: 0,
+                underdogContribution: 0,
+                bigHitCount: 0,
+                bigHitProfit: 0
+            }
+        };
+        this.saveProfitabilityData();
+        console.log('✅ 収益性データリセット完了');
+    }
+    
+    // データ取得API（可視化システム用）
+    static getProfitabilityData() {
+        console.log('🔍 getProfitabilityData呼び出し');
+        
+        // 最新データを確保するために核心指標を再計算
+        this.recalculateCoreMetrics();
+        this.calculateVolatility();
+        
+        // 時系列データを生成
+        const timeSeriesData = this.generateTimeSeriesData();
+        
+        // 完全なデータ構造を返却
+        const result = {
+            // コアデータ
+            ...this.profitabilityData,
+            // 時系列データを上書き
+            timeSeriesData: timeSeriesData
+        };
+        
+        console.log('📊 getProfitabilityData結果:', {
+            roi: result.coreMetrics.roi,
+            totalBets: result.investment.totalBets,
+            timeSeriesLength: result.timeSeriesData.dailyProfits.length
+        });
+        
+        return result;
+    }
 }
 
 // グローバル公開
 window.ProfitabilityMetrics = ProfitabilityMetrics;
+
+// デバッグ用グローバル関数
+window.resetProfitabilityData = () => ProfitabilityMetrics.resetProfitabilityData();
 
 // 初期化
 document.addEventListener('DOMContentLoaded', () => {

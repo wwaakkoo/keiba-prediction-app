@@ -47,17 +47,28 @@ class ProfitabilityVisualizationSystem {
     static createProfitabilityDashboard() {
         console.log('🚀 createProfitabilityDashboard 開始');
         
-        const container = document.getElementById('learningGraphsSection') || 
-                         document.getElementById('profitabilityDashboard');
+        // 既存のprofitabilityDashboard要素を探す
+        let profitabilityContainer = document.getElementById('profitabilityDashboard');
         
-        if (!container) {
-            console.warn('ダッシュボードコンテナが見つかりません');
-            return;
+        // 存在しない場合は、learningGraphsSection内に作成
+        if (!profitabilityContainer) {
+            const learningSection = document.getElementById('learningGraphsSection');
+            if (learningSection) {
+                profitabilityContainer = document.createElement('div');
+                profitabilityContainer.id = 'profitabilityDashboard';
+                profitabilityContainer.style.cssText = 'display: block; margin-top: 20px;';
+                learningSection.appendChild(profitabilityContainer);
+                console.log('📍 profitabilityDashboard要素を作成しました');
+            } else {
+                console.warn('learningGraphsSectionが見つかりません');
+                return;
+            }
         }
         
-        console.log('📍 コンテナ発見:', container.id);
+        console.log('📍 コンテナ発見:', profitabilityContainer.id);
         
-        container.innerHTML = `
+        // profitabilityDashboard要素の内容を設定
+        profitabilityContainer.innerHTML = `
             <h3>📊 収益性分析ダッシュボード</h3>
             
             <!-- 制御パネル -->
@@ -115,7 +126,10 @@ class ProfitabilityVisualizationSystem {
                         <canvas id="efficiencyChart"></canvas>
                     </div>
                     <div class="chart-info" style="font-size: 11px; color: #666; margin-top: 8px;">
-                        <span id="efficiencyInfo">オッズ vs 投資効率スコア</span>
+                        <span id="efficiencyInfo">オッズ vs 投資効率スコア<br>
+                        <strong>データ更新タイミング:</strong> レース結果入力時（🧠統合学習ボタン押下後）<br>
+                        <strong>効率スコア計算式:</strong> ROI(-50%～+50%→0～100点) + 的中率×50<br>
+                        <strong>表示内容:</strong> オッズ帯別の投資効率(最大100点)</span>
                     </div>
                 </div>
                 
@@ -253,8 +267,25 @@ class ProfitabilityVisualizationSystem {
                 maintainAspectRatio: false,
                 scales: {
                     y: {
+                        type: 'linear',
+                        display: true,
+                        position: 'left',
                         beginAtZero: true,
                         grid: { color: '#E5E5E5' },
+                        title: { display: true, text: 'ROI (%)' },
+                        ticks: { 
+                            callback: function(value) { 
+                                return value + '%'; 
+                            }
+                        }
+                    },
+                    y1: {
+                        type: 'linear',
+                        display: true,
+                        position: 'right',
+                        beginAtZero: true,
+                        grid: { drawOnChartArea: false },
+                        title: { display: true, text: '的中率 (%)' },
                         ticks: { 
                             callback: function(value) { 
                                 return value + '%'; 
@@ -317,15 +348,40 @@ class ProfitabilityVisualizationSystem {
                     x: {
                         type: 'linear',
                         position: 'bottom',
+                        min: 0,
+                        max: 100,
+                        grid: { 
+                            color: '#E5E5E5',
+                            drawBorder: true,
+                            lineWidth: (context) => context.tick.value === 0 ? 2 : 1
+                        },
                         title: {
                             display: true,
-                            text: 'リスク（ボラティリティ）'
+                            text: 'リスク (%)'
+                        },
+                        ticks: {
+                            callback: function(value) {
+                                return value + '%';
+                            }
                         }
                     },
                     y: {
+                        type: 'linear',
+                        min: -20,
+                        max: 20,
+                        grid: { 
+                            color: '#E5E5E5',
+                            drawBorder: true,
+                            lineWidth: (context) => context.tick.value === 0 ? 2 : 1
+                        },
                         title: {
                             display: true,
                             text: 'リターン（ROI %）'
+                        },
+                        ticks: {
+                            callback: function(value) {
+                                return value + '%';
+                            }
                         }
                     }
                 },
@@ -426,16 +482,29 @@ class ProfitabilityVisualizationSystem {
         }
         
         console.log('⚠️ フォールバックデータ使用');
-        // フォールバックデータ
+        // 現実的なフォールバックデータ
         return {
             timeSeriesData: {
                 dailyProfits: [
-                    { date: '2024-01-01', profit: 1000, roi: 100 },
-                    { date: '2024-01-02', profit: -500, roi: -50 },
-                    { date: '2024-01-03', profit: 2000, roi: 200 },
-                    { date: '2024-01-04', profit: 500, roi: 50 },
-                    { date: '2024-01-05', profit: -300, roi: -30 }
+                    { date: '2024-01-01', profit: 100, roi: 10.0 },
+                    { date: '2024-01-02', profit: -500, roi: -5.0 },
+                    { date: '2024-01-03', profit: 200, roi: 2.0 },
+                    { date: '2024-01-04', profit: 50, roi: 5.0 },
+                    { date: '2024-01-05', profit: -300, roi: -3.0 }
                 ]
+            },
+            coreMetrics: {
+                roi: 1.8,
+                hitRate: 25.0,
+                expectedValue: 1.018,
+                totalProfit: -450
+            },
+            investment: {
+                totalProfit: -450,
+                totalInvested: 25000,
+                totalReturned: 24550,
+                totalBets: 20,
+                hitCount: 5
             }
         };
     }
@@ -443,43 +512,157 @@ class ProfitabilityVisualizationSystem {
     static getUnderdogEfficiencyData() {
         if (typeof ProfitabilityMetrics !== 'undefined') {
             const data = ProfitabilityMetrics.getProfitabilityData();
-            return data.oddsAnalysis || {};
+            const oddsAnalysis = data.oddsAnalysis || {};
+            
+            // 実データがあるかチェック
+            const hasRealData = Object.values(oddsAnalysis).some(oddsData => (oddsData.bets || 0) > 0);
+            console.log(`🔍 穴馬効率データ判定: 実データ=${hasRealData ? 'あり' : 'なし'}`);
+            
+            if (hasRealData) {
+                console.log('✅ 実データから穴馬効率データ使用');
+                return oddsAnalysis;
+            } else {
+                console.log('❌ 実データなし → フォールバックデータ使用');
+            }
         }
         
-        // フォールバックデータ
+        // 現実的なフォールバックデータ
         return {
-            medium: { range: '3.1-7.0倍', roi: 15.5, hitRate: 0.25, bets: 40 },
-            high: { range: '7.1-15.0倍', roi: 45.2, hitRate: 0.15, bets: 20 },
-            veryHigh: { range: '15.1-50.0倍', roi: 120.8, hitRate: 0.08, bets: 12 },
-            extreme: { range: '50.1倍以上', roi: 200.5, hitRate: 0.03, bets: 5 }
+            medium: { range: '3.1-7.0倍', roi: 5.5, hitRate: 0.25, bets: 40 },
+            high: { range: '7.1-15.0倍', roi: -2.8, hitRate: 0.15, bets: 20 },
+            veryHigh: { range: '15.1-50.0倍', roi: 12.8, hitRate: 0.08, bets: 12 },
+            extreme: { range: '50.1倍以上', roi: -15.5, hitRate: 0.03, bets: 5 }
         };
     }
     
     static getRiskReturnData() {
         if (typeof RiskReturnAnalyzer !== 'undefined') {
-            return RiskReturnAnalyzer.getRiskReturnData();
+            const data = RiskReturnAnalyzer.getRiskReturnData();
+            
+            // portfolioHistoryが空の場合、実データから生成
+            if (!data.portfolioHistory || data.portfolioHistory.length === 0) {
+                console.log('🔧 portfolioHistory空のため、実データから生成');
+                
+                // ProfitabilityMetricsから実データを取得
+                if (typeof ProfitabilityMetrics !== 'undefined') {
+                    const profitData = ProfitabilityMetrics.getProfitabilityData();
+                    const roi = profitData.coreMetrics?.roi || 0;
+                    
+                    // 実ROIを基に戦略データを生成
+                    data.portfolioHistory = [
+                        { risk: 0.3, return: roi * 0.5, label: '保守戦略' },
+                        { risk: 0.5, return: roi * 0.7, label: '標準戦略' },
+                        { risk: 0.7, return: roi, label: '現在戦略' },
+                        { risk: 0.9, return: roi * 0.8, label: '高リスク戦略' }
+                    ];
+                    console.log('✅ 実データから生成:', data.portfolioHistory);
+                }
+            }
+            
+            return data;
         }
         
-        // フォールバックデータ
+        // 現実的なフォールバックデータ（4象限表示用）
         return {
             portfolioHistory: [
-                { risk: 0.2, return: 15.5, label: '低リスク戦略' },
-                { risk: 0.4, return: 35.2, label: '中リスク戦略' },
-                { risk: 0.6, return: 65.8, label: '高リスク戦略' },
-                { risk: 0.8, return: 45.1, label: '超高リスク戦略' }
+                { risk: 10, return: 5.5, label: '低リスク戦略' },
+                { risk: 30, return: -2.2, label: '中リスク戦略' },
+                { risk: 50, return: 8.8, label: '高リスク戦略' },
+                { risk: 70, return: -5.1, label: '超高リスク戦略' }
             ]
         };
     }
     
     static getInvestmentEfficiencyData() {
-        // フォールバックデータ
-        return [
-            { odds: 3.5, efficiency: 45, grade: 'B', isUnderdog: false, horse: '人気馬A' },
-            { odds: 8.0, efficiency: 75, grade: 'A', isUnderdog: true, horse: '穴馬B' },
-            { odds: 15.0, efficiency: 88, grade: 'AA', isUnderdog: true, horse: '大穴C' },
-            { odds: 2.1, efficiency: 35, grade: 'C', isUnderdog: false, horse: '本命D' },
-            { odds: 25.0, efficiency: 92, grade: 'AAA', isUnderdog: true, horse: '超穴E' }
+        // 実データから投資効率データを生成
+        if (typeof ProfitabilityMetrics !== 'undefined') {
+            const profitData = ProfitabilityMetrics.getProfitabilityData();
+            const oddsAnalysis = profitData.oddsAnalysis || {};
+            
+            const efficiencyData = [];
+            let totalBets = 0;
+            Object.entries(oddsAnalysis).forEach(([key, data]) => {
+                totalBets += data.bets || 0;
+                if (data.bets > 0) {
+                    const avgOdds = data.range ? this.parseOddsRange(data.range) : 5.0;
+                    const efficiency = this.calculateEfficiencyScore(data.roi, data.hitRate);
+                    const grade = this.getEfficiencyGrade(efficiency);
+                    const isUnderdog = avgOdds >= 7.0;
+                    
+                    efficiencyData.push({
+                        odds: avgOdds,
+                        efficiency: efficiency,
+                        grade: grade,
+                        isUnderdog: isUnderdog,
+                        horse: `${data.range}オッズ帯`,
+                        bets: data.bets,
+                        roi: data.roi
+                    });
+                }
+            });
+            
+            console.log(`🔍 投資効率データ判定: 総賭け数=${totalBets}, 生成データ数=${efficiencyData.length}`);
+            
+            if (efficiencyData.length > 0) {
+                console.log('✅ 実データから投資効率データ生成:');
+                efficiencyData.forEach((item, index) => {
+                    console.log(`  ${index + 1}. ${item.horse}: オッズ${item.odds}倍, 効率${item.efficiency.toFixed(1)}点 (${item.grade}), ROI=${item.roi}%`);
+                });
+                return efficiencyData;
+            } else {
+                console.log('❌ 実データなし（全オッズ帯でbets=0）→ フォールバックデータ使用');
+            }
+        }
+        
+        // フォールバックデータ（サンプル）
+        const fallbackData = [
+            { odds: 3.5, efficiency: 45, grade: 'B', isUnderdog: false, horse: '人気馬サンプル', roi: 5, hitRate: 0.3 },
+            { odds: 8.0, efficiency: 75, grade: 'A', isUnderdog: true, horse: '穴馬サンプル', roi: 15, hitRate: 0.2 },
+            { odds: 15.0, efficiency: 88, grade: 'AA', isUnderdog: true, horse: '大穴サンプル', roi: 25, hitRate: 0.15 },
+            { odds: 2.1, efficiency: 35, grade: 'C', isUnderdog: false, horse: '本命サンプル', roi: -5, hitRate: 0.4 },
+            { odds: 25.0, efficiency: 92, grade: 'AAA', isUnderdog: true, horse: '超穴サンプル', roi: 30, hitRate: 0.12 }
         ];
+        
+        console.log('⚠️ フォールバックデータ使用（投資効率）:');
+        fallbackData.forEach((item, index) => {
+            console.log(`  ${index + 1}. ${item.horse}: オッズ${item.odds}倍, 効率${item.efficiency}点 (${item.grade}), ROI=${item.roi}%`);
+        });
+        
+        return fallbackData;
+    }
+    
+    // オッズ範囲から平均オッズを計算
+    static parseOddsRange(range) {
+        const matches = range.match(/(\d+\.?\d*)-(\d+\.?\d*)/);
+        if (matches) {
+            return (parseFloat(matches[1]) + parseFloat(matches[2])) / 2;
+        }
+        if (range.includes('以上')) {
+            const match = range.match(/(\d+\.?\d*)/);
+            return match ? parseFloat(match[1]) * 1.5 : 50.0;
+        }
+        return 5.0;
+    }
+    
+    // 効率スコア計算（ROIと的中率から）
+    static calculateEfficiencyScore(roi, hitRate) {
+        const baseScore = Math.max(0, roi + 50); // ROI基準（-50%～+50%を0～100点に変換）
+        const hitRateBonus = hitRate * 50; // 的中率ボーナス
+        const finalScore = Math.min(100, Math.max(0, baseScore + hitRateBonus));
+        
+        console.log(`💎 効率スコア計算: ROI=${roi}% → ベース${baseScore.toFixed(1)}点 + 的中率${(hitRate*100).toFixed(1)}% × 50 = ${finalScore.toFixed(1)}点`);
+        
+        return finalScore;
+    }
+    
+    // 効率グレード判定
+    static getEfficiencyGrade(efficiency) {
+        if (efficiency >= 90) return 'AAA';
+        if (efficiency >= 80) return 'AA';
+        if (efficiency >= 70) return 'A';
+        if (efficiency >= 60) return 'B';
+        if (efficiency >= 50) return 'C';
+        return 'D';
     }
     
     // データ変換メソッド群
@@ -513,13 +696,19 @@ class ProfitabilityVisualizationSystem {
                     label: 'ROI (%)',
                     data: roiData,
                     backgroundColor: roiData.map(roi => this.getColorByROI(roi)),
-                    type: 'bar'
+                    borderColor: roiData.map(roi => this.getColorByROI(roi)),
+                    borderWidth: 1,
+                    type: 'bar',
+                    yAxisID: 'y'
                 },
                 {
                     label: '的中率 (%)',
                     data: hitRateData,
                     borderColor: this.config.colors.highlight,
-                    backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                    backgroundColor: 'transparent',
+                    borderWidth: 2,
+                    pointRadius: 4,
+                    pointBackgroundColor: this.config.colors.highlight,
                     type: 'line',
                     yAxisID: 'y1'
                 }
@@ -534,11 +723,13 @@ class ProfitabilityVisualizationSystem {
             datasets: [{
                 label: '投資戦略',
                 data: portfolioData.map(item => ({
-                    x: item.risk * 100,
+                    x: item.risk,
                     y: item.return,
                     label: item.label
                 })),
-                backgroundColor: this.config.colors.highlight,
+                backgroundColor: portfolioData.map(item => 
+                    item.return >= 0 ? this.config.colors.profit : this.config.colors.loss
+                ),
                 borderColor: this.config.colors.highlight,
                 pointRadius: 8,
                 pointHoverRadius: 12
@@ -648,11 +839,12 @@ class ProfitabilityVisualizationSystem {
             clearInterval(this.updateInterval);
         }
         
-        this.updateInterval = setInterval(() => {
-            this.refreshAllCharts();
-        }, 30000); // 30秒間隔
+        // 自動更新を無効化（テスト用）
+        // this.updateInterval = setInterval(() => {
+        //     this.refreshAllCharts();
+        // }, 30000); // 30秒間隔
         
-        console.log('リアルタイム更新開始（30秒間隔）');
+        console.log('リアルタイム更新は無効化されています（テスト用）');
     }
     
     static refreshAllCharts() {
@@ -678,31 +870,52 @@ class ProfitabilityVisualizationSystem {
         const profitabilityData = this.getProfitabilityChartData();
         const coreMetrics = profitabilityData.coreMetrics || {};
         
+        // データの存在確認
+        const hasRealData = profitabilityData.investment?.totalBets > 0 && !profitabilityData.investment?.isEstimated;
+        const hasEstimatedData = profitabilityData.investment?.isEstimated === true;
+        const investmentData = profitabilityData.investment || {};
+        
         summaryContainer.innerHTML = `
             <div style="text-align: center;">
                 <div style="font-size: 20px; font-weight: bold; color: ${this.getColorByROI(coreMetrics.roi || 0)};">
                     ${(coreMetrics.roi || 0).toFixed(1)}%
                 </div>
-                <div style="font-size: 12px; color: #666;">現在ROI</div>
+                <div style="font-size: 12px; color: #666;">ROI</div>
             </div>
             <div style="text-align: center;">
                 <div style="font-size: 20px; font-weight: bold; color: #333;">
                     ${(coreMetrics.hitRate || 0).toFixed(1)}%
                 </div>
-                <div style="font-size: 12px; color: #666;">的中率</div>
+                <div style="font-size: 12px; color: #666;">
+                    ${hasEstimatedData ? '複勝的中率' : '的中率'}
+                    ${hasEstimatedData && investmentData.winHitRate ? `<br>単勝:${investmentData.winHitRate}%` : ''}
+                </div>
             </div>
             <div style="text-align: center;">
                 <div style="font-size: 20px; font-weight: bold; color: #333;">
-                    ${(coreMetrics.expectedValue || 0).toFixed(2)}
+                    ${(investmentData.totalBets || 0).toLocaleString()}回
                 </div>
-                <div style="font-size: 12px; color: #666;">期待値</div>
+                <div style="font-size: 12px; color: #666;">総賭け数</div>
+            </div>
+            <div style="text-align: center;">
+                <div style="font-size: 20px; font-weight: bold; color: ${investmentData.totalProfit >= 0 ? this.config.colors.profit : this.config.colors.loss};">
+                    ${(investmentData.totalProfit || 0).toLocaleString()}円
+                </div>
+                <div style="font-size: 12px; color: #666;">総損益</div>
             </div>
             <div style="text-align: center;">
                 <div style="font-size: 20px; font-weight: bold; color: #333;">
-                    ${(profitabilityData.investment?.totalProfit || 0).toLocaleString()}円
+                    ${(coreMetrics.recoveryRate || 0).toFixed(1)}%
                 </div>
-                <div style="font-size: 12px; color: #666;">総利益</div>
+                <div style="font-size: 12px; color: #666;">回収率</div>
             </div>
+            <div style="text-align: center;">
+                <div style="font-size: 20px; font-weight: bold; color: #333;">
+                    ${(investmentData.totalInvested || 0).toLocaleString()}円
+                </div>
+                <div style="font-size: 12px; color: #666;">総投資額</div>
+            </div>
+            ${hasEstimatedData ? '<div style="grid-column: 1/-1; text-align: center; padding: 10px; background: #fff3cd; border-radius: 4px; color: #856404; font-size: 12px; border: 1px solid #ffeaa7;">⚠️ 推定データ表示中（既存学習データから自動計算）<br><strong>的中基準:</strong> 複勝=予測上位3頭のうち1頭でも3着以内<br><strong>実データ切り替え:</strong> レース結果入力1回目から段階的に更新</div>' : !hasRealData ? '<div style="grid-column: 1/-1; text-align: center; padding: 10px; background: #f8f9fa; border-radius: 4px; color: #666; font-size: 12px;">※ フォールバックデータ表示中<br><strong>実データ切り替え:</strong> 🧠統合学習ボタンでレース結果入力1回目から更新開始</div>' : ''}
         `;
     }
     
