@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, shrink-to-fit=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>📱 モバイルUI最適化テスト</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 0; 
+            padding: 20px; 
+            line-height: 1.6; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .test-container { 
+            max-width: 800px; 
+            margin: 0 auto; 
+            background: white; 
+            border-radius: 15px; 
+            padding: 20px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        .test-section { 
+            margin: 20px 0; 
+            padding: 15px; 
+            border: 1px solid #ddd; 
+            border-radius: 8px; 
+            background: #f9f9f9;
+        }
+        .test-result { 
+            padding: 10px; 
+            margin: 10px 0; 
+            border-radius: 5px; 
+        }
+        .success { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+        .error { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+        .info { background: #d1ecf1; border: 1px solid #bee5eb; color: #0c5460; }
+        .warning { background: #fff3cd; border: 1px solid #ffeaa7; color: #856404; }
+        
+        .btn { 
+            background: linear-gradient(45deg, #007bff, #0056b3);
+            color: white; 
+            border: none; 
+            padding: 12px 20px; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            font-size: 14px;
+            margin: 5px;
+            min-height: 44px;
+            min-width: 100px;
+            transition: all 0.2s ease;
+        }
+        .btn:active { 
+            transform: scale(0.95); 
+            background: linear-gradient(45deg, #0056b3, #004494);
+        }
+        
+        .touch-test-area {
+            width: 100%;
+            height: 200px;
+            background: linear-gradient(45deg, #28a745, #20c997);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            margin: 15px 0;
+            touch-action: manipulation;
+            user-select: none;
+        }
+        
+        .swipe-demo {
+            background: linear-gradient(45deg, #6f42c1, #6610f2);
+            color: white;
+            padding: 30px;
+            border-radius: 10px;
+            text-align: center;
+            margin: 15px 0;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .gesture-indicator {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 24px;
+            opacity: 0.7;
+        }
+        
+        .device-info {
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        
+        .grid-demo {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+            margin: 15px 0;
+        }
+        
+        .grid-item {
+            background: linear-gradient(45deg, #fd7e14, #e63946);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            min-height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+        
+        .performance-meter {
+            width: 100%;
+            height: 20px;
+            background: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        
+        .performance-bar {
+            height: 100%;
+            background: linear-gradient(45deg, #28a745, #20c997);
+            width: 0%;
+            transition: width 0.5s ease;
+        }
+        
+        .test-log {
+            background: #212529;
+            color: #28a745;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            margin: 15px 0;
+        }
+        
+        /* レスポンシブテスト用 */
+        @media (max-width: 768px) {
+            .test-container { 
+                margin: 10px; 
+                padding: 15px; 
+                border-radius: 10px;
+            }
+            .grid-demo { 
+                grid-template-columns: repeat(2, 1fr); 
+                gap: 8px; 
+            }
+            .btn { 
+                width: 100%; 
+                margin: 5px 0; 
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .grid-demo { 
+                grid-template-columns: 1fr; 
+            }
+            .test-section { 
+                padding: 10px; 
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>📱 モバイルUI最適化テスト</h1>
+        
+        <div class="test-section">
+            <h2>🔍 デバイス情報</h2>
+            <div class="device-info" id="deviceInfo">
+                デバイス情報を取得中...
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>👆 タッチテスト</h2>
+            <p>以下のエリアをタッチして、フィードバックを確認してください：</p>
+            <div class="touch-test-area" id="touchArea">
+                タッチしてください
+            </div>
+            <div class="test-result info" id="touchResult">
+                タッチ操作待機中...
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>👈👉 スワイプテスト</h2>
+            <p>以下のエリアでスワイプジェスチャーをテストしてください：</p>
+            <div class="swipe-demo" id="swipeArea">
+                <div class="gesture-indicator">👆</div>
+                <p>ここでスワイプしてください</p>
+                <p style="font-size: 14px; opacity: 0.8;">←左右にスワイプ→</p>
+            </div>
+            <div class="test-result info" id="swipeResult">
+                スワイプ操作待機中...
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>🎯 ボタンテスト</h2>
+            <p>各種ボタンのタッチ反応をテストしてください：</p>
+            <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+                <button class="btn" onclick="testButton('primary')">プライマリ</button>
+                <button class="btn" onclick="testButton('secondary')" style="background: linear-gradient(45deg, #6c757d, #5a6268);">セカンダリ</button>
+                <button class="btn" onclick="testButton('success')" style="background: linear-gradient(45deg, #28a745, #1e7e34);">成功</button>
+                <button class="btn" onclick="testButton('warning')" style="background: linear-gradient(45deg, #ffc107, #e0a800);">警告</button>
+                <button class="btn" onclick="testButton('danger')" style="background: linear-gradient(45deg, #dc3545, #c82333);">危険</button>
+            </div>
+            <div class="test-result info" id="buttonResult">
+                ボタン操作待機中...
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>📐 レスポンシブテスト</h2>
+            <p>グリッドレイアウトの応答性をテストしてください：</p>
+            <div class="grid-demo">
+                <div class="grid-item">1</div>
+                <div class="grid-item">2</div>
+                <div class="grid-item">3</div>
+                <div class="grid-item">4</div>
+                <div class="grid-item">5</div>
+                <div class="grid-item">6</div>
+            </div>
+            <div class="test-result info" id="responsiveResult">
+                画面サイズ: <span id="screenSize">取得中...</span>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>⚡ パフォーマンステスト</h2>
+            <p>タッチ反応速度とスクロール性能をテストしてください：</p>
+            <button class="btn" onclick="runPerformanceTest()">パフォーマンステスト実行</button>
+            <div class="performance-meter">
+                <div class="performance-bar" id="performanceBar"></div>
+            </div>
+            <div class="test-result info" id="performanceResult">
+                パフォーマンステスト待機中...
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>📳 バイブレーションテスト</h2>
+            <p>デバイスのバイブレーション機能をテストしてください：</p>
+            <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+                <button class="btn" onclick="testVibration('short')">短いバイブ</button>
+                <button class="btn" onclick="testVibration('medium')">中程度</button>
+                <button class="btn" onclick="testVibration('long')">長いバイブ</button>
+                <button class="btn" onclick="testVibration('pattern')">パターン</button>
+            </div>
+            <div class="test-result info" id="vibrationResult">
+                バイブレーション対応: <span id="vibrationSupport">確認中...</span>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>📊 テストログ</h2>
+            <div class="test-log" id="testLog">
+                [INFO] モバイルUIテスト開始...\n
+            </div>
+            <button class="btn" onclick="clearLog()">ログクリア</button>
+            <button class="btn" onclick="exportResults()" style="background: linear-gradient(45deg, #6f42c1, #6610f2);">結果エクスポート</button>
+        </div>
+        
+        <div class="test-section">
+            <h2>✅ テスト結果サマリー</h2>
+            <div id="testSummary" class="test-result info">
+                <p><strong>実行済みテスト:</strong> <span id="completedTests">0</span> / 7</p>
+                <p><strong>成功率:</strong> <span id="successRate">0%</span></p>
+                <p><strong>総合評価:</strong> <span id="overallRating">未実行</span></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // テスト状態管理
+        let testResults = {
+            deviceInfo: false,
+            touchTest: false,
+            swipeTest: false,
+            buttonTest: false,
+            responsiveTest: false,
+            performanceTest: false,
+            vibrationTest: false
+        };
+        
+        // ログ管理
+        function addLog(message, type = 'info') {
+            const log = document.getElementById('testLog');
+            const timestamp = new Date().toLocaleTimeString();
+            const prefix = type === 'error' ? '[ERROR]' : type === 'warning' ? '[WARN]' : '[INFO]';
+            log.innerHTML += `${timestamp} ${prefix} ${message}\n`;
+            log.scrollTop = log.scrollHeight;
+        }
+        
+        // デバイス情報取得
+        function getDeviceInfo() {
+            const info = {
+                userAgent: navigator.userAgent,
+                screenWidth: screen.width,
+                screenHeight: screen.height,
+                windowWidth: window.innerWidth,
+                windowHeight: window.innerHeight,
+                devicePixelRatio: window.devicePixelRatio,
+                touchPoints: navigator.maxTouchPoints,
+                platform: navigator.platform,
+                language: navigator.language,
+                cookieEnabled: navigator.cookieEnabled,
+                onLine: navigator.onLine
+            };
+            
+            const deviceInfoDiv = document.getElementById('deviceInfo');
+            deviceInfoDiv.innerHTML = `
+                <strong>基本情報:</strong><br>
+                画面サイズ: ${info.screenWidth} × ${info.screenHeight}<br>
+                ウィンドウサイズ: ${info.windowWidth} × ${info.windowHeight}<br>
+                デバイス密度: ${info.devicePixelRatio}<br>
+                タッチポイント: ${info.touchPoints}<br>
+                プラットフォーム: ${info.platform}<br>
+                言語: ${info.language}<br>
+                <strong>User Agent:</strong><br>
+                ${info.userAgent}
+            `;
+            
+            testResults.deviceInfo = true;
+            addLog('デバイス情報を取得しました');
+            updateSummary();
+        }
+        
+        // タッチテスト
+        function setupTouchTest() {
+            const touchArea = document.getElementById('touchArea');
+            const touchResult = document.getElementById('touchResult');
+            
+            let touchCount = 0;
+            let lastTouchTime = 0;
+            
+            touchArea.addEventListener('touchstart', (e) => {
+                const currentTime = Date.now();
+                const timeDiff = currentTime - lastTouchTime;
+                touchCount++;
+                lastTouchTime = currentTime;
+                
+                touchArea.style.background = 'linear-gradient(45deg, #dc3545, #c82333)';
+                touchArea.textContent = `タッチ ${touchCount} 回目`;
+                
+                touchResult.innerHTML = `
+                    <strong>タッチ検出:</strong> ${touchCount}回<br>
+                    <strong>反応時間:</strong> ${timeDiff > 0 ? timeDiff + 'ms' : '初回'}<br>
+                    <strong>タッチ座標:</strong> (${Math.round(e.touches[0].clientX)}, ${Math.round(e.touches[0].clientY)})
+                `;
+                
+                testResults.touchTest = true;
+                addLog(`タッチ検出: ${touchCount}回目, 座標(${Math.round(e.touches[0].clientX)}, ${Math.round(e.touches[0].clientY)})`);
+                updateSummary();
+            });
+            
+            touchArea.addEventListener('touchend', () => {
+                setTimeout(() => {
+                    touchArea.style.background = 'linear-gradient(45deg, #28a745, #20c997)';
+                    touchArea.textContent = 'タッチしてください';
+                }, 200);
+            });
+        }
+        
+        // スワイプテスト
+        function setupSwipeTest() {
+            const swipeArea = document.getElementById('swipeArea');
+            const swipeResult = document.getElementById('swipeResult');
+            
+            let startX = 0;
+            let startY = 0;
+            let startTime = 0;
+            
+            swipeArea.addEventListener('touchstart', (e) => {
+                startX = e.touches[0].clientX;
+                startY = e.touches[0].clientY;
+                startTime = Date.now();
+                swipeArea.style.background = 'linear-gradient(45deg, #fd7e14, #e63946)';
+            });
+            
+            swipeArea.addEventListener('touchend', (e) => {
+                const endX = e.changedTouches[0].clientX;
+                const endY = e.changedTouches[0].clientY;
+                const endTime = Date.now();
+                
+                const deltaX = endX - startX;
+                const deltaY = endY - startY;
+                const duration = endTime - startTime;
+                
+                let direction = '不明';
+                if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                    direction = deltaX > 50 ? '右スワイプ' : deltaX < -50 ? '左スワイプ' : '短すぎ';
+                } else {
+                    direction = deltaY > 50 ? '下スワイプ' : deltaY < -50 ? '上スワイプ' : '短すぎ';
+                }
+                
+                swipeResult.innerHTML = `
+                    <strong>スワイプ方向:</strong> ${direction}<br>
+                    <strong>移動距離:</strong> X=${Math.round(deltaX)}px, Y=${Math.round(deltaY)}px<br>
+                    <strong>所要時間:</strong> ${duration}ms<br>
+                    <strong>速度:</strong> ${Math.round(Math.sqrt(deltaX*deltaX + deltaY*deltaY) / duration * 1000)}px/s
+                `;
+                
+                if (Math.abs(deltaX) > 50 || Math.abs(deltaY) > 50) {
+                    testResults.swipeTest = true;
+                    addLog(`スワイプ検出: ${direction}, 距離(${Math.round(deltaX)}, ${Math.round(deltaY)})`);
+                    updateSummary();
+                }
+                
+                setTimeout(() => {
+                    swipeArea.style.background = 'linear-gradient(45deg, #6f42c1, #6610f2)';
+                }, 200);
+            });
+        }
+        
+        // ボタンテスト
+        function testButton(type) {
+            const buttonResult = document.getElementById('buttonResult');
+            const timestamp = new Date().toLocaleTimeString();
+            
+            buttonResult.innerHTML = `
+                <strong>ボタン押下:</strong> ${type}<br>
+                <strong>時刻:</strong> ${timestamp}<br>
+                <strong>状態:</strong> 正常に反応しました
+            `;
+            
+            testResults.buttonTest = true;
+            addLog(`ボタンテスト: ${type}ボタンが押されました`);
+            updateSummary();
+            
+            // バイブレーション
+            if ('vibrate' in navigator) {
+                navigator.vibrate(50);
+            }
+        }
+        
+        // レスポンシブテスト
+        function setupResponsiveTest() {
+            function updateScreenSize() {
+                const screenSize = document.getElementById('screenSize');
+                const width = window.innerWidth;
+                const height = window.innerHeight;
+                
+                let deviceType = '';
+                if (width <= 480) deviceType = 'スマートフォン（小）';
+                else if (width <= 768) deviceType = 'スマートフォン（大）';
+                else if (width <= 1024) deviceType = 'タブレット';
+                else deviceType = 'デスクトップ';
+                
+                screenSize.textContent = `${width} × ${height} (${deviceType})`;
+                
+                testResults.responsiveTest = true;
+                addLog(`画面サイズ変更: ${width}×${height} (${deviceType})`);
+                updateSummary();
+            }
+            
+            updateScreenSize();
+            window.addEventListener('resize', updateScreenSize);
+            window.addEventListener('orientationchange', () => {
+                setTimeout(updateScreenSize, 100);
+            });
+        }
+        
+        // パフォーマンステスト
+        function runPerformanceTest() {
+            const performanceBar = document.getElementById('performanceBar');
+            const performanceResult = document.getElementById('performanceResult');
+            
+            addLog('パフォーマンステストを開始...');
+            
+            // タッチ反応速度テスト
+            const startTime = performance.now();
+            
+            performanceBar.style.width = '20%';
+            
+            setTimeout(() => {
+                performanceBar.style.width = '40%';
+                
+                // スクロール性能テスト
+                const scrollTest = () => {
+                    const scrollStart = performance.now();
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    
+                    setTimeout(() => {
+                        const scrollEnd = performance.now();
+                        performanceBar.style.width = '70%';
+                        
+                        // メモリ使用量テスト（概算）
+                        const memoryInfo = performance.memory ? {
+                            used: Math.round(performance.memory.usedJSHeapSize / 1024 / 1024),
+                            total: Math.round(performance.memory.totalJSHeapSize / 1024 / 1024),
+                            limit: Math.round(performance.memory.jsHeapSizeLimit / 1024 / 1024)
+                        } : null;
+                        
+                        performanceBar.style.width = '100%';
+                        
+                        const endTime = performance.now();
+                        const totalTime = Math.round(endTime - startTime);
+                        const scrollTime = Math.round(scrollEnd - scrollStart);
+                        
+                        performanceResult.innerHTML = `
+                            <strong>総実行時間:</strong> ${totalTime}ms<br>
+                            <strong>スクロール時間:</strong> ${scrollTime}ms<br>
+                            ${memoryInfo ? `<strong>メモリ使用量:</strong> ${memoryInfo.used}MB / ${memoryInfo.total}MB<br>` : ''}
+                            <strong>評価:</strong> ${totalTime < 1000 ? '優秀' : totalTime < 2000 ? '良好' : '要改善'}
+                        `;
+                        
+                        testResults.performanceTest = true;
+                        addLog(`パフォーマンステスト完了: ${totalTime}ms`);
+                        updateSummary();
+                    }, 500);
+                };
+                
+                scrollTest();
+            }, 500);
+        }
+        
+        // バイブレーションテスト
+        function testVibration(type) {
+            const vibrationResult = document.getElementById('vibrationResult');
+            const vibrationSupport = document.getElementById('vibrationSupport');
+            
+            if ('vibrate' in navigator) {
+                vibrationSupport.textContent = '対応';
+                vibrationSupport.style.color = '#28a745';
+                
+                let pattern;
+                switch (type) {
+                    case 'short': pattern = [50]; break;
+                    case 'medium': pattern = [200]; break;
+                    case 'long': pattern = [500]; break;
+                    case 'pattern': pattern = [100, 50, 100, 50, 200]; break;
+                    default: pattern = [100];
+                }
+                
+                navigator.vibrate(pattern);
+                
+                vibrationResult.innerHTML = `
+                    <strong>バイブレーション対応:</strong> 対応<br>
+                    <strong>実行パターン:</strong> ${type}<br>
+                    <strong>パターン値:</strong> [${pattern.join(', ')}]ms
+                `;
+                
+                testResults.vibrationTest = true;
+                addLog(`バイブレーションテスト: ${type}パターン実行`);
+                updateSummary();
+            } else {
+                vibrationSupport.textContent = '非対応';
+                vibrationSupport.style.color = '#dc3545';
+                
+                vibrationResult.innerHTML = `
+                    <strong>バイブレーション対応:</strong> 非対応<br>
+                    <strong>デバイス:</strong> このデバイスはバイブレーション機能に対応していません
+                `;
+                
+                addLog('バイブレーション非対応デバイス', 'warning');
+            }
+        }
+        
+        // テストサマリー更新
+        function updateSummary() {
+            const completedCount = Object.values(testResults).filter(result => result).length;
+            const totalTests = Object.keys(testResults).length;
+            const successRate = Math.round((completedCount / totalTests) * 100);
+            
+            document.getElementById('completedTests').textContent = completedCount;
+            document.getElementById('successRate').textContent = successRate + '%';
+            
+            let rating;
+            if (successRate >= 90) rating = '優秀 🏆';
+            else if (successRate >= 70) rating = '良好 ✅';
+            else if (successRate >= 50) rating = '普通 ⚠️';
+            else rating = '要改善 ❌';
+            
+            document.getElementById('overallRating').textContent = rating;
+        }
+        
+        // ログクリア
+        function clearLog() {
+            document.getElementById('testLog').innerHTML = '[INFO] ログをクリアしました...\n';
+            addLog('テストログをクリアしました');
+        }
+        
+        // 結果エクスポート
+        function exportResults() {
+            const results = {
+                timestamp: new Date().toISOString(),
+                deviceInfo: document.getElementById('deviceInfo').textContent,
+                testResults: testResults,
+                summary: {
+                    completed: Object.values(testResults).filter(r => r).length,
+                    total: Object.keys(testResults).length,
+                    successRate: Math.round((Object.values(testResults).filter(r => r).length / Object.keys(testResults).length) * 100)
+                }
+            };
+            
+            const blob = new Blob([JSON.stringify(results, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `mobile-ui-test-results-${new Date().toISOString().slice(0,10)}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            addLog('テスト結果をエクスポートしました');
+        }
+        
+        // 初期化
+        document.addEventListener('DOMContentLoaded', () => {
+            addLog('モバイルUIテストを初期化中...');
+            
+            getDeviceInfo();
+            setupTouchTest();
+            setupSwipeTest();
+            setupResponsiveTest();
+            
+            // バイブレーション対応チェック
+            const vibrationSupport = document.getElementById('vibrationSupport');
+            if ('vibrate' in navigator) {
+                vibrationSupport.textContent = '対応';
+                vibrationSupport.style.color = '#28a745';
+            } else {
+                vibrationSupport.textContent = '非対応';
+                vibrationSupport.style.color = '#dc3545';
+            }
+            
+            addLog('モバイルUIテストの初期化が完了しました');
+            addLog('各テストを実行してUIの最適化状況を確認してください');
+        });
+    </script>
+</body>
+</html>

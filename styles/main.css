@@ -611,4 +611,195 @@ input:focus, select:focus, textarea:focus {
     background: linear-gradient(135deg, #f8d7da, #f5c6cb);
     color: #721c24;
     border: 1px solid #f5c6cb;
+}
+
+/* ===========================================
+   モバイルタッチ最適化の追加スタイル
+   =========================================== */
+
+/* タッチターゲットの最適化 */
+.touch-target {
+    min-width: 44px;
+    min-height: 44px;
+    touch-action: manipulation;
+    cursor: pointer;
+}
+
+/* タッチフィードバックの全体的強化 */
+.touch-feedback {
+    transition: all 0.1s ease;
+    user-select: none;
+}
+
+.touch-feedback:active {
+    transform: scale(0.98);
+    opacity: 0.8;
+}
+
+/* 特定要素のタッチ最適化 */
+.horse-card {
+    touch-action: manipulation;
+}
+
+.horse-card:active {
+    transform: translateY(-1px) scale(0.99);
+    transition: all 0.1s ease;
+}
+
+/* ナビゲーションボタンのタッチ最適化 */
+.nav-btn {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.nav-btn:active {
+    transform: scale(0.9);
+    transition: transform 0.1s ease;
+}
+
+/* 片手操作ゾーンの考慮 */
+.thumb-zone {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1001;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 25px;
+    padding: 10px 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    backdrop-filter: blur(10px);
+    display: flex;
+    gap: 10px;
+    max-width: 90vw;
+    overflow-x: auto;
+}
+
+.thumb-zone .btn {
+    min-width: 60px;
+    padding: 8px 12px;
+    font-size: 14px;
+    margin: 0;
+    flex-shrink: 0;
+}
+
+/* スクロール最適化 */
+.smooth-scroll {
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* フォーカスインジケーターの改善 */
+.focus-indicator:focus {
+    outline: 3px solid #007bff;
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+
+/* ドラッグ禁止（タッチ操作の誤動作防止） */
+.no-drag {
+    -webkit-user-drag: none;
+    -khtml-user-drag: none;
+    -moz-user-drag: none;
+    -o-user-drag: none;
+    user-drag: none;
+}
+
+/* テキスト選択禁止（タッチ操作時の誤動作防止） */
+.no-select {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+/* モバイルでのホバー効果無効化 */
+@media (hover: none) {
+    .btn:hover {
+        transform: none;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    }
+    
+    .horse-card:hover {
+        transform: none;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+    
+    .nav-btn:hover {
+        transform: none;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    }
+}
+
+/* タブレット専用スタイル */
+@media (min-width: 768px) and (max-width: 1024px) {
+    .container {
+        max-width: 90%;
+        padding: 30px;
+    }
+    
+    .race-info-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 20px;
+    }
+    
+    .horse-content {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 15px;
+    }
+    
+    .btn {
+        padding: 12px 20px;
+        font-size: 16px;
+    }
+}
+
+/* 小型タブレット（iPad mini等） */
+@media (min-width: 600px) and (max-width: 767px) {
+    .race-info-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 15px;
+    }
+    
+    .horse-content {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+    }
+}
+
+/* スワイプヒント */
+.swipe-hint {
+    position: relative;
+    overflow: hidden;
+}
+
+.swipe-hint::after {
+    content: '👆 スワイプ可能';
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 10px;
+    color: #999;
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+/* バイブレーションフィードバック用クラス */
+.vibrate-feedback {
+    animation: none;
+}
+
+@keyframes vibrateAnimation {
+    0% { transform: translateX(0); }
+    25% { transform: translateX(-2px); }
+    50% { transform: translateX(2px); }
+    75% { transform: translateX(-1px); }
+    100% { transform: translateX(0); }
+}
+
+.vibrate-feedback.animate {
+    animation: vibrateAnimation 0.3s ease;
 } 
