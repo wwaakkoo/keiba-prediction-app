@@ -123,6 +123,8 @@ class PredictionEngine {
             const currentRaceLevel = this.getCurrentRaceLevel();
             const raceDistance = this.getCurrentRaceDistance();
             const trackType = this.getCurrentTrackType();
+            const course = this.getCurrentCourse();
+            
             if (typeof RaceAnalysisEngine !== 'undefined') {
                 const raceAnalysisResult = RaceAnalysisIntegrator.enhancePredictionWithRaceAnalysis(horse, currentRaceLevel, raceDistance, trackType);
                 score += raceAnalysisResult.raceAnalysisBonus;
@@ -142,6 +144,33 @@ class PredictionEngine {
                     console.log(`🎯 平均指数: ${raceAnalysisResult.raceAnalysis.timeIndexHistory.averageTimeIndex} / 最高指数: ${raceAnalysisResult.raceAnalysis.timeIndexHistory.bestTimeIndex}`);
                 }
                 console.log(`🔧 現在レース条件: ${currentRaceLevel} / ${raceDistance}m / ${trackType}`);
+            }
+            
+            // ペース分析統合
+            let paceAnalysisBonus = 0;
+            if (typeof PaceAnalyzer !== 'undefined' && horses.length > 0) {
+                // 全出走馬データを使用してペース分析実行
+                const paceAnalysis = PaceAnalyzer.analyzePaceComprehensive(horses, raceDistance, trackType, course);
+                
+                // 馬別ペース影響を計算
+                const horsePaceImpact = this.calculateHorsePaceImpact(horse, paceAnalysis);
+                paceAnalysisBonus = horsePaceImpact.adjustmentScore;
+                score += paceAnalysisBonus;
+                
+                // ペース分析統合詳細ログ
+                console.log(`=== ペース分析統合: ${horse.name} ===`);
+                console.log(`🏃 予想ペース: ${paceAnalysis.summary.predictedPace}`);
+                console.log(`💪 有利脚質: ${paceAnalysis.summary.favoredStyles.join('・')}`);
+                console.log(`📊 信頼度: ${paceAnalysis.summary.confidenceLevel}%`);
+                console.log(`🎯 馬別ペース調整: ${paceAnalysisBonus}点`);
+                console.log(`📈 理由: ${horsePaceImpact.reason}`);
+                
+                // 馬データにペース分析結果を保存
+                horse.paceAnalysis = {
+                    overallAnalysis: paceAnalysis.summary,
+                    horseSpecific: horsePaceImpact,
+                    timestamp: new Date().toISOString()
+                };
             }
 
             // 新しい特徴量の評価
@@ -1079,7 +1108,12 @@ class PredictionEngine {
     
     static getCurrentCourse() {
         const courseElement = document.getElementById('raceCourse');
-        return courseElement ? courseElement.value : '';
+        return courseElement ? courseElement.value : '東京';
+    }
+    
+    static getCurrentRaceLevel() {
+        const levelElement = document.getElementById('raceLevel');
+        return levelElement ? levelElement.value : '1勝';
     }
     
     // 夏競馬補正を適用
@@ -1204,6 +1238,86 @@ class PredictionEngine {
         });
 
         return horses;
+    }
+    
+    /**
+     * 馬別ペース影響計算
+     * @param {Object} horse - 馬データ
+     * @param {Object} paceAnalysis - ペース分析結果
+     * @returns {Object} 馬別ペース影響
+     */
+    static calculateHorsePaceImpact(horse, paceAnalysis) {
+        const style = horse.runningStyle || '先行';
+        const baseScore = horse.score || 50;
+        
+        // ペース分析からの基本影響
+        const paceScenario = paceAnalysis.summary.predictedPace;
+        const favoredStyles = paceAnalysis.summary.favoredStyles;
+        const confidenceLevel = paceAnalysis.summary.confidenceLevel;
+        
+        // 脚質がペース有利リストに含まれているかチェック
+        const isStyleFavored = favoredStyles.includes(style);
+        
+        // 基本調整スコア計算
+        let adjustmentScore = 0;
+        
+        if (isStyleFavored) {
+            // 有利脚質の場合
+            if (confidenceLevel >= 80) {
+                adjustmentScore = 8; // 高信頼度で有利
+            } else if (confidenceLevel >= 60) {
+                adjustmentScore = 5; // 中信頼度で有利
+            } else {
+                adjustmentScore = 3; // 低信頼度で有利
+            }
+        } else {
+            // 不利脚質の場合
+            if (confidenceLevel >= 80) {
+                adjustmentScore = -5; // 高信頼度で不利
+            } else if (confidenceLevel >= 60) {
+                adjustmentScore = -3; // 中信頼度で不利
+            } else {
+                adjustmentScore = -1; // 低信頼度で不利
+            }
+        }
+        
+        // ペース詳細分析からの追加調整
+        if (paceAnalysis.detailed && paceAnalysis.detailed.paceImpact) {
+            const horseImpacts = paceAnalysis.detailed.paceImpact.horseImpacts;
+            const horseImpact = horseImpacts.find(h => h.horseName === horse.name);
+            
+            if (horseImpact) {
+                const paceAdjustment = horseImpact.adjustedScore - horseImpact.originalScore;
+                adjustmentScore += Math.round(paceAdjustment * 0.5); // 50%の重みで反映
+            }
+        }
+        
+        // 調整スコアの範囲制限
+        adjustmentScore = Math.max(-10, Math.min(10, adjustmentScore));
+        
+        // 理由の生成
+        let reason = '';
+        if (adjustmentScore > 3) {
+            reason = `${style}戦法が${paceScenario}で大きく有利（信頼度${confidenceLevel}%）`;
+        } else if (adjustmentScore > 0) {
+            reason = `${style}戦法が${paceScenario}でやや有利（信頼度${confidenceLevel}%）`;
+        } else if (adjustmentScore < -3) {
+            reason = `${style}戦法が${paceScenario}で大きく不利（信頼度${confidenceLevel}%）`;
+        } else if (adjustmentScore < 0) {
+            reason = `${style}戦法が${paceScenario}でやや不利（信頼度${confidenceLevel}%）`;
+        } else {
+            reason = `${style}戦法への${paceScenario}の影響は中立（信頼度${confidenceLevel}%）`;
+        }
+        
+        return {
+            adjustmentScore,
+            reason,
+            paceScenario,
+            isStyleFavored,
+            confidenceLevel,
+            originalScore: baseScore,
+            adjustedScore: baseScore + adjustmentScore
+        };
     }
 
     // AI推奨ボタンを有効化
