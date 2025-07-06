@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📊 リスクリターン・投資効率グラフの見方</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; line-height: 1.6; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        h1 { color: #2e8b57; text-align: center; border-bottom: 3px solid #2e8b57; padding-bottom: 15px; }
+        h2 { color: #1976d2; border-left: 4px solid #1976d2; padding-left: 15px; margin-top: 30px; }
+        h3 { color: #d32f2f; margin-top: 25px; }
+        .chart-section { background: #f8f9fa; padding: 20px; margin: 15px 0; border-radius: 8px; border-left: 4px solid #28a745; }
+        .example { background: #e8f5e8; padding: 15px; margin: 10px 0; border-radius: 5px; border: 1px solid #c3e6cb; }
+        .warning { background: #fff3cd; padding: 15px; margin: 10px 0; border-radius: 5px; border: 1px solid #ffeaa7; color: #856404; }
+        .tip { background: #d1ecf1; padding: 15px; margin: 10px 0; border-radius: 5px; border: 1px solid #bee5eb; color: #0c5460; }
+        .axis-guide { background: #f0f8ff; padding: 15px; margin: 10px 0; border-radius: 5px; border: 1px solid #b3d9ff; }
+        .quadrant { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 15px 0; }
+        .quadrant-item { padding: 15px; border-radius: 5px; text-align: center; font-weight: bold; }
+        .q1 { background: #d4edda; color: #155724; } /* 高リターン・低リスク */
+        .q2 { background: #fff3cd; color: #856404; } /* 高リターン・高リスク */
+        .q3 { background: #f8d7da; color: #721c24; } /* 低リターン・高リスク */
+        .q4 { background: #cce5ff; color: #0056b3; } /* 低リターン・低リスク */
+        .scatter-legend { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin: 15px 0; }
+        .legend-item { padding: 8px; border-radius: 3px; text-align: center; font-size: 0.9em; }
+        .excellent { background: #2E8B57; color: white; }
+        .good { background: #FFD700; color: #333; }
+        .average { background: #FF8C00; color: white; }
+        .poor { background: #DC143C; color: white; }
+        .interpretation { background: #e9ecef; padding: 15px; margin: 10px 0; border-radius: 5px; border-left: 4px solid #6c757d; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📊 リスクリターン・投資効率グラフの見方</h1>
+        
+        <div class="warning">
+            <strong>📌 重要なポイント</strong><br>
+            これらのグラフは実際の投資データが蓄積されると変化します。現在の表示は初期状態やサンプルデータの可能性があります。
+        </div>
+
+        <h2>📈 1. リスク・リターン散布図</h2>
+        
+        <div class="chart-section">
+            <h3>🎯 このグラフが表すもの</h3>
+            <p><strong>リスク・リターン散布図</strong>は、各投資案件（馬）のリスクとリターンの関係を視覚化したものです。</p>
+            
+            <div class="axis-guide">
+                <h4>📊 軸の意味</h4>
+                <ul>
+                    <li><strong>横軸（X軸）</strong>: リスク（投資の不確実性・変動性）</li>
+                    <li><strong>縦軸（Y軸）</strong>: リターン（期待される利益率）</li>
+                    <li><strong>各点</strong>: 一つの投資案件（馬）を表す</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="chart-section">
+            <h3>🗺️ 四象限の解釈</h3>
+            <div class="quadrant">
+                <div class="quadrant-item q1">
+                    <strong>右上：理想的投資</strong><br>
+                    高リターン・低リスク<br>
+                    💰 最優先投資対象
+                </div>
+                <div class="quadrant-item q2">
+                    <strong>右下：ハイリスク・ハイリターン</strong><br>
+                    高リターン・高リスク<br>
+                    🎯 慎重に検討
+                </div>
+                <div class="quadrant-item q4">
+                    <strong>左上：安全投資</strong><br>
+                    低リターン・低リスク<br>
+                    🛡️ 安定志向
+                </div>
+                <div class="quadrant-item q3">
+                    <strong>左下：避けるべき投資</strong><br>
+                    低リターン・高リスク<br>
+                    ❌ 投資非推奨
+                </div>
+            </div>
+        </div>
+
+        <div class="example">
+            <h3>📖 具体的な読み方</h3>
+            <ul>
+                <li><strong>右上の点</strong>: 低リスクで高リターンが期待できる理想的な馬</li>
+                <li><strong>左下の点</strong>: 高リスクなのに低リターンの投資すべきでない馬</li>
+                <li><strong>点の色</strong>: 投資効率スコアや推奨度を表示</li>
+                <li><strong>点の大きさ</strong>: オッズや投資金額を表すことがある</li>
+            </ul>
+        </div>
+
+        <h2>📊 2. 投資効率スコア散布図</h2>
+        
+        <div class="chart-section">
+            <h3>🎯 このグラフが表すもの</h3>
+            <p><strong>投資効率スコア散布図</strong>は、各馬の投資効率スコアとその他の重要指標との関係を示します。</p>
+            
+            <div class="axis-guide">
+                <h4>📊 軸の意味</h4>
+                <ul>
+                    <li><strong>横軸（X軸）</strong>: オッズまたは期待値</li>
+                    <li><strong>縦軸（Y軸）</strong>: 投資効率スコア（0-100点）</li>
+                    <li><strong>各点</strong>: 一つの投資対象馬</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="chart-section">
+            <h3>🎨 色分けの意味</h3>
+            <div class="scatter-legend">
+                <div class="legend-item excellent">90-100点：優秀</div>
+                <div class="legend-item good">70-89点：良好</div>
+                <div class="legend-item average">50-69点：普通</div>
+                <div class="legend-item poor">50点未満：要注意</div>
+            </div>
+        </div>
+
+        <div class="example">
+            <h3>📖 効率的な投資の見つけ方</h3>
+            <ul>
+                <li><strong>右上の緑の点</strong>: 高オッズで高効率スコアの理想的穴馬</li>
+                <li><strong>左上の点</strong>: 低オッズだが高効率の安定投資</li>
+                <li><strong>右下の赤い点</strong>: 高オッズだが効率が悪い危険な投資</li>
+                <li><strong>集中エリア</strong>: 多くの馬が集まる平均的な投資領域</li>
+            </ul>
+        </div>
+
+        <h2>🔄 3. グラフの変化について</h2>
+        
+        <div class="interpretation">
+            <h3>📈 データ蓄積による変化</h3>
+            
+            <div class="tip">
+                <h4>🆕 初期状態（現在の状況）</h4>
+                <ul>
+                    <li><strong>データ不足</strong>: 実投資データが少ない（2回のみ）</li>
+                    <li><strong>サンプル表示</strong>: 固定パターンや理論値で表示</li>
+                    <li><strong>変化なし</strong>: 実データが少ないため変化が見えない</li>
+                </ul>
+            </div>
+            
+            <div class="example">
+                <h4>📊 データ蓄積後の変化</h4>
+                <ul>
+                    <li><strong>10回投資後</strong>: 実際のリスク・リターンパターンが見え始める</li>
+                    <li><strong>30回投資後</strong>: 統計的に意味のある傾向が見える</li>
+                    <li><strong>100回投資後</strong>: 明確な投資パフォーマンスパターンが確立</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="chart-section">
+            <h3>🎯 期待される変化パターン</h3>
+            
+            <div class="tip">
+                <h4>💡 成功パターン</h4>
+                <ul>
+                    <li><strong>点の集約</strong>: 効率的な投資領域に点が集中</li>
+                    <li><strong>上方移動</strong>: 全体的にリターンが向上</li>
+                    <li><strong>リスク減少</strong>: 投資精度向上でリスクが低下</li>
+                    <li><strong>色の改善</strong>: 緑（優秀）の点が増加</li>
+                </ul>
+            </div>
+            
+            <div class="warning">
+                <h4>⚠️ 改善が必要なパターン</h4>
+                <ul>
+                    <li><strong>左下集中</strong>: 低リターン・高リスクエリアに集中</li>
+                    <li><strong>下方移動</strong>: 全体的にリターンが悪化</li>
+                    <li><strong>リスク増大</strong>: 投資が不安定化</li>
+                    <li><strong>赤の増加</strong>: 効率スコアが低い投資が増加</li>
+                </ul>
+            </div>
+        </div>
+
+        <h2>🎯 4. 実践的な活用方法</h2>
+        
+        <div class="chart-section">
+            <h3>📊 グラフからの投資判断</h3>
+            
+            <div class="example">
+                <h4>🔍 優良投資の見つけ方</h4>
+                <ol>
+                    <li><strong>右上エリアの確認</strong>: 高リターン・低リスクの馬を探す</li>
+                    <li><strong>色による選別</strong>: 緑や青の高効率スコアの馬を選択</li>
+                    <li><strong>集中エリアの回避</strong>: 平凡な成績の馬群を避ける</li>
+                    <li><strong>異常値の分析</strong>: 極端に良い・悪い投資の原因分析</li>
+                </ol>
+            </div>
+        </div>
+
+        <div class="chart-section">
+            <h3>📈 継続的な改善方法</h3>
+            
+            <div class="tip">
+                <h4>💪 投資精度向上のための分析</h4>
+                <ul>
+                    <li><strong>月次レビュー</strong>: グラフの変化を定期的に確認</li>
+                    <li><strong>失敗分析</strong>: 左下エリアの投資の共通点を分析</li>
+                    <li><strong>成功パターン学習</strong>: 右上エリアの投資の特徴を把握</li>
+                    <li><strong>戦略調整</strong>: グラフの傾向に基づいて投資戦略を修正</li>
+                </ul>
+            </div>
+        </div>
+
+        <h2>⚙️ 5. 現在の表示について</h2>
+        
+        <div class="warning">
+            <h3>🔄 データ不足時の表示</h3>
+            <p>現在のグラフ表示は以下の理由で変化が見えにくい状況です：</p>
+            <ul>
+                <li><strong>実投資データ</strong>: 2回のみ（統計的分析には不十分）</li>
+                <li><strong>サンプルデータ使用</strong>: 固定パターンで表示</li>
+                <li><strong>理論値表示</strong>: 実績ではなく計算値ベース</li>
+            </ul>
+        </div>
+
+        <div class="example">
+            <h3>📈 データ蓄積のメリット</h3>
+            <p><strong>10回以上の投資データ蓄積後：</strong></p>
+            <ul>
+                <li>実際のリスク・リターン関係が見える</li>
+                <li>個人の投資パターンの特徴が判明</li>
+                <li>効果的な投資戦略の方向性が明確化</li>
+                <li>改善すべき点が具体的に特定できる</li>
+            </ul>
+        </div>
+
+        <div class="tip">
+            <h3>💡 今後の活用法</h3>
+            <ul>
+                <li><strong>継続的な投資記録</strong>: レース結果を毎回入力</li>
+                <li><strong>定期的なグラフ確認</strong>: 月1回程度グラフの変化を観察</li>
+                <li><strong>パターン分析</strong>: 成功・失敗の傾向を把握</li>
+                <li><strong>戦略改善</strong>: グラフの示唆に基づいて投資方法を調整</li>
+            </ul>
+        </div>
+
+        <div class="interpretation">
+            <strong>📝 まとめ</strong><br>
+            リスクリターン・投資効率グラフは、投資の全体像を視覚的に把握する強力なツールです。現在は初期段階ですが、データが蓄積されるにつれて、あなたの投資パフォーマンスの傾向や改善点が明確になります。継続的なデータ入力と定期的な分析で、より効率的な投資戦略を構築していきましょう。
+        </div>
+    </div>
+</body>
+</html>

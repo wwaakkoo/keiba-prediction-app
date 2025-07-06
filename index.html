@@ -18,6 +18,28 @@
     <div class="container">
         <h1>🏇 競馬予測アプリ（機械学習対応）</h1>
         
+        <!-- ヘルプ・説明リンク -->
+        <div class="help-section" style="text-align: center; margin-bottom: 20px; background: #e3f2fd; padding: 15px; border-radius: 8px; border-left: 4px solid #2196f3;">
+            <h3 style="color: #1976d2; margin-bottom: 10px;">📖 使い方ガイド</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+                <a href="profitability-metrics-guide.html" target="_blank" style="display: inline-block; background: linear-gradient(45deg, #2e8b57, #228b22); color: white; padding: 10px 15px; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                    💰 収益性分析の解説
+                </a>
+                <a href="kelly-criterion-guide.html" target="_blank" style="display: inline-block; background: linear-gradient(45deg, #1976d2, #1565c0); color: white; padding: 10px 15px; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                    📊 ケリー基準の解説
+                </a>
+                <a href="risk-return-charts-guide.html" target="_blank" style="display: inline-block; background: linear-gradient(45deg, #9c27b0, #7b1fa2); color: white; padding: 10px 15px; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                    📈 グラフの見方解説
+                </a>
+                <button class="btn" onclick="window.open('test-sort-function.html', '_blank')" style="background: linear-gradient(45deg, #ff9800, #f57c00);">
+                    🔄 ソート機能テスト
+                </button>
+                <button class="btn" onclick="window.open('test-final-integration.html', '_blank')" style="background: linear-gradient(45deg, #9c27b0, #673ab7);">
+                    🎯 統合機能テスト
+                </button>
+            </div>
+        </div>
+        
         <!-- モード切り替えボタン（携帯用） -->
         <div class="mode-switch" style="text-align: center; margin-bottom: 20px;">
             <button class="btn" id="modeToggle" style="background: linear-gradient(45deg, #28a745, #20c997); max-width: 200px;">
@@ -261,16 +283,38 @@
         <!-- 予測結果 -->
         <div id="results" class="results hidden">
             <h3>📊 予測結果</h3>
+            
+            <!-- 収益性指標の簡易説明 -->
+            <div class="info-panel" style="background: #f0f8ff; padding: 15px; margin-bottom: 15px; border-radius: 8px; border-left: 4px solid #2196f3; display: none;" id="metricsInfo">
+                <h4 style="color: #1976d2; margin-bottom: 10px;">💡 収益性指標の見方（簡易版）</h4>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; font-size: 0.9em;">
+                    <div><strong>💎 効率スコア:</strong> 投資の効率性（80点以上=優秀）</div>
+                    <div><strong>📈 期待値:</strong> 1.0以上で理論的利益</div>
+                    <div><strong>⭐ グレード:</strong> AAA〜Dで投資評価</div>
+                    <div><strong>🐎 穴馬:</strong> オッズ5倍以上で穴馬判定</div>
+                </div>
+                <p style="font-size: 0.85em; color: #1976d2; margin-top: 8px; margin-bottom: 5px;">
+                    詳細は <a href="profitability-metrics-guide.html" target="_blank" style="color: #2e8b57; font-weight: bold;">💰 収益性分析の解説</a> をご覧ください
+                </p>
+            </div>
+            
             <div id="sortControls" class="section" style="margin-bottom: 15px; display: none;">
-                <label for="sortSelect" style="font-weight: bold; margin-right: 10px;">並び順:</label>
-                <select id="sortSelect" onchange="PredictionEngine.changeSortOrder(this.value)">
-                    <option value="score">スコア順</option>
-                    <option value="place">複勝率順</option>
-                    <option value="win">勝率順</option>
-                    <option value="odds">オッズ順</option>
-                    <option value="efficiency">💎 投資効率順</option>
-                    <option value="underdog">🐎 穴馬候補順</option>
-                </select>
+                <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                    <div>
+                        <label for="sortSelect" style="font-weight: bold; margin-right: 10px;">並び順:</label>
+                        <select id="sortSelect" onchange="PredictionEngine.changeSortOrder(this.value)">
+                            <option value="score">スコア順</option>
+                            <option value="place">複勝率順</option>
+                            <option value="win">勝率順</option>
+                            <option value="odds">オッズ順</option>
+                            <option value="efficiency">💎 投資効率順</option>
+                            <option value="underdog">🐎 穴馬候補順</option>
+                        </select>
+                    </div>
+                    <button class="btn" onclick="toggleMetricsInfo()" style="background: linear-gradient(45deg, #2196f3, #1976d2); font-size: 0.85em;">
+                        💡 指標説明
+                    </button>
+                </div>
             </div>
             <div id="resultsContainer"></div>
             

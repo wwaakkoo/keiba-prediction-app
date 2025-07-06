@@ -1151,7 +1151,7 @@ class LearningSystem {
         return stats;
     }
 
-    // 穴馬候補パターンを学習
+    // 穴馬候補パターンを学習（改善版：推奨は絞って学習は広げる）
     static learnSleeperPatterns(actualTop3) {
         if (!this.learningData.sleeperAnalysis) {
             this.learningData.sleeperAnalysis = {
@@ -1172,6 +1172,20 @@ class LearningSystem {
                 adjustments: {
                     baseThreshold: 20, // 基本閾値
                     factorWeights: {} // 要因別重み
+                },
+                // 拡張学習データ（新機能）
+                expandedLearning: {
+                    patterns: [], // 拡張学習パターン
+                    recommendationAccuracy: { // 推奨精度追跡
+                        total: 0,
+                        hits: 0,
+                        misses: 0
+                    },
+                    oversightAnalysis: { // 見落とし分析
+                        total: 0,
+                        highOddsHits: 0, // 高オッズ的中見落とし
+                        factors: {} // 見落とし要因別分析
+                    }
                 }
             };
         }
@@ -1180,6 +1194,11 @@ class LearningSystem {
         const predictions = PredictionEngine.getCurrentPredictions();
         if (!predictions) return;
 
+        // 買い目推奨データを取得（▲単穴推奨馬の特定用）
+        const bettingRecommendations = window.lastBettingRecommendations || [];
+        const recommendedSleeper = this.getRecommendedSleeperFromBetting(bettingRecommendations);
+
+        // === 従来の学習（detectSleeper基準）===
         predictions.forEach(horse => {
             const sleeper = PredictionEngine.detectSleeper(horse);
             
@@ -1216,6 +1235,9 @@ class LearningSystem {
                 }
             }
         });
+
+        // === 新機能：拡張学習（推奨は絞って学習は広げる） ===
+        this.performExpandedSleeperLearning(predictions, actualTop3, recommendedSleeper);
 
         // 穴馬検出精度の動的調整
         this.adjustSleeperDetection();
@@ -1361,10 +1383,226 @@ class LearningSystem {
         `);
         newWindow.document.close();
     }
+
+    // === 拡張学習メソッド群（新機能） ===
+    
+    // 買い目推奨から単穴推奨馬を取得
+    static getRecommendedSleeperFromBetting(bettingRecommendations) {
+        if (!bettingRecommendations || !Array.isArray(bettingRecommendations)) {
+            return null;
+        }
+        
+        // ▲単穴推奨馬を検索
+        const tananaRecommendation = bettingRecommendations.find(rec => 
+            rec.mark === '▲' && rec.type === '単穴'
+        );
+        
+        if (tananaRecommendation) {
+            // 馬名を抽出（括弧部分を除去）
+            const horseName = tananaRecommendation.horse.split('（')[0];
+            return horseName;
+        }
+        
+        return null;
+    }
+    
+    // 拡張穴馬学習の実行
+    static performExpandedSleeperLearning(predictions, actualTop3, recommendedSleeper) {
+        console.log('=== 拡張穴馬学習開始 ===');
+        console.log('推奨穴馬:', recommendedSleeper);
+        
+        if (!this.learningData.sleeperAnalysis.expandedLearning) {
+            // 初期化（念のため）
+            this.learningData.sleeperAnalysis.expandedLearning = {
+                patterns: [],
+                recommendationAccuracy: { total: 0, hits: 0, misses: 0 },
+                oversightAnalysis: { total: 0, highOddsHits: 0, factors: {} }
+            };
+        }
+        
+        const expandedLearning = this.learningData.sleeperAnalysis.expandedLearning;
+        
+        // 1. 推奨穴馬の成否学習
+        if (recommendedSleeper) {
+            this.learnRecommendedSleeperResult(predictions, actualTop3, recommendedSleeper, expandedLearning);
+        }
+        
+        // 2. 穴馬候補の見落とし学習
+        this.learnSleeperOversights(predictions, actualTop3, recommendedSleeper, expandedLearning);
+        
+        // 3. 拡張学習パターンの保持管理（最新50件）
+        if (expandedLearning.patterns.length > 50) {
+            expandedLearning.patterns = expandedLearning.patterns.slice(-50);
+        }
+        
+        console.log('拡張穴馬学習完了:', {
+            推奨精度: `${expandedLearning.recommendationAccuracy.hits}/${expandedLearning.recommendationAccuracy.total}`,
+            見落とし分析: `${expandedLearning.oversightAnalysis.highOddsHits}件`
+        });
+    }
+    
+    // 推奨穴馬の結果学習
+    static learnRecommendedSleeperResult(predictions, actualTop3, recommendedSleeper, expandedLearning) {
+        const recommendedHorse = predictions.find(horse => horse.name === recommendedSleeper);
+        if (!recommendedHorse) {
+            console.warn('推奨穴馬が予測データに見つかりません:', recommendedSleeper);
+            return;
+        }
+        
+        const isHit = actualTop3.some(horse => horse.name === recommendedSleeper);
+        const position = isHit ? actualTop3.findIndex(h => h.name === recommendedSleeper) + 1 : null;
+        
+        // 推奨精度を更新
+        expandedLearning.recommendationAccuracy.total++;
+        if (isHit) {
+            expandedLearning.recommendationAccuracy.hits++;
+        } else {
+            expandedLearning.recommendationAccuracy.misses++;
+        }
+        
+        // 学習パターンを記録
+        const pattern = {
+            date: new Date().toISOString(),
+            type: 'RECOMMENDATION',
+            horseName: recommendedSleeper,
+            odds: recommendedHorse.odds,
+            isHit: isHit,
+            position: position,
+            learningType: isHit ? 'SUCCESS' : 'FAILURE',
+            factors: this.extractRecommendationFactors(recommendedHorse)
+        };
+        
+        expandedLearning.patterns.push(pattern);
+        
+        console.log(`推奨穴馬学習: ${recommendedSleeper} (${recommendedHorse.odds}倍) → ${isHit ? position + '着' : '圏外'} [${pattern.learningType}]`);
+    }
+    
+    // 穴馬候補見落とし学習
+    static learnSleeperOversights(predictions, actualTop3, recommendedSleeper, expandedLearning) {
+        console.log('=== 見落とし学習開始 ===');
+        console.log('推奨穴馬:', recommendedSleeper);
+        console.log('実際の上位3頭:', actualTop3.map(h => h.name));
+        
+        // 緑背景表示馬（穴馬候補）のうち、推奨されなかった馬を分析
+        const underdogCandidates = predictions.filter(horse => 
+            horse.isUnderdog && // 緑背景表示（穴馬候補）
+            horse.name !== recommendedSleeper // 推奨されなかった馬
+        );
+        
+        console.log('穴馬候補数:', underdogCandidates.length);
+        console.log('穴馬候補:', underdogCandidates.map(h => `${h.name}(${h.odds}倍,穴馬:${h.isUnderdog})`));
+        
+        underdogCandidates.forEach(horse => {
+            const isHit = actualTop3.some(topHorse => topHorse.name === horse.name);
+            const position = isHit ? actualTop3.findIndex(h => h.name === horse.name) + 1 : null;
+            
+            console.log(`${horse.name}: 的中=${isHit}, オッズ=${horse.odds}, 高オッズ条件=${horse.odds >= 15}`);
+            
+            // 高オッズ（15倍以上）で的中した場合は重要な見落としとして記録
+            if (isHit && horse.odds >= 15) {
+                expandedLearning.oversightAnalysis.total++;
+                expandedLearning.oversightAnalysis.highOddsHits++;
+                
+                // 見落とし要因分析
+                const factors = this.extractOversightFactors(horse);
+                factors.forEach(factor => {
+                    if (!expandedLearning.oversightAnalysis.factors[factor]) {
+                        expandedLearning.oversightAnalysis.factors[factor] = { count: 0, examples: [] };
+                    }
+                    expandedLearning.oversightAnalysis.factors[factor].count++;
+                    expandedLearning.oversightAnalysis.factors[factor].examples.push({
+                        horse: horse.name,
+                        odds: horse.odds,
+                        position: position,
+                        date: new Date().toISOString().split('T')[0]
+                    });
+                });
+                
+                console.log(`✅ 見落とし学習記録: ${horse.name} (${horse.odds}倍) → ${position}着`);
+                
+                // 学習パターンを記録
+                const pattern = {
+                    date: new Date().toISOString(),
+                    type: 'OVERSIGHT',
+                    horseName: horse.name,
+                    odds: horse.odds,
+                    isHit: true,
+                    position: position,
+                    learningType: 'HIGH_ODDS_MISS',
+                    factors: factors
+                };
+                
+                expandedLearning.patterns.push(pattern);
+                
+                console.log(`見落とし学習: ${horse.name} (${horse.odds}倍・${position}着) → 重要な見落とし`);
+                
+            } else if (!isHit) {
+                // 正しく除外された場合（的中しなかった穴馬候補）
+                const pattern = {
+                    date: new Date().toISOString(),
+                    type: 'CORRECT_EXCLUSION',
+                    horseName: horse.name,
+                    odds: horse.odds,
+                    isHit: false,
+                    position: null,
+                    learningType: 'CORRECT_EXCLUSION',
+                    factors: this.extractOversightFactors(horse)
+                };
+                
+                expandedLearning.patterns.push(pattern);
+            }
+        });
+    }
+    
+    // 推奨要因抽出（推奨馬の特徴分析用）
+    static extractRecommendationFactors(horse) {
+        const factors = [];
+        
+        // オッズ帯
+        if (horse.odds <= 7) factors.push('中オッズ帯');
+        else if (horse.odds <= 15) factors.push('やや高オッズ帯');
+        else factors.push('高オッズ帯');
+        
+        // 投資効率関連
+        if (horse.efficiencyScore >= 70) factors.push('高効率スコア');
+        if (horse.investmentGrade && ['AA', 'AAA'].includes(horse.investmentGrade)) factors.push('優良投資グレード');
+        
+        // その他の特徴
+        if (horse.winProbability >= 8) factors.push('高勝率予測');
+        if (horse.underdogBonus >= 10) factors.push('穴馬ボーナス高');
+        
+        return factors;
+    }
+    
+    // 見落とし要因抽出（見落とした馬の特徴分析用）
+    static extractOversightFactors(horse) {
+        const factors = [];
+        
+        // オッズ特徴
+        if (horse.odds >= 50) factors.push('超高オッズ');
+        else if (horse.odds >= 20) factors.push('大穴オッズ');
+        else if (horse.odds >= 10) factors.push('穴馬オッズ');
+        
+        // 効率性特徴
+        if (horse.efficiencyScore >= 80) factors.push('見落とし高効率');
+        if (horse.expectedValue >= 1.2) factors.push('見落とし高期待値');
+        
+        // 人気度特徴
+        if (horse.popularity >= 10) factors.push('低人気');
+        if (horse.popularity >= 15) factors.push('超低人気');
+        
+        // その他
+        if (horse.isUnderdog) factors.push('穴馬候補表示');
+        if (horse.winProbability <= 3) factors.push('極低勝率予測');
+        
+        return factors;
+    }
 }
 
 // グローバル関数として公開
 window.processRaceResult = LearningSystem.processRaceResult.bind(LearningSystem);
+// グローバル公開
+window.LearningSystem = LearningSystem;
 window.showLearningStats = LearningSystem.showLearningStats.bind(LearningSystem);
 window.resetLearningData = LearningSystem.resetLearningData.bind(LearningSystem);
 window.saveLearningData = LearningSystem.saveLearningData.bind(LearningSystem);

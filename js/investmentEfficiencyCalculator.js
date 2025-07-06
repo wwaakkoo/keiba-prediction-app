@@ -81,7 +81,7 @@ class InvestmentEfficiencyCalculator {
             
             // 穴馬評価
             underdogBonus,
-            isUnderdog: odds >= 7.0,
+            isUnderdog: this.determineUnderdogStatus(odds, popularity), // 人気基準に変更
             popularityScore: this.calculatePopularityScore(odds, popularity),
             
             // 総合評価
@@ -621,6 +621,43 @@ class InvestmentEfficiencyCalculator {
     static updateCalculationConfig(newConfig) {
         this.calculationConfig = { ...this.calculationConfig, ...newConfig };
         console.log('投資効率計算設定を更新:', this.calculationConfig);
+    }
+    
+    /**
+     * 穴馬判定（人気基準）
+     * @param {number} odds - オッズ
+     * @param {number} popularity - 人気順位
+     * @returns {boolean} 穴馬判定結果
+     */
+    static determineUnderdogStatus(odds, popularity) {
+        // 人気順位が利用可能な場合は人気基準を優先
+        if (popularity && typeof popularity === 'number') {
+            return popularity >= 6; // 6番人気以降を穴馬候補とする
+        }
+        
+        // 人気順位が不明な場合はオッズから推定
+        const estimatedPopularity = this.estimatePopularityFromOdds(odds);
+        return estimatedPopularity >= 6;
+    }
+    
+    /**
+     * オッズから人気順位を推定
+     * @param {number} odds - オッズ
+     * @returns {number} 推定人気順位
+     */
+    static estimatePopularityFromOdds(odds) {
+        // オッズと人気順位の一般的な対応関係
+        if (odds <= 2.0) return 1;      // 1番人気
+        if (odds <= 3.0) return 2;      // 2番人気
+        if (odds <= 4.5) return 3;      // 3番人気
+        if (odds <= 6.0) return 4;      // 4番人気
+        if (odds <= 8.0) return 5;      // 5番人気
+        if (odds <= 12.0) return 6;     // 6番人気
+        if (odds <= 18.0) return 8;     // 8番人気
+        if (odds <= 25.0) return 10;    // 10番人気
+        if (odds <= 40.0) return 12;    // 12番人気
+        if (odds <= 60.0) return 14;    // 14番人気
+        return 16; // 16番人気以下
     }
 }
 

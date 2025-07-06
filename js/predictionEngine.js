@@ -1,14 +1,18 @@
 // 予測エンジン機能
 // 人気度推定ヘルパー関数（予測エンジン用）
 function estimatePopularityFromOdds(odds) {
-    if (odds < 2.0) return 1;
-    if (odds < 3.0) return 2;
-    if (odds < 5.0) return 3;
-    if (odds < 7.0) return 4;
-    if (odds < 10.0) return 6;
-    if (odds < 15.0) return 8;
-    if (odds < 25.0) return 11;
-    return 15;
+    // InvestmentEfficiencyCalculatorと同じロジックに統一
+    if (odds <= 2.0) return 1;      // 1番人気
+    if (odds <= 3.0) return 2;      // 2番人気
+    if (odds <= 4.5) return 3;      // 3番人気
+    if (odds <= 6.0) return 4;      // 4番人気
+    if (odds <= 8.0) return 5;      // 5番人気
+    if (odds <= 12.0) return 6;     // 6番人気
+    if (odds <= 18.0) return 8;     // 8番人気
+    if (odds <= 25.0) return 10;    // 10番人気
+    if (odds <= 40.0) return 12;    // 12番人気
+    if (odds <= 60.0) return 14;    // 14番人気
+    return 16; // 16番人気以下
 }
 
 class PredictionEngine {
@@ -600,8 +604,22 @@ class PredictionEngine {
                 break;
             case 'underdog':
                 sortedPredictions = [...this.currentPredictions].sort((a, b) => {
+                    // 1. 穴馬判定による優先順位
                     if (a.isUnderdog && !b.isUnderdog) return -1;
                     if (!a.isUnderdog && b.isUnderdog) return 1;
+                    
+                    // 2. 穴馬同士の場合は穴馬ボーナス → 効率スコア順
+                    if (a.isUnderdog && b.isUnderdog) {
+                        const underdogDiff = (b.underdogBonus || 0) - (a.underdogBonus || 0);
+                        if (underdogDiff !== 0) return underdogDiff;
+                        return (b.efficiencyScore || 0) - (a.efficiencyScore || 0);
+                    }
+                    
+                    // 3. 非穴馬同士の場合は、穴馬になりやすさ順（オッズ高い順）
+                    if (!a.isUnderdog && !b.isUnderdog) {
+                        return b.odds - a.odds; // オッズ高い順（大穴順）
+                    }
+                    
                     return (b.efficiencyScore || 0) - (a.efficiencyScore || 0);
                 });
                 sortTitle = '🐎 穴馬候補順';
@@ -2137,6 +2155,8 @@ class PredictionEngine {
     }
 }
 
-// グローバル関数として公開
+// グローバル公開
+window.PredictionEngine = PredictionEngine;
 window.calculatePredictions = PredictionEngine.calculatePredictions.bind(PredictionEngine);
-window.getAIRecommendation = PredictionEngine.requestAIRecommendation.bind(PredictionEngine); console.log('勝率正規化機能が追加されました。勝率合計が100%になるように自動調整されます。');
+window.getAIRecommendation = PredictionEngine.requestAIRecommendation.bind(PredictionEngine); 
+console.log('勝率正規化機能が追加されました。勝率合計が100%になるように自動調整されます。');

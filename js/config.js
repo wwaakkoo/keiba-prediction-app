@@ -140,4 +140,8 @@ const INITIAL_LEARNING_DATA = {
     // レースレベル学習データ  
     raceLevelSuccess: {},     // レースレベル別成功回数
     raceLevelFailure: {}      // レースレベル別失敗回数
-}; 
+};
+
+// グローバル公開
+window.CONFIG = CONFIG;
+window.INITIAL_LEARNING_DATA = INITIAL_LEARNING_DATA; 

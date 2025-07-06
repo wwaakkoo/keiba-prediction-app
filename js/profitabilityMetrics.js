@@ -748,17 +748,17 @@ class ProfitabilityMetrics {
         
         console.log('時系列データ生成 - totalBets:', investment.totalBets);
         
-        // 現在の実データが少ない場合はサンプルデータで補完
-        const realDataExists = investment.totalBets > 10;
+        // 実データが存在する場合は実データを使用
+        const realDataExists = investment.totalBets > 0;
         
         if (realDataExists) {
             // 実データベースの時系列データ生成
-            console.log('実データベース時系列生成');
+            console.log('実データベース時系列生成 - bet数:', investment.totalBets);
             return this.generateRealTimeSeriesData();
         } else {
-            // 学習用サンプルデータ（固定値）
-            console.log('サンプルデータ使用');
-            return this.generateSampleTimeSeriesData();
+            // データなしの場合は空データ
+            console.log('データなし - 空データ生成');
+            return this.generateEmptyTimeSeriesData();
         }
     }
     
@@ -820,6 +820,18 @@ class ProfitabilityMetrics {
     
     static getUnderdogEfficiency() {
         return this.profitabilityData.underdogEfficiency;
+    }
+    
+    // 空データ生成
+    static generateEmptyTimeSeriesData() {
+        return {
+            dailyProfits: [],
+            cumulativeProfit: [],
+            rollingROI: [],
+            roi: [],
+            hitRate: [],
+            labels: []
+        };
     }
     
     // 初期化
