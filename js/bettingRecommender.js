@@ -31,6 +31,14 @@ class BettingRecommender {
         
         // 買い目推奨の生成
         const recommendations = this.generateRecommendationsFromMarks(horseMarks, getHorseNumber);
+        
+        // 3連複推奨を追加
+        const tripleBoxRecommendations = this.generateTripleBoxRecommendations(horseMarks, predictions, getHorseNumber);
+        recommendations.push(...tripleBoxRecommendations);
+        
+        // 3連単推奨を追加
+        const tripleExactRecommendations = this.generateTripleExactRecommendations(horseMarks, predictions, getHorseNumber);
+        recommendations.push(...tripleExactRecommendations);
 
         // グローバル変数に保存（学習時に使用）
         window.lastBettingRecommendations = recommendations;
@@ -214,14 +222,6 @@ class BettingRecommender {
                 amount: '300-600円'
             });
         }
-
-        // 3連複推奨
-        const tripleBoxRecommendations = this.generateTripleBoxRecommendations(marks, predictions, getHorseNumber);
-        recommendations.push(...tripleBoxRecommendations);
-        
-        // 3連単推奨
-        const tripleExactRecommendations = this.generateTripleExactRecommendations(marks, predictions, getHorseNumber);
-        recommendations.push(...tripleExactRecommendations);
 
         return recommendations;
     }
@@ -443,11 +443,14 @@ class BettingRecommender {
         if (markedHorses.length >= 3) {
             console.log('🎯 3連複推奨生成開始', { markedHorses: markedHorses.map(h => h.name) });
             
+            // 学習された効率閾値を取得
+            const learningThresholds = LearningSystem.getComplexBettingThresholds();
+            
             // メイン3連複（上位3頭）
             const topThree = markedHorses.slice(0, 3);
             const mainTripleBox = this.calculateTripleBoxExpectedValue(topThree, predictions);
             
-            if (mainTripleBox.efficiency > 0.15) { // 効率15%以上で推奨（3連複は控除率高いため）
+            if (mainTripleBox.efficiency > learningThresholds.tripleBox.main) {
                 tripleRecommendations.push({
                     category: '3連複',
                     mark: this.getTripleBoxMark(topThree, marks),
@@ -466,7 +469,7 @@ class BettingRecommender {
                 const altTriple = [markedHorses[0], markedHorses[1], markedHorses[3]]; // 1,2,4番目
                 const altTripleBox = this.calculateTripleBoxExpectedValue(altTriple, predictions);
                 
-                if (altTripleBox.efficiency > 0.12) {
+                if (altTripleBox.efficiency > learningThresholds.tripleBox.formation) {
                     tripleRecommendations.push({
                         category: '3連複',
                         mark: this.getTripleBoxMark(altTriple, marks),
@@ -602,6 +605,9 @@ class BettingRecommender {
         if (markedHorses.length >= 3) {
             console.log('🏁 3連単推奨生成開始', { markedHorses: markedHorses.map(h => h.name) });
             
+            // 学習された効率閾値を取得
+            const learningThresholds = LearningSystem.getComplexBettingThresholds();
+            
             // 本命軸メイン3連単（着順重要）
             if (marks.honmei && marks.taikou && marks.tanana) {
                 const mainTripleExact = this.calculateTripleExactExpectedValue(
@@ -609,7 +615,7 @@ class BettingRecommender {
                     predictions
                 );
                 
-                if (mainTripleExact.efficiency > 0.08) { // 3連単はさらに低い闾値
+                if (mainTripleExact.efficiency > learningThresholds.tripleExact.main) {
                     tripleExactRecommendations.push({
                         category: '3連単',
                         mark: '◎○▲',
@@ -632,7 +638,7 @@ class BettingRecommender {
                     predictions
                 );
                 
-                if (formationTripleExact.efficiency > 0.06) {
+                if (formationTripleExact.efficiency > learningThresholds.tripleExact.formation) {
                     tripleExactRecommendations.push({
                         category: '3連単',
                         mark: '○◎▲',

@@ -91,6 +91,9 @@ class LearningSystem {
             BettingRecommender.recordBettingRecommendation(window.lastBettingRecommendations, actualResult);
         }
 
+        // 3連複・3連単の学習処理
+        this.processComplexBettingResults(firstHorse, secondHorse, thirdHorse);
+
         document.getElementById('actualFirst').value = '';
         document.getElementById('actualSecond').value = '';
         document.getElementById('actualThird').value = '';
@@ -1597,6 +1600,258 @@ class LearningSystem {
         
         return factors;
     }
+
+    // 3連複・3連単の学習処理
+    static processComplexBettingResults(firstHorse, secondHorse, thirdHorse) {
+        const actualTop3 = [firstHorse, secondHorse, thirdHorse].filter(h => h);
+        
+        if (actualTop3.length < 3) {
+            console.log('3着まで入力されていないため、3連複・3連単の学習をスキップします');
+            return;
+        }
+
+        // HTMLフィールドから入力を取得
+        const tripleBoxResult = document.getElementById('tripleBoxResult')?.value;
+        const tripleExactResult = document.getElementById('tripleExactResult')?.value;
+        const tripleBoxDividend = document.getElementById('tripleBoxDividend')?.value;
+        const tripleExactDividend = document.getElementById('tripleExactDividend')?.value;
+
+        // 学習データ初期化（存在しない場合）
+        if (!this.learningData.complexBetting) {
+            this.learningData.complexBetting = {
+                tripleBox: {
+                    totalBets: 0,
+                    hits: 0,
+                    totalReturn: 0,
+                    totalInvestment: 0,
+                    hitRate: 0,
+                    roi: 0,
+                    efficiencyThresholds: {
+                        main: 0.25,      // より現実的な効率閾値（25%以上）
+                        formation: 0.20   // フォーメーション推奨の効率閾値（20%以上）
+                    }
+                },
+                tripleExact: {
+                    totalBets: 0,
+                    hits: 0,
+                    totalReturn: 0,
+                    totalInvestment: 0,
+                    hitRate: 0,
+                    roi: 0,
+                    efficiencyThresholds: {
+                        main: 0.15,      // 3連単は15%以上で推奨
+                        formation: 0.10   // フォーメーション推奨の効率閾値（10%以上）
+                    }
+                },
+                history: []
+            };
+        }
+
+        const complexData = this.learningData.complexBetting;
+        
+        // 3連複の学習
+        if (tripleBoxResult && tripleBoxResult !== '') {
+            // 推奨が出た場合のみカウント（「no-recommendation」は除外）
+            if (tripleBoxResult !== 'no-recommendation') {
+                complexData.tripleBox.totalBets++;
+            }
+            
+            if (tripleBoxResult === 'hit') {
+                complexData.tripleBox.hits++;
+                const dividend = parseFloat(tripleBoxDividend) || 0;
+                if (dividend > 0) {
+                    // 実際に購入した場合のみ投資・回収を記録
+                    complexData.tripleBox.totalReturn += dividend;
+                    complexData.tripleBox.totalInvestment += 100; // 100円購入と仮定
+                }
+                
+                // 効率閾値の調整（的中した場合、少し緩める）
+                complexData.tripleBox.efficiencyThresholds.main = Math.max(0.06, 
+                    complexData.tripleBox.efficiencyThresholds.main - 0.005);
+                complexData.tripleBox.efficiencyThresholds.formation = Math.max(0.04, 
+                    complexData.tripleBox.efficiencyThresholds.formation - 0.005);
+                    
+                console.log(`🏆 3連複的中学習: 配当${dividend}円, 新閾値メイン=${complexData.tripleBox.efficiencyThresholds.main.toFixed(3)}`);
+            } else if (tripleBoxResult === 'miss') {
+                // 外れの場合、実際に購入していた場合のみ投資額を記録
+                // 配当入力がある場合は実際に購入していたと判断（通常0だが）
+                const dividend = parseFloat(tripleBoxDividend) || 0;
+                if (dividend >= 0 && document.getElementById('tripleBoxDividend').value !== '') {
+                    complexData.tripleBox.totalInvestment += 100; // 100円購入と仮定
+                }
+                
+                // 効率閾値の調整（外れた場合、少し厳しくする）
+                complexData.tripleBox.efficiencyThresholds.main = Math.min(0.12, 
+                    complexData.tripleBox.efficiencyThresholds.main + 0.005);
+                complexData.tripleBox.efficiencyThresholds.formation = Math.min(0.08, 
+                    complexData.tripleBox.efficiencyThresholds.formation + 0.005);
+                    
+                console.log(`❌ 3連複外れ学習: 新閾値メイン=${complexData.tripleBox.efficiencyThresholds.main.toFixed(3)}`);
+            }
+            
+            // 的中率とROIを再計算
+            complexData.tripleBox.hitRate = (complexData.tripleBox.hits / complexData.tripleBox.totalBets) * 100;
+            if (complexData.tripleBox.totalInvestment > 0) {
+                complexData.tripleBox.roi = (complexData.tripleBox.totalReturn / complexData.tripleBox.totalInvestment) * 100;
+            }
+        }
+
+        // 3連単の学習
+        if (tripleExactResult && tripleExactResult !== '') {
+            // 推奨が出た場合のみカウント（「no-recommendation」は除外）
+            if (tripleExactResult !== 'no-recommendation') {
+                complexData.tripleExact.totalBets++;
+            }
+            
+            if (tripleExactResult === 'hit') {
+                complexData.tripleExact.hits++;
+                const dividend = parseFloat(tripleExactDividend) || 0;
+                if (dividend > 0) {
+                    // 実際に購入した場合のみ投資・回収を記録
+                    complexData.tripleExact.totalReturn += dividend;
+                    complexData.tripleExact.totalInvestment += 100; // 100円購入と仮定
+                }
+                
+                // 効率閾値の調整（的中した場合、少し緩める）
+                complexData.tripleExact.efficiencyThresholds.main = Math.max(0.06, 
+                    complexData.tripleExact.efficiencyThresholds.main - 0.005);
+                complexData.tripleExact.efficiencyThresholds.formation = Math.max(0.04, 
+                    complexData.tripleExact.efficiencyThresholds.formation - 0.005);
+                    
+                console.log(`🏆 3連単的中学習: 配当${dividend}円, 新閾値メイン=${complexData.tripleExact.efficiencyThresholds.main.toFixed(3)}`);
+            } else if (tripleExactResult === 'miss') {
+                // 外れの場合、実際に購入していた場合のみ投資額を記録
+                const dividend = parseFloat(tripleExactDividend) || 0;
+                if (dividend >= 0 && document.getElementById('tripleExactDividend').value !== '') {
+                    complexData.tripleExact.totalInvestment += 100; // 100円購入と仮定
+                }
+                
+                // 効率閾値の調整（外れた場合、少し厳しくする）
+                complexData.tripleExact.efficiencyThresholds.main = Math.min(0.12, 
+                    complexData.tripleExact.efficiencyThresholds.main + 0.005);
+                complexData.tripleExact.efficiencyThresholds.formation = Math.min(0.08, 
+                    complexData.tripleExact.efficiencyThresholds.formation + 0.005);
+                    
+                console.log(`❌ 3連単外れ学習: 新閾値メイン=${complexData.tripleExact.efficiencyThresholds.main.toFixed(3)}`);
+            }
+            
+            // 的中率とROIを再計算
+            complexData.tripleExact.hitRate = (complexData.tripleExact.hits / complexData.tripleExact.totalBets) * 100;
+            if (complexData.tripleExact.totalInvestment > 0) {
+                complexData.tripleExact.roi = (complexData.tripleExact.totalReturn / complexData.tripleExact.totalInvestment) * 100;
+            }
+        }
+
+        // 履歴に記録
+        const historyEntry = {
+            date: new Date().toLocaleDateString(),
+            actualResult: actualTop3.map(h => h.name),
+            tripleBox: {
+                result: tripleBoxResult,
+                dividend: tripleBoxDividend || null
+            },
+            tripleExact: {
+                result: tripleExactResult,
+                dividend: tripleExactDividend || null
+            }
+        };
+        
+        complexData.history.push(historyEntry);
+        
+        // 履歴サイズ制限
+        if (complexData.history.length > 50) {
+            complexData.history = complexData.history.slice(-50);
+        }
+
+        // 学習データを保存
+        this.saveLearningData();
+        
+        // フィールドをクリア
+        if (document.getElementById('tripleBoxResult')) document.getElementById('tripleBoxResult').value = '';
+        if (document.getElementById('tripleExactResult')) document.getElementById('tripleExactResult').value = '';
+        if (document.getElementById('tripleBoxDividend')) document.getElementById('tripleBoxDividend').value = '';
+        if (document.getElementById('tripleExactDividend')) document.getElementById('tripleExactDividend').value = '';
+
+        console.log('🎯 複雑馬券種学習完了:', {
+            tripleBox: {
+                totalBets: complexData.tripleBox.totalBets,
+                hitRate: complexData.tripleBox.hitRate.toFixed(1) + '%',
+                roi: complexData.tripleBox.roi.toFixed(1) + '%'
+            },
+            tripleExact: {
+                totalBets: complexData.tripleExact.totalBets,
+                hitRate: complexData.tripleExact.hitRate.toFixed(1) + '%',
+                roi: complexData.tripleExact.roi.toFixed(1) + '%'
+            }
+        });
+    }
+
+    // 学習した効率閾値を取得（BettingRecommenderから呼び出される）
+    static getComplexBettingThresholds() {
+        if (!this.learningData.complexBetting) {
+            return {
+                tripleBox: { main: 0.25, formation: 0.20 },
+                tripleExact: { main: 0.15, formation: 0.10 }
+            };
+        }
+        
+        return {
+            tripleBox: this.learningData.complexBetting.tripleBox.efficiencyThresholds,
+            tripleExact: this.learningData.complexBetting.tripleExact.efficiencyThresholds
+        };
+    }
+
+    // 複雑馬券種の統計表示
+    static showComplexBettingStats() {
+        if (!this.learningData.complexBetting) {
+            alert('複雑馬券種の学習データがありません。');
+            return;
+        }
+
+        const data = this.learningData.complexBetting;
+        let statsText = '🎯 複雑馬券種学習統計\n\n';
+        
+        statsText += '【3連複】\n';
+        statsText += `推奨回数: ${data.tripleBox.totalBets}回\n`;
+        statsText += `的中数: ${data.tripleBox.hits}回\n`;
+        statsText += `推奨的中率: ${data.tripleBox.hitRate.toFixed(1)}%\n`;
+        if (data.tripleBox.totalInvestment > 0) {
+            statsText += `実購入ROI: ${data.tripleBox.roi.toFixed(1)}% (実購入分のみ)\n`;
+        } else {
+            statsText += `実購入データ: なし\n`;
+        }
+        statsText += `効率閾値: メイン ${data.tripleBox.efficiencyThresholds.main.toFixed(3)}, フォーメーション ${data.tripleBox.efficiencyThresholds.formation.toFixed(3)}\n\n`;
+        
+        statsText += '【3連単】\n';
+        statsText += `推奨回数: ${data.tripleExact.totalBets}回\n`;
+        statsText += `的中数: ${data.tripleExact.hits}回\n`;
+        statsText += `推奨的中率: ${data.tripleExact.hitRate.toFixed(1)}%\n`;
+        if (data.tripleExact.totalInvestment > 0) {
+            statsText += `実購入ROI: ${data.tripleExact.roi.toFixed(1)}% (実購入分のみ)\n`;
+        } else {
+            statsText += `実購入データ: なし\n`;
+        }
+        statsText += `効率閾値: メイン ${data.tripleExact.efficiencyThresholds.main.toFixed(3)}, フォーメーション ${data.tripleExact.efficiencyThresholds.formation.toFixed(3)}\n\n`;
+        
+        if (data.history.length > 0) {
+            statsText += `最新の学習履歴（直近${Math.min(5, data.history.length)}件）:\n`;
+            data.history.slice(-5).forEach((entry, index) => {
+                statsText += `${index + 1}. ${entry.date}: ${entry.actualResult.join('→')}\n`;
+                if (entry.tripleBox.result) {
+                    statsText += `   3連複: ${entry.tripleBox.result === 'hit' ? '的中' : '外れ'}`;
+                    if (entry.tripleBox.dividend) statsText += ` (${entry.tripleBox.dividend}円)`;
+                    statsText += '\n';
+                }
+                if (entry.tripleExact.result) {
+                    statsText += `   3連単: ${entry.tripleExact.result === 'hit' ? '的中' : '外れ'}`;
+                    if (entry.tripleExact.dividend) statsText += ` (${entry.tripleExact.dividend}円)`;
+                    statsText += '\n';
+                }
+            });
+        }
+
+        alert(statsText);
+    }
 }
 
 // グローバル関数として公開
@@ -1607,4 +1862,5 @@ window.showLearningStats = LearningSystem.showLearningStats.bind(LearningSystem)
 window.resetLearningData = LearningSystem.resetLearningData.bind(LearningSystem);
 window.saveLearningData = LearningSystem.saveLearningData.bind(LearningSystem);
 window.loadLearningData = LearningSystem.loadLearningData.bind(LearningSystem);
-window.showSleeperStats = LearningSystem.showSleeperStats.bind(LearningSystem); 
+window.showSleeperStats = LearningSystem.showSleeperStats.bind(LearningSystem);
+window.showComplexBettingStats = LearningSystem.showComplexBettingStats.bind(LearningSystem); 
