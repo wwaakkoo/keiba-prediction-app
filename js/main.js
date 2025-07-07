@@ -118,6 +118,50 @@ function processUnifiedRaceResult() {
         showMessage('🤖 AI学習にも結果を反映しました', 'success');
     }
 
+    // 2.5. 高度学習機能に反映
+    if (typeof EnhancedLearningSystem !== 'undefined') {
+        try {
+            console.log('🧠 高度学習機能に結果を反映開始');
+            
+            // 実際の結果データを構築
+            const actualResults = [
+                parseInt(firstHorse.horseNumber) || 1,
+                parseInt(secondHorse?.horseNumber) || 2,
+                parseInt(thirdHorse?.horseNumber) || 3
+            ];
+            
+            // アンサンブル予測結果があれば学習に反映
+            if (firstHorse.enhancedScore !== undefined) {
+                const predictions = currentPredictions.map(horse => ({
+                    horse: horse,
+                    predictions: {
+                        basicModel: horse.winProbability / 100,
+                        ensembleModel: horse.enhancedScore || 0.5
+                    },
+                    ensemblePrediction: horse.enhancedScore || 0.5,
+                    confidence: horse.ensembleConfidence || 0.5
+                }));
+                
+                EnhancedLearningSystem.recordEnsembleResult(predictions, actualResults);
+                console.log('✅ 高度学習機能の学習完了');
+                
+                // 過学習検出
+                const ensembleScore = firstHorse.enhancedScore || 0.5;
+                const isOverlearning = EnhancedLearningSystem.detectOverlearning(ensembleScore, true);
+                
+                if (isOverlearning) {
+                    showMessage('⚠️ 過学習を検出しました。学習率を調整します。', 'warning', 3000);
+                } else {
+                    showMessage('🧠 高度学習機能の学習を更新しました', 'success');
+                }
+            }
+            
+        } catch (error) {
+            console.error('高度学習機能エラー:', error);
+            showMessage('高度学習機能でエラーが発生しましたが、基本学習は継続します', 'warning', 3000);
+        }
+    }
+
     // 3. 収益性学習システムに反映
     if (typeof ProfitabilityMetrics !== 'undefined') {
         console.log('=== 収益性学習システム統合開始 ===');
@@ -1195,9 +1239,148 @@ function resetAndRemigrateProfitabilityData() {
     }
 }
 
+// 投資戦略アドバイス表示
+function showInvestmentStrategy() {
+    const predictions = PredictionEngine.getCurrentPredictions();
+    if (predictions.length === 0) {
+        alert('まず予測を実行してから戦略アドバイスを確認してください。');
+        return;
+    }
+    
+    const learningData = LearningSystem.learningData;
+    const realDataAnalysis = InvestmentStrategy.analyzeRealHitRate(learningData);
+    
+    const conservativeStrategy = InvestmentStrategy.suggestStrategy(predictions, 'conservative');
+    const balancedStrategy = InvestmentStrategy.suggestStrategy(predictions, 'balanced');
+    const aggressiveStrategy = InvestmentStrategy.suggestStrategy(predictions, 'aggressive');
+    
+    let alertText = `💡 投資戦略アドバイス\n\n`;
+    alertText += `${realDataAnalysis.message}\n`;
+    alertText += `${realDataAnalysis.recommendation}\n\n`;
+    
+    alertText += `📊 推奨戦略:\n`;
+    alertText += `🛡️ 安定型: ${conservativeStrategy.tripleBox.horses}頭ボックス (投資${conservativeStrategy.tripleBox.investment}円)\n`;
+    alertText += `⚖️ バランス型: ${balancedStrategy.tripleBox.horses}頭ボックス (投資${balancedStrategy.tripleBox.investment}円)\n`;
+    alertText += `🚀 攻撃型: ${aggressiveStrategy.tripleBox.horses}頭ボックス (投資${aggressiveStrategy.tripleBox.investment}円)\n\n`;
+    
+    alertText += `🎯 現在の推奨: ${realDataAnalysis.adjustedStrategy === 'conservative' ? '安定型' : realDataAnalysis.adjustedStrategy === 'balanced' ? 'バランス型' : '攻撃型'}\n\n`;
+    
+    alertText += `💰 実際の期待リターン:\n`;
+    alertText += `・3頭ボックス: 高配当だが的中率5.5%\n`;
+    alertText += `・4頭ボックス: バランス良く的中率22%\n`;
+    alertText += `・5頭ボックス: 安定して的中率55%\n\n`;
+    
+    alertText += `⚠️ 注意: 投資は余剰資金の範囲内で行い、ギャンブル依存症にご注意ください`;
+    
+    alert(alertText);
+}
+
+// 拡張学習処理
+function processEnhancedLearning() {
+    if (!window.currentWatchList || !window.currentStrategies) {
+        alert('まず予測を実行して拡張推奨を表示してください。');
+        return;
+    }
+
+    // 実際の結果を取得
+    const actualFirst = document.getElementById('unifiedFirst').value.trim();
+    const actualSecond = document.getElementById('unifiedSecond').value.trim();
+    const actualThird = document.getElementById('unifiedThird').value.trim();
+
+    if (!actualFirst || !actualSecond || !actualThird) {
+        alert('1-3着の結果をすべて入力してください。');
+        return;
+    }
+
+    // 実際の結果を構築
+    const actualResult = [
+        { name: actualFirst },
+        { name: actualSecond },
+        { name: actualThird }
+    ];
+
+    // 注目馬の結果を収集
+    const watchListResults = {};
+    Object.keys(EnhancedRecommendationSystem.confidenceLevels).forEach(level => {
+        const select = document.getElementById(`watchLevel_${level}`);
+        if (select && select.value) {
+            watchListResults[level] = select.value;
+        }
+    });
+
+    // 戦略結果を収集
+    const strategyResults = {};
+    Object.keys(window.currentStrategies).forEach(strategyKey => {
+        const select = document.getElementById(`strategy_${strategyKey}`);
+        if (select && select.value) {
+            strategyResults[strategyKey] = select.value;
+        }
+    });
+
+    // 見逃し馬を収集
+    const oversightHorses = document.getElementById('oversightHorses').value.trim();
+    const oversights = oversightHorses ? oversightHorses.split(',').map(name => name.trim()) : [];
+
+    // 拡張学習を実行
+    const learningResult = EnhancedRecommendationSystem.processEnhancedLearning(
+        actualResult, 
+        window.currentWatchList, 
+        window.currentStrategies
+    );
+
+    // 結果を表示
+    let feedbackText = '🎯 拡張学習完了\n\n';
+    
+    // 注目馬精度
+    feedbackText += '【注目馬精度】\n';
+    Object.entries(learningResult.watchListAccuracy).forEach(([level, analysis]) => {
+        const config = EnhancedRecommendationSystem.confidenceLevels[level];
+        if (analysis.totalHorses > 0) {
+            feedbackText += `${config.symbol} ${config.name}: ${analysis.hits}/${analysis.totalHorses}頭的中 (${analysis.hitRate.toFixed(1)}%)\n`;
+        }
+    });
+
+    // 戦略効果
+    feedbackText += '\n【戦略効果】\n';
+    Object.entries(learningResult.strategyEffectiveness).forEach(([strategyKey, analysis]) => {
+        const strategy = window.currentStrategies[strategyKey];
+        feedbackText += `${strategy.name}: ${analysis.hit ? '✅的中' : '❌外れ'}\n`;
+    });
+
+    // 見逃し
+    if (learningResult.oversights.length > 0) {
+        feedbackText += '\n【見逃し馬】\n';
+        learningResult.oversights.forEach(horse => {
+            feedbackText += `・${horse.name} (注目度が不足)\n`;
+        });
+    }
+
+    feedbackText += '\n学習データが更新され、次回の推奨精度向上に反映されます。';
+
+    alert(feedbackText);
+
+    // フィールドをクリア
+    document.getElementById('unifiedFirst').value = '';
+    document.getElementById('unifiedSecond').value = '';
+    document.getElementById('unifiedThird').value = '';
+    document.getElementById('oversightHorses').value = '';
+    
+    Object.keys(EnhancedRecommendationSystem.confidenceLevels).forEach(level => {
+        const select = document.getElementById(`watchLevel_${level}`);
+        if (select) select.value = '';
+    });
+    
+    Object.keys(window.currentStrategies).forEach(strategyKey => {
+        const select = document.getElementById(`strategy_${strategyKey}`);
+        if (select) select.value = '';
+    });
+}
+
 // グローバル関数として公開
 window.migrateAndSwitchToEnhanced = migrateAndSwitchToEnhanced;
+window.showInvestmentStrategy = showInvestmentStrategy;
 window.checkExistingLearningData = checkExistingLearningData;
 window.showProfitabilityDashboard = showProfitabilityDashboard;
 window.showProfitabilityDashboardDirect = showProfitabilityDashboardDirect;
 window.resetAndRemigrateProfitabilityData = resetAndRemigrateProfitabilityData;
+window.processEnhancedLearning = processEnhancedLearning;
