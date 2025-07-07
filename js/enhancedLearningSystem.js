@@ -59,7 +59,13 @@ class EnhancedLearningSystem {
             learningEffectiveness: [],  // 学習効果の履歴
             adjustmentHistory: [],      // 調整履歴
             overlearningDetection: 0,   // 過学習検出指標
-            adaptationRate: 0.1         // 適応率の動的調整
+            adaptationRate: 0.1,        // 適応率の動的調整
+            validationScores: [],       // 検証スコア履歴
+            trainingScores: [],         // 訓練スコア履歴
+            earlyStoppingCounter: 0,    // 早期停止カウンター
+            bestValidationScore: 0,     // 最良検証スコア
+            overlearningThreshold: 0.05, // 過学習閾値
+            minLearningCycles: 10       // 最小学習サイクル数
         }
     };
     
@@ -1857,6 +1863,821 @@ class EnhancedLearningSystem {
                 targetMap.set(key, value);
             });
         }
+    }
+    
+    /**
+     * 過学習防止アルゴリズム
+     */
+    static detectOverlearning(currentScore, isValidation = true) {
+        const metaLearning = this.learningData.metaLearning;
+        
+        if (isValidation) {
+            metaLearning.validationScores.push(currentScore);
+        } else {
+            metaLearning.trainingScores.push(currentScore);
+        }
+        
+        // 履歴が少ない場合は過学習判定しない
+        if (metaLearning.validationScores.length < metaLearning.minLearningCycles) {
+            return false;
+        }
+        
+        // 最新の検証スコアが改善したかチェック
+        const latestValidationScore = metaLearning.validationScores[metaLearning.validationScores.length - 1];
+        
+        if (latestValidationScore > metaLearning.bestValidationScore) {
+            metaLearning.bestValidationScore = latestValidationScore;
+            metaLearning.earlyStoppingCounter = 0;
+            return false;
+        }
+        
+        // 検証スコアが改善しない場合
+        metaLearning.earlyStoppingCounter++;
+        
+        // 訓練スコアと検証スコアの乖離をチェック
+        const recentTrainingScores = metaLearning.trainingScores.slice(-5);
+        const recentValidationScores = metaLearning.validationScores.slice(-5);
+        
+        if (recentTrainingScores.length >= 5 && recentValidationScores.length >= 5) {
+            const avgTrainingScore = recentTrainingScores.reduce((sum, score) => sum + score, 0) / recentTrainingScores.length;
+            const avgValidationScore = recentValidationScores.reduce((sum, score) => sum + score, 0) / recentValidationScores.length;
+            
+            const scoreDivergence = avgTrainingScore - avgValidationScore;
+            
+            if (scoreDivergence > metaLearning.overlearningThreshold) {
+                metaLearning.overlearningDetection++;
+                console.log(`⚠️ 過学習の兆候を検出: 訓練スコア ${avgTrainingScore.toFixed(3)} vs 検証スコア ${avgValidationScore.toFixed(3)}`);
+                return true;
+            }
+        }
+        
+        // 早期停止判定
+        if (metaLearning.earlyStoppingCounter >= 5) {
+            console.log('⚠️ 早期停止: 検証スコアが5回連続で改善しませんでした');
+            return true;
+        }
+        
+        return false;
+    }
+    
+    /**
+     * 学習率動的調整
+     */
+    static adjustLearningRate() {
+        const metaLearning = this.learningData.metaLearning;
+        const recentScores = metaLearning.validationScores.slice(-10);
+        
+        if (recentScores.length < 10) return;
+        
+        const trend = this.calculateScoreTrend(recentScores);
+        
+        if (trend > 0) {
+            // 改善傾向の場合、学習率を少し上げる
+            metaLearning.adaptationRate = Math.min(0.2, metaLearning.adaptationRate * 1.1);
+        } else if (trend < -0.01) {
+            // 悪化傾向の場合、学習率を下げる
+            metaLearning.adaptationRate = Math.max(0.01, metaLearning.adaptationRate * 0.9);
+        }
+        
+        console.log(`📊 学習率調整: ${metaLearning.adaptationRate.toFixed(3)} (トレンド: ${trend.toFixed(3)})`);
+    }
+    
+    /**
+     * スコア傾向計算
+     */
+    static calculateScoreTrend(scores) {
+        if (scores.length < 2) return 0;
+        
+        const n = scores.length;
+        let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+        
+        for (let i = 0; i < n; i++) {
+            sumX += i;
+            sumY += scores[i];
+            sumXY += i * scores[i];
+            sumX2 += i * i;
+        }
+        
+        const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+        return slope;
+    }
+    
+    /**
+     * クロスバリデーション実装
+     */
+    static performCrossValidation(data, kFolds = 5) {
+        if (!data || data.length < kFolds) {
+            console.warn('クロスバリデーション用のデータが不足しています');
+            return { validationScore: 0, trainingScore: 0 };
+        }
+        
+        const foldSize = Math.floor(data.length / kFolds);
+        const shuffledData = [...data].sort(() => Math.random() - 0.5);
+        
+        let totalValidationScore = 0;
+        let totalTrainingScore = 0;
+        
+        for (let fold = 0; fold < kFolds; fold++) {
+            const validationStart = fold * foldSize;
+            const validationEnd = (fold + 1) * foldSize;
+            
+            const validationData = shuffledData.slice(validationStart, validationEnd);
+            const trainingData = [
+                ...shuffledData.slice(0, validationStart),
+                ...shuffledData.slice(validationEnd)
+            ];
+            
+            const { validationScore, trainingScore } = this.trainAndValidate(trainingData, validationData);
+            totalValidationScore += validationScore;
+            totalTrainingScore += trainingScore;
+        }
+        
+        const avgValidationScore = totalValidationScore / kFolds;
+        const avgTrainingScore = totalTrainingScore / kFolds;
+        
+        console.log(`📊 クロスバリデーション結果: 検証スコア ${avgValidationScore.toFixed(3)}, 訓練スコア ${avgTrainingScore.toFixed(3)}`);
+        
+        return { validationScore: avgValidationScore, trainingScore: avgTrainingScore };
+    }
+    
+    /**
+     * 訓練と検証
+     */
+    static trainAndValidate(trainingData, validationData) {
+        let trainingCorrect = 0;
+        let validationCorrect = 0;
+        
+        // 訓練データで学習
+        trainingData.forEach(data => {
+            const prediction = this.makePrediction(data);
+            if (prediction.isCorrect) trainingCorrect++;
+        });
+        
+        // 検証データで評価
+        validationData.forEach(data => {
+            const prediction = this.makePrediction(data);
+            if (prediction.isCorrect) validationCorrect++;
+        });
+        
+        const trainingScore = trainingData.length > 0 ? trainingCorrect / trainingData.length : 0;
+        const validationScore = validationData.length > 0 ? validationCorrect / validationData.length : 0;
+        
+        return { trainingScore, validationScore };
+    }
+    
+    /**
+     * 予測実行（簡易版）
+     */
+    static makePrediction(data) {
+        // 実際の予測ロジックはここに実装
+        // 現在は簡易版として乱数を使用
+        const prediction = Math.random() > 0.5;
+        const isCorrect = prediction === data.actual;
+        
+        return { prediction, isCorrect };
+    }
+    
+    /**
+     * 特徴量自動発見機能
+     */
+    static discoverFeatures(raceData) {
+        const features = {};
+        const featureImportance = {};
+        
+        // 基本特徴量
+        const basicFeatures = this.extractBasicFeatures(raceData);
+        Object.assign(features, basicFeatures);
+        
+        // 複合特徴量
+        const combinedFeatures = this.extractCombinedFeatures(raceData);
+        Object.assign(features, combinedFeatures);
+        
+        // 統計的特徴量
+        const statisticalFeatures = this.extractStatisticalFeatures(raceData);
+        Object.assign(features, statisticalFeatures);
+        
+        // 特徴量の重要度を計算
+        Object.keys(features).forEach(featureName => {
+            featureImportance[featureName] = this.calculateFeatureImportance(featureName, features[featureName], raceData);
+        });
+        
+        // 重要度順にソート
+        const sortedFeatures = Object.entries(featureImportance)
+            .sort(([,a], [,b]) => b - a)
+            .slice(0, 20) // 上位20特徴量
+            .map(([name, importance]) => ({ name, importance, value: features[name] }));
+        
+        console.log('🔍 発見された特徴量:', sortedFeatures);
+        
+        return {
+            features,
+            featureImportance,
+            topFeatures: sortedFeatures
+        };
+    }
+    
+    /**
+     * 基本特徴量抽出
+     */
+    static extractBasicFeatures(raceData) {
+        const features = {};
+        
+        if (!raceData || !raceData.horses) return features;
+        
+        raceData.horses.forEach((horse, index) => {
+            const prefix = `horse_${index}_`;
+            
+            // 基本情報
+            features[prefix + 'odds'] = parseFloat(horse.odds) || 0;
+            features[prefix + 'popularity'] = parseInt(horse.popularity) || 0;
+            features[prefix + 'age'] = parseInt(horse.age) || 0;
+            features[prefix + 'weight'] = parseFloat(horse.weight) || 0;
+            
+            // 騎手情報
+            features[prefix + 'jockey_experience'] = this.calculateJockeyExperience(horse.jockey);
+            features[prefix + 'jockey_win_rate'] = this.getJockeyWinRate(horse.jockey);
+            
+            // 脚質情報
+            features[prefix + 'running_style'] = this.encodeRunningStyle(horse.runningStyle);
+            
+            // 前走情報
+            if (horse.lastRace) {
+                features[prefix + 'last_position'] = parseInt(horse.lastRace.position) || 0;
+                features[prefix + 'last_time'] = this.parseTime(horse.lastRace.time);
+                features[prefix + 'rest_days'] = this.calculateRestDays(horse.lastRace.date);
+            }
+        });
+        
+        return features;
+    }
+    
+    /**
+     * 複合特徴量抽出
+     */
+    static extractCombinedFeatures(raceData) {
+        const features = {};
+        
+        if (!raceData || !raceData.horses) return features;
+        
+        const horses = raceData.horses;
+        
+        // オッズ分布特徴量
+        const odds = horses.map(h => parseFloat(h.odds) || 0).filter(o => o > 0);
+        if (odds.length > 0) {
+            features['odds_mean'] = odds.reduce((sum, o) => sum + o, 0) / odds.length;
+            features['odds_std'] = this.calculateStandardDeviation(odds);
+            features['odds_min'] = Math.min(...odds);
+            features['odds_max'] = Math.max(...odds);
+            features['odds_range'] = features['odds_max'] - features['odds_min'];
+        }
+        
+        // 年齢分布特徴量
+        const ages = horses.map(h => parseInt(h.age) || 0).filter(a => a > 0);
+        if (ages.length > 0) {
+            features['age_mean'] = ages.reduce((sum, a) => sum + a, 0) / ages.length;
+            features['age_std'] = this.calculateStandardDeviation(ages);
+            features['age_diversity'] = new Set(ages).size;
+        }
+        
+        // 脚質分布特徴量
+        const runningStyles = horses.map(h => h.runningStyle).filter(rs => rs);
+        const styleCount = {};
+        runningStyles.forEach(style => {
+            styleCount[style] = (styleCount[style] || 0) + 1;
+        });
+        
+        features['front_runners'] = styleCount['逃げ'] || 0;
+        features['stalkers'] = styleCount['先行'] || 0;
+        features['midpack'] = styleCount['差し'] || 0;
+        features['closers'] = styleCount['追込'] || 0;
+        features['style_diversity'] = Object.keys(styleCount).length;
+        
+        // 騎手経験分布
+        const jockeyExperience = horses.map(h => this.calculateJockeyExperience(h.jockey));
+        if (jockeyExperience.length > 0) {
+            features['jockey_exp_mean'] = jockeyExperience.reduce((sum, exp) => sum + exp, 0) / jockeyExperience.length;
+            features['jockey_exp_std'] = this.calculateStandardDeviation(jockeyExperience);
+        }
+        
+        // 相対的特徴量
+        horses.forEach((horse, index) => {
+            const prefix = `horse_${index}_`;
+            const horseOdds = parseFloat(horse.odds) || 0;
+            
+            if (horseOdds > 0 && features['odds_mean'] > 0) {
+                features[prefix + 'odds_ratio'] = horseOdds / features['odds_mean'];
+                features[prefix + 'popularity_advantage'] = (features['odds_mean'] - horseOdds) / features['odds_mean'];
+            }
+        });
+        
+        return features;
+    }
+    
+    /**
+     * 統計的特徴量抽出
+     */
+    static extractStatisticalFeatures(raceData) {
+        const features = {};
+        
+        if (!raceData || !raceData.horses) return features;
+        
+        // エントロピー計算
+        const odds = raceData.horses.map(h => parseFloat(h.odds) || 0).filter(o => o > 0);
+        if (odds.length > 0) {
+            features['odds_entropy'] = this.calculateEntropy(odds);
+            features['odds_gini'] = this.calculateGiniCoefficient(odds);
+        }
+        
+        // 相関特徴量
+        const ages = raceData.horses.map(h => parseInt(h.age) || 0);
+        const weights = raceData.horses.map(h => parseFloat(h.weight) || 0);
+        
+        if (ages.length > 0 && weights.length > 0) {
+            features['age_weight_correlation'] = this.calculateCorrelation(ages, weights);
+        }
+        
+        // 時系列特徴量（前走からの変化）
+        raceData.horses.forEach((horse, index) => {
+            const prefix = `horse_${index}_`;
+            
+            if (horse.lastRace && horse.lastRace.weight) {
+                const weightChange = (parseFloat(horse.weight) || 0) - (parseFloat(horse.lastRace.weight) || 0);
+                features[prefix + 'weight_change'] = weightChange;
+                features[prefix + 'weight_change_abs'] = Math.abs(weightChange);
+            }
+            
+            if (horse.raceHistory && horse.raceHistory.length > 1) {
+                const recentPerformance = horse.raceHistory.slice(0, 3);
+                const avgPosition = recentPerformance.reduce((sum, race) => sum + (parseInt(race.position) || 0), 0) / recentPerformance.length;
+                features[prefix + 'recent_avg_position'] = avgPosition;
+                
+                // 成績の一貫性
+                const positions = recentPerformance.map(race => parseInt(race.position) || 0);
+                features[prefix + 'performance_consistency'] = 1 / (1 + this.calculateStandardDeviation(positions));
+            }
+        });
+        
+        return features;
+    }
+    
+    /**
+     * 特徴量重要度計算
+     */
+    static calculateFeatureImportance(featureName, featureValue, raceData) {
+        // 簡易的な重要度計算（実際の実装では機械学習アルゴリズムを使用）
+        let importance = 0;
+        
+        // 値の範囲による重要度
+        if (typeof featureValue === 'number') {
+            importance += Math.abs(featureValue) > 0 ? 0.3 : 0;
+        }
+        
+        // 特徴量名による重要度
+        if (featureName.includes('odds')) importance += 0.4;
+        if (featureName.includes('jockey')) importance += 0.3;
+        if (featureName.includes('age')) importance += 0.2;
+        if (featureName.includes('weight')) importance += 0.2;
+        if (featureName.includes('running_style')) importance += 0.3;
+        if (featureName.includes('last_')) importance += 0.3;
+        
+        // 複合特徴量の重要度
+        if (featureName.includes('_mean') || featureName.includes('_std')) importance += 0.2;
+        if (featureName.includes('_correlation') || featureName.includes('_entropy')) importance += 0.4;
+        
+        return Math.min(1.0, importance);
+    }
+    
+    /**
+     * ヘルパー関数群
+     */
+    static calculateStandardDeviation(values) {
+        if (values.length === 0) return 0;
+        const mean = values.reduce((sum, val) => sum + val, 0) / values.length;
+        const variance = values.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / values.length;
+        return Math.sqrt(variance);
+    }
+    
+    static calculateEntropy(values) {
+        if (values.length === 0) return 0;
+        const total = values.reduce((sum, val) => sum + val, 0);
+        const probabilities = values.map(val => val / total);
+        return -probabilities.reduce((sum, p) => sum + (p > 0 ? p * Math.log2(p) : 0), 0);
+    }
+    
+    static calculateGiniCoefficient(values) {
+        if (values.length === 0) return 0;
+        const sortedValues = [...values].sort((a, b) => a - b);
+        const n = sortedValues.length;
+        const sum = sortedValues.reduce((sum, val) => sum + val, 0);
+        
+        if (sum === 0) return 0;
+        
+        let gini = 0;
+        for (let i = 0; i < n; i++) {
+            gini += (2 * (i + 1) - n - 1) * sortedValues[i];
+        }
+        
+        return gini / (n * sum);
+    }
+    
+    static calculateCorrelation(x, y) {
+        if (x.length !== y.length || x.length === 0) return 0;
+        
+        const n = x.length;
+        const meanX = x.reduce((sum, val) => sum + val, 0) / n;
+        const meanY = y.reduce((sum, val) => sum + val, 0) / n;
+        
+        let numerator = 0;
+        let denomX = 0;
+        let denomY = 0;
+        
+        for (let i = 0; i < n; i++) {
+            const diffX = x[i] - meanX;
+            const diffY = y[i] - meanY;
+            numerator += diffX * diffY;
+            denomX += diffX * diffX;
+            denomY += diffY * diffY;
+        }
+        
+        const denom = Math.sqrt(denomX * denomY);
+        return denom === 0 ? 0 : numerator / denom;
+    }
+    
+    static calculateJockeyExperience(jockey) {
+        // 騎手の経験値計算（簡易版）
+        if (!jockey) return 0;
+        const currentYear = new Date().getFullYear();
+        const startYear = 2000; // 仮の開始年
+        return Math.max(0, currentYear - startYear);
+    }
+    
+    static getJockeyWinRate(jockey) {
+        // 騎手の勝率取得（簡易版）
+        if (!jockey) return 0.1;
+        // 実際の実装では統計データベースから取得
+        return 0.1 + Math.random() * 0.1;
+    }
+    
+    static encodeRunningStyle(style) {
+        const styleMap = {
+            '逃げ': 1,
+            '先行': 2,
+            '差し': 3,
+            '追込': 4
+        };
+        return styleMap[style] || 0;
+    }
+    
+    static parseTime(timeString) {
+        if (!timeString) return 0;
+        const match = timeString.match(/(\d+):(\d+)\.(\d+)/);
+        if (!match) return 0;
+        const minutes = parseInt(match[1]);
+        const seconds = parseInt(match[2]);
+        const milliseconds = parseInt(match[3]);
+        return minutes * 60 + seconds + milliseconds / 1000;
+    }
+    
+    static calculateRestDays(lastRaceDate) {
+        if (!lastRaceDate) return 0;
+        const lastDate = new Date(lastRaceDate);
+        const today = new Date();
+        const diffTime = today - lastDate;
+        return Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    }
+    
+    /**
+     * アンサンブル学習システム
+     */
+    static createEnsembleModels() {
+        return {
+            // 基本予測モデル
+            basicModel: {
+                weight: 0.3,
+                predict: (features) => this.basicPredict(features),
+                accuracy: 0.65
+            },
+            
+            // 統計モデル
+            statisticalModel: {
+                weight: 0.25,
+                predict: (features) => this.statisticalPredict(features),
+                accuracy: 0.70
+            },
+            
+            // 機械学習モデル
+            mlModel: {
+                weight: 0.25,
+                predict: (features) => this.mlPredict(features),
+                accuracy: 0.72
+            },
+            
+            // 血統特化モデル
+            pedigreeModel: {
+                weight: 0.2,
+                predict: (features) => this.pedigreePredict(features),
+                accuracy: 0.68
+            }
+        };
+    }
+    
+    /**
+     * アンサンブル予測実行
+     */
+    static ensemblePredict(raceData) {
+        if (!raceData || !raceData.horses) {
+            return { predictions: [], confidence: 0 };
+        }
+        
+        const models = this.createEnsembleModels();
+        const features = this.discoverFeatures(raceData);
+        
+        // 各馬の予測結果を計算
+        const horsePredictions = raceData.horses.map((horse, index) => {
+            const horseFeatures = this.extractHorseFeatures(horse, features, index);
+            const modelPredictions = {};
+            
+            // 各モデルで予測
+            Object.entries(models).forEach(([modelName, model]) => {
+                modelPredictions[modelName] = model.predict(horseFeatures);
+            });
+            
+            // 加重平均で最終予測
+            const ensemblePrediction = this.calculateEnsemblePrediction(modelPredictions, models);
+            
+            return {
+                horse: horse,
+                horseIndex: index,
+                predictions: modelPredictions,
+                ensemblePrediction: ensemblePrediction,
+                confidence: this.calculateEnsembleConfidence(modelPredictions, models)
+            };
+        });
+        
+        // 予測結果をスコア順にソート
+        horsePredictions.sort((a, b) => b.ensemblePrediction - a.ensemblePrediction);
+        
+        // 全体の信頼度を計算
+        const overallConfidence = this.calculateOverallConfidence(horsePredictions);
+        
+        console.log('🎯 アンサンブル予測結果:', horsePredictions);
+        
+        return {
+            predictions: horsePredictions,
+            confidence: overallConfidence,
+            modelWeights: Object.fromEntries(
+                Object.entries(models).map(([name, model]) => [name, model.weight])
+            )
+        };
+    }
+    
+    /**
+     * 馬別特徴量抽出
+     */
+    static extractHorseFeatures(horse, allFeatures, horseIndex) {
+        const prefix = `horse_${horseIndex}_`;
+        const horseFeatures = {};
+        
+        // 該当馬の特徴量を抽出
+        Object.entries(allFeatures.features).forEach(([featureName, value]) => {
+            if (featureName.startsWith(prefix)) {
+                const simpleName = featureName.replace(prefix, '');
+                horseFeatures[simpleName] = value;
+            }
+        });
+        
+        // 全体特徴量も含める
+        Object.entries(allFeatures.features).forEach(([featureName, value]) => {
+            if (!featureName.includes('horse_')) {
+                horseFeatures[featureName] = value;
+            }
+        });
+        
+        return horseFeatures;
+    }
+    
+    /**
+     * アンサンブル予測値計算
+     */
+    static calculateEnsemblePrediction(modelPredictions, models) {
+        let weightedSum = 0;
+        let totalWeight = 0;
+        
+        Object.entries(modelPredictions).forEach(([modelName, prediction]) => {
+            const weight = models[modelName].weight;
+            weightedSum += prediction * weight;
+            totalWeight += weight;
+        });
+        
+        return totalWeight > 0 ? weightedSum / totalWeight : 0;
+    }
+    
+    /**
+     * アンサンブル信頼度計算
+     */
+    static calculateEnsembleConfidence(modelPredictions, models) {
+        const predictions = Object.values(modelPredictions);
+        const weights = Object.values(models).map(m => m.weight);
+        
+        // 予測値の分散を計算
+        const mean = predictions.reduce((sum, pred) => sum + pred, 0) / predictions.length;
+        const variance = predictions.reduce((sum, pred) => sum + Math.pow(pred - mean, 2), 0) / predictions.length;
+        
+        // 分散が小さいほど信頼度が高い
+        const agreementScore = 1 / (1 + variance);
+        
+        // 各モデルの精度を考慮した加重信頼度
+        const weightedAccuracy = Object.values(models).reduce((sum, model) => sum + model.accuracy * model.weight, 0);
+        
+        return agreementScore * weightedAccuracy;
+    }
+    
+    /**
+     * 全体信頼度計算
+     */
+    static calculateOverallConfidence(horsePredictions) {
+        const confidences = horsePredictions.map(hp => hp.confidence);
+        return confidences.reduce((sum, conf) => sum + conf, 0) / confidences.length;
+    }
+    
+    /**
+     * 基本予測モデル
+     */
+    static basicPredict(features) {
+        let score = 0.5; // ベーススコア
+        
+        // オッズベースの予測
+        if (features.odds && features.odds > 0) {
+            score += (10 / features.odds) * 0.3; // オッズが低いほど高スコア
+        }
+        
+        // 人気度ベースの予測
+        if (features.popularity && features.popularity > 0) {
+            score += (10 - features.popularity) / 10 * 0.2; // 人気が高いほど高スコア
+        }
+        
+        // 前走結果ベースの予測
+        if (features.last_position && features.last_position > 0) {
+            score += (10 - features.last_position) / 10 * 0.2;
+        }
+        
+        return Math.max(0, Math.min(1, score));
+    }
+    
+    /**
+     * 統計予測モデル
+     */
+    static statisticalPredict(features) {
+        let score = 0.5;
+        
+        // 統計的指標を使用
+        if (features.odds_ratio && features.odds_mean) {
+            score += (1 / features.odds_ratio) * 0.3; // オッズ比の逆数
+        }
+        
+        if (features.popularity_advantage) {
+            score += features.popularity_advantage * 0.2; // 人気度優位性
+        }
+        
+        if (features.performance_consistency) {
+            score += features.performance_consistency * 0.3; // 成績一貫性
+        }
+        
+        return Math.max(0, Math.min(1, score));
+    }
+    
+    /**
+     * 機械学習予測モデル
+     */
+    static mlPredict(features) {
+        let score = 0.5;
+        
+        // 複数特徴量の重み付け合計
+        const featureWeights = {
+            'odds': -0.2,
+            'age': -0.1,
+            'weight': 0.05,
+            'jockey_win_rate': 0.3,
+            'running_style': 0.1,
+            'last_position': -0.15,
+            'rest_days': -0.05,
+            'recent_avg_position': -0.2
+        };
+        
+        Object.entries(featureWeights).forEach(([featureName, weight]) => {
+            if (features[featureName] !== undefined) {
+                score += features[featureName] * weight;
+            }
+        });
+        
+        // 非線形変換
+        score = 1 / (1 + Math.exp(-score)); // シグモイド関数
+        
+        return Math.max(0, Math.min(1, score));
+    }
+    
+    /**
+     * 血統特化予測モデル
+     */
+    static pedigreePredict(features) {
+        let score = 0.5;
+        
+        // 血統関連特徴量を重視
+        if (features.pedigree_score) {
+            score += features.pedigree_score * 0.4;
+        }
+        
+        if (features.sire_performance) {
+            score += features.sire_performance * 0.3;
+        }
+        
+        if (features.dam_performance) {
+            score += features.dam_performance * 0.2;
+        }
+        
+        // 血統適性
+        if (features.pedigree_aptitude) {
+            score += features.pedigree_aptitude * 0.1;
+        }
+        
+        return Math.max(0, Math.min(1, score));
+    }
+    
+    /**
+     * モデル重み動的調整
+     */
+    static adjustModelWeights(models, performanceData) {
+        const totalPerformance = Object.values(performanceData).reduce((sum, perf) => sum + perf, 0);
+        
+        if (totalPerformance > 0) {
+            Object.keys(models).forEach(modelName => {
+                const performance = performanceData[modelName] || 0;
+                const newWeight = performance / totalPerformance;
+                models[modelName].weight = newWeight;
+            });
+        }
+        
+        console.log('📊 モデル重み調整:', Object.fromEntries(
+            Object.entries(models).map(([name, model]) => [name, model.weight.toFixed(3)])
+        ));
+        
+        return models;
+    }
+    
+    /**
+     * アンサンブル学習結果の記録
+     */
+    static recordEnsembleResult(predictions, actualResults) {
+        const metaLearning = this.learningData.metaLearning;
+        
+        // 各モデルの予測精度を記録
+        const modelPerformance = {};
+        
+        predictions.forEach((prediction, index) => {
+            const actualPosition = actualResults[index] || 0;
+            const isCorrect = actualPosition <= 3; // 3着以内を成功とする
+            
+            Object.entries(prediction.predictions).forEach(([modelName, modelPrediction]) => {
+                if (!modelPerformance[modelName]) {
+                    modelPerformance[modelName] = { correct: 0, total: 0 };
+                }
+                
+                modelPerformance[modelName].total++;
+                if (isCorrect) {
+                    modelPerformance[modelName].correct++;
+                }
+            });
+        });
+        
+        // 学習データに記録
+        metaLearning.ensemblePerformance = modelPerformance;
+        
+        // 過学習検出
+        const ensembleScore = this.calculateEnsembleScore(predictions, actualResults);
+        this.detectOverlearning(ensembleScore, true);
+        
+        // 学習データを保存
+        this.saveLearningData();
+        
+        console.log('📈 アンサンブル学習結果記録完了:', modelPerformance);
+    }
+    
+    /**
+     * アンサンブルスコア計算
+     */
+    static calculateEnsembleScore(predictions, actualResults) {
+        let correctPredictions = 0;
+        
+        predictions.forEach((prediction, index) => {
+            const actualPosition = actualResults[index] || 0;
+            const isCorrect = actualPosition <= 3;
+            
+            if (isCorrect) {
+                correctPredictions++;
+            }
+        });
+        
+        return predictions.length > 0 ? correctPredictions / predictions.length : 0;
     }
 }
 
