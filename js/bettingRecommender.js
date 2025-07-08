@@ -215,6 +215,14 @@ class BettingRecommender {
             });
         }
 
+        // 3連複推奨
+        const tripleBoxRecommendations = this.generateTripleBoxRecommendations(marks, predictions, getHorseNumber);
+        recommendations.push(...tripleBoxRecommendations);
+        
+        // 3連単推奨
+        const tripleExactRecommendations = this.generateTripleExactRecommendations(marks, predictions, getHorseNumber);
+        recommendations.push(...tripleExactRecommendations);
+
         return recommendations;
     }
 
@@ -422,6 +430,301 @@ class BettingRecommender {
         const max = finalOdds * 1.2;
         
         return `推定${min.toFixed(1)}-${max.toFixed(1)}倍`;
+    }
+
+    // 3連複推奨機能
+    static generateTripleBoxRecommendations(marks, predictions, getHorseNumber) {
+        const tripleRecommendations = [];
+        
+        // 印のついた馬のリストを作成
+        const markedHorses = [marks.honmei, marks.taikou, marks.tanana, marks.renpuku].filter(h => h);
+        
+        // 3頭以上の印がある場合のみ3連複推奨
+        if (markedHorses.length >= 3) {
+            console.log('🎯 3連複推奨生成開始', { markedHorses: markedHorses.map(h => h.name) });
+            
+            // メイン3連複（上位3頭）
+            const topThree = markedHorses.slice(0, 3);
+            const mainTripleBox = this.calculateTripleBoxExpectedValue(topThree, predictions);
+            
+            if (mainTripleBox.efficiency > 0.15) { // 効率15%以上で推奨（3連複は控除率高いため）
+                tripleRecommendations.push({
+                    category: '3連複',
+                    mark: this.getTripleBoxMark(topThree, marks),
+                    type: 'メイン',
+                    horse: `${topThree[0].name}（${getHorseNumber(topThree[0].name)}番）- ${topThree[1].name}（${getHorseNumber(topThree[1].name)}番）- ${topThree[2].name}（${getHorseNumber(topThree[2].name)}番）`,
+                    odds: `推定${mainTripleBox.estimatedDividend}倍`,
+                    probability: `${mainTripleBox.hitProbability.toFixed(1)}%`,
+                    confidence: mainTripleBox.efficiency > 1.2 ? 'high' : 'medium',
+                    amount: mainTripleBox.efficiency > 1.2 ? '500-1000円' : '300-600円',
+                    efficiency: mainTripleBox.efficiency
+                });
+            }
+            
+            // 4頭以上ある場合、代替3連複も生成
+            if (markedHorses.length >= 4) {
+                const altTriple = [markedHorses[0], markedHorses[1], markedHorses[3]]; // 1,2,4番目
+                const altTripleBox = this.calculateTripleBoxExpectedValue(altTriple, predictions);
+                
+                if (altTripleBox.efficiency > 0.12) {
+                    tripleRecommendations.push({
+                        category: '3連複',
+                        mark: this.getTripleBoxMark(altTriple, marks),
+                        type: 'サブ',
+                        horse: `${altTriple[0].name}（${getHorseNumber(altTriple[0].name)}番）- ${altTriple[1].name}（${getHorseNumber(altTriple[1].name)}番）- ${altTriple[2].name}（${getHorseNumber(altTriple[2].name)}番）`,
+                        odds: `推定${altTripleBox.estimatedDividend}倍`,
+                        probability: `${altTripleBox.hitProbability.toFixed(1)}%`,
+                        confidence: 'medium',
+                        amount: '200-400円',
+                        efficiency: altTripleBox.efficiency
+                    });
+                }
+            }
+        }
+        
+        console.log('🎯 3連複推奨結果', { count: tripleRecommendations.length });
+        return tripleRecommendations;
+    }
+    
+    // 3連複の印表示生成
+    static getTripleBoxMark(horses, marks) {
+        const symbols = [];
+        horses.forEach(horse => {
+            if (marks.honmei && horse.name === marks.honmei.name) symbols.push('◎');
+            else if (marks.taikou && horse.name === marks.taikou.name) symbols.push('○');
+            else if (marks.tanana && horse.name === marks.tanana.name) symbols.push('▲');
+            else if (marks.renpuku && horse.name === marks.renpuku.name) symbols.push('△');
+        });
+        return symbols.join('');
+    }
+    
+    // 3連複期待値計算
+    static calculateTripleBoxExpectedValue(tripleHorses, allPredictions) {
+        if (tripleHorses.length !== 3) {
+            return { hitProbability: 0, estimatedDividend: 0, efficiency: 0 };
+        }
+        
+        const [horse1, horse2, horse3] = tripleHorses;
+        
+        console.log('🧮 3連複期待値計算開始', {
+            horses: tripleHorses.map(h => h.name),
+            placeProbabilities: tripleHorses.map(h => h.placeProbability)
+        });
+        
+        // 各馬の3着以内確率（より現実的な範囲に調整）
+        const place1 = Math.min(horse1.placeProbability / 100, 0.85);
+        const place2 = Math.min(horse2.placeProbability / 100, 0.85);
+        const place3 = Math.min(horse3.placeProbability / 100, 0.85);
+        
+        // 3連複的中確率の改良計算
+        // 単純積算ではなく、より現実的な確率計算
+        const avgPlaceProb = (place1 + place2 + place3) / 3;
+        
+        // 基本的中確率（3頭すべてが3着以内に入る確率）
+        // 改良: 上位馬への重み付けとより現実的な計算
+        let baseHitProb;
+        if (avgPlaceProb > 0.5) {
+            // 上位馬中心の場合: より高い確率
+            baseHitProb = Math.min(0.25, avgPlaceProb * 0.4);
+        } else if (avgPlaceProb > 0.35) {
+            // 中堅馬中心の場合: 中程度の確率
+            baseHitProb = Math.min(0.15, avgPlaceProb * 0.35);
+        } else {
+            // 下位馬中心の場合: 低い確率
+            baseHitProb = Math.min(0.08, avgPlaceProb * 0.25);
+        }
+        
+        // 競合馬の影響を考慮した補正
+        const otherHorses = allPredictions.filter(h => 
+            !tripleHorses.some(th => th.name === h.name)
+        );
+        
+        // 他馬の平均複勝率から競争の激しさを判定
+        const avgOtherPlaceProb = otherHorses.length > 0 
+            ? otherHorses.reduce((sum, h) => sum + h.placeProbability, 0) / otherHorses.length / 100
+            : 0.25;
+        
+        // 競争補正係数（他馬が強いほど的中確率下がる）
+        const competitionFactor = Math.max(0.6, 1.2 - avgOtherPlaceProb);
+        
+        // 最終的中確率
+        const hitProbability = baseHitProb * competitionFactor;
+        
+        // 配当予想の改良（より現実的な範囲）
+        const avgOdds = (horse1.odds + horse2.odds + horse3.odds) / 3;
+        const minOdds = Math.min(horse1.odds, horse2.odds, horse3.odds);
+        const maxOdds = Math.max(horse1.odds, horse2.odds, horse3.odds);
+        
+        let estimatedDividend;
+        if (avgOdds <= 4) {
+            // 人気馬中心: 手堅い配当
+            estimatedDividend = Math.round(25 + avgOdds * 8);
+        } else if (avgOdds <= 10) {
+            // 中人気馬中心: 中程度配当
+            estimatedDividend = Math.round(50 + avgOdds * 12);
+        } else {
+            // 人気薄中心: 高配当期待
+            estimatedDividend = Math.round(80 + avgOdds * 15);
+        }
+        
+        // オッズのばらつきによる配当調整
+        const oddsSpread = maxOdds - minOdds;
+        if (oddsSpread > 15) {
+            estimatedDividend = Math.round(estimatedDividend * 1.3); // ばらつき大なら配当アップ
+        }
+        
+        // 期待値効率（100円投資あたりの期待リターン）
+        const efficiency = (hitProbability * estimatedDividend) / 100;
+        
+        console.log('🧮 3連複計算結果', {
+            hitProbability: (hitProbability * 100).toFixed(2) + '%',
+            estimatedDividend: estimatedDividend + '倍',
+            efficiency: efficiency.toFixed(2),
+            competitionFactor: competitionFactor.toFixed(2),
+            avgPlaceProb: (avgPlaceProb * 100).toFixed(1) + '%'
+        });
+        
+        return {
+            hitProbability: hitProbability * 100, // パーセンテージ表示用
+            estimatedDividend,
+            efficiency
+        };
+    }
+
+    // 3連単推奨機能
+    static generateTripleExactRecommendations(marks, predictions, getHorseNumber) {
+        const tripleExactRecommendations = [];
+        
+        // 印のついた馬のリストを作成
+        const markedHorses = [marks.honmei, marks.taikou, marks.tanana, marks.renpuku].filter(h => h);
+        
+        // 3頭以上の印がある場合のみ3連単推奨
+        if (markedHorses.length >= 3) {
+            console.log('🏁 3連単推奨生成開始', { markedHorses: markedHorses.map(h => h.name) });
+            
+            // 本命軸メイン3連単（着順重要）
+            if (marks.honmei && marks.taikou && marks.tanana) {
+                const mainTripleExact = this.calculateTripleExactExpectedValue(
+                    [marks.honmei, marks.taikou, marks.tanana], 
+                    predictions
+                );
+                
+                if (mainTripleExact.efficiency > 0.08) { // 3連単はさらに低い闾値
+                    tripleExactRecommendations.push({
+                        category: '3連単',
+                        mark: '◎○▲',
+                        type: '軸流し',
+                        horse: `1着:◎${marks.honmei.name}（${getHorseNumber(marks.honmei.name)}番） 2-3着:○${marks.taikou.name},▲${marks.tanana.name}`,
+                        odds: `推定${mainTripleExact.estimatedDividend}倍`,
+                        probability: `${mainTripleExact.hitProbability.toFixed(2)}%`,
+                        confidence: mainTripleExact.efficiency > 0.15 ? 'medium' : 'low',
+                        amount: mainTripleExact.efficiency > 0.15 ? '200-500円' : '100-300円',
+                        efficiency: mainTripleExact.efficiency,
+                        strategy: '本命軸流し'
+                    });
+                }
+            }
+            
+            // 対抗軸フォーメーション
+            if (marks.taikou && markedHorses.length >= 4) {
+                const formationTripleExact = this.calculateTripleExactExpectedValue(
+                    [marks.taikou, marks.honmei, marks.tanana], 
+                    predictions
+                );
+                
+                if (formationTripleExact.efficiency > 0.06) {
+                    tripleExactRecommendations.push({
+                        category: '3連単',
+                        mark: '○◎▲',
+                        type: '穴狙い',
+                        horse: `1着:○${marks.taikou.name}（${getHorseNumber(marks.taikou.name)}番） 2-3着:◎${marks.honmei.name},▲${marks.tanana.name}`,
+                        odds: `推定${formationTripleExact.estimatedDividend}倍`,
+                        probability: `${formationTripleExact.hitProbability.toFixed(2)}%`,
+                        confidence: 'low',
+                        amount: '100-200円',
+                        efficiency: formationTripleExact.efficiency,
+                        strategy: '穴狙いフォーメーション'
+                    });
+                }
+            }
+        }
+        
+        console.log('🏁 3連単推奨結果', { count: tripleExactRecommendations.length });
+        return tripleExactRecommendations;
+    }
+    
+    // 3連単期待値計算（着順固定）
+    static calculateTripleExactExpectedValue(orderedHorses, allPredictions) {
+        if (orderedHorses.length !== 3) {
+            return { hitProbability: 0, estimatedDividend: 0, efficiency: 0 };
+        }
+        
+        const [first, second, third] = orderedHorses;
+        
+        console.log('🧮 3連単期待値計算開始', {
+            order: orderedHorses.map(h => h.name),
+            winProbs: orderedHorses.map(h => h.winProbability),
+            placeProbs: orderedHorses.map(h => h.placeProbability)
+        });
+        
+        // 各着順の確率計算（着順固定のためより厳しい）
+        const firstProb = Math.min(first.winProbability / 100, 0.6); // 1着確率
+        const secondGivenFirst = Math.min(second.placeProbability / 100 * 0.7, 0.5); // 1着除いた2着確率
+        const thirdGivenFirstSecond = Math.min(third.placeProbability / 100 * 0.5, 0.4); // 1,2着除いた3着確率
+        
+        // 3連単的中確率（着順固定）
+        const baseHitProb = firstProb * secondGivenFirst * thirdGivenFirstSecond;
+        
+        // 競合馬の影響を考慮した補正
+        const otherHorses = allPredictions.filter(h => 
+            !orderedHorses.some(oh => oh.name === h.name)
+        );
+        
+        // 他馬の平均労力から競争の激しさを判定
+        const avgOtherWinProb = otherHorses.length > 0 
+            ? otherHorses.reduce((sum, h) => sum + h.winProbability, 0) / otherHorses.length / 100
+            : 0.1;
+        
+        // 競争補正係数（他馬が強いほど的中確率下がる）
+        const competitionFactor = Math.max(0.4, 1.3 - avgOtherWinProb * 2);
+        
+        // 最終的中確率
+        const hitProbability = baseHitProb * competitionFactor;
+        
+        // 配当予想（着順固定のため高配当）
+        const avgOdds = (first.odds + second.odds + third.odds) / 3;
+        const maxOdds = Math.max(first.odds, second.odds, third.odds);
+        
+        let estimatedDividend;
+        if (avgOdds <= 5) {
+            estimatedDividend = Math.round(200 + avgOdds * 30); // 200-350倍
+        } else if (avgOdds <= 12) {
+            estimatedDividend = Math.round(400 + avgOdds * 50); // 400-1000倍
+        } else {
+            estimatedDividend = Math.round(800 + avgOdds * 80); // 800-2400倍以上
+        }
+        
+        // 上位人気馬が着外する穴狙いパターンなら配当アップ
+        if (maxOdds > 20) {
+            estimatedDividend = Math.round(estimatedDividend * 1.5);
+        }
+        
+        // 期待値効率（100円投資あたりの期待リターン）
+        const efficiency = (hitProbability * estimatedDividend) / 100;
+        
+        console.log('🧮 3連単計算結果', {
+            hitProbability: (hitProbability * 100).toFixed(3) + '%',
+            estimatedDividend: estimatedDividend + '倍',
+            efficiency: efficiency.toFixed(3),
+            competitionFactor: competitionFactor.toFixed(2),
+            baseHitProb: (baseHitProb * 100).toFixed(3) + '%'
+        });
+        
+        return {
+            hitProbability: hitProbability * 100, // パーセンテージ表示用
+            estimatedDividend,
+            efficiency
+        };
     }
 
     // 初期化時に履歴を読み込み
