@@ -102,17 +102,6 @@ class PredictionEngine {
                 const ensembleResult = EnhancedLearningSystem.ensemblePredict(raceData);
                 console.log(`🎯 アンサンブル予測完了: 信頼度 ${(ensembleResult.confidence * 100).toFixed(1)}%`);
                 
-                // Phase 1: 信頼度フィルタリング適用
-                if (typeof ReliabilityFilter !== 'undefined') {
-                    console.log('🔍 Phase 1 信頼度フィルタリング開始');
-                    const filteredPredictions = ReliabilityFilter.filterRecommendations(predictions, ensembleResult);
-                    console.log(`📊 フィルタリング結果: ${predictions.length}頭 → ${filteredPredictions.length}頭推奨`);
-                    
-                    // フィルタリング結果をグローバルに保存
-                    window.lastFilteredPredictions = filteredPredictions;
-                    window.lastEnsembleResult = ensembleResult;
-                }
-                
                 // 既存予測結果を強化
                 predictions.forEach((prediction, index) => {
                     if (ensembleResult.predictions[index]) {
@@ -144,6 +133,73 @@ class PredictionEngine {
             } catch (error) {
                 console.error('❌ 高度学習機能エラー:', error);
                 showMessage('高度学習機能でエラーが発生しましたが、基本予測は継続します', 'warning', 3000);
+            }
+        }
+        
+        // Phase 1: 推奨精度向上システムによる信頼度フィルタリング
+        if (typeof ReliabilityFilter !== 'undefined') {
+            console.log('🔍 Phase 1: 信頼度フィルタリング適用');
+            const filteredPredictions = ReliabilityFilter.filterRecommendations(predictions, null);
+            console.log(`フィルタリング結果: ${predictions.length}頭 → ${filteredPredictions.length}頭推奨`);
+            
+            // フィルタリング結果を元の予測に反映
+            predictions.forEach(prediction => {
+                const filtered = filteredPredictions.find(f => f.name === prediction.name);
+                if (filtered) {
+                    prediction.reliability = filtered.reliability;
+                    prediction.recommendationLevel = filtered.recommendationLevel;
+                    prediction.isRecommended = filtered.isRecommended;
+                    prediction.filterReason = filtered.filterReason;
+                } else {
+                    prediction.isRecommended = false;
+                    prediction.filterReason = '信頼度基準未達';
+                }
+            });
+        }
+        
+        // Phase 2: 投資戦略最適化システム適用
+        if (typeof RiskManagementInvestmentSystem !== 'undefined' && typeof KellyBettingSystem !== 'undefined') {
+            console.log('💰 Phase 2: 投資戦略最適化システム適用');
+            
+            // リスク管理ベース投資配分
+            const investmentAllocation = RiskManagementInvestmentSystem.calculateOptimalAllocation(predictions);
+            
+            // ケリー基準による最適賭け金
+            const kellyPortfolio = KellyBettingSystem.calculateOptimalPortfolioBetting(predictions);
+            
+            // 券種別最適化
+            if (typeof BetTypeOptimizationSystem !== 'undefined') {
+                const marketConditions = {
+                    raceClass: 'G1', // デフォルト値（実際のレース情報から取得すべき）
+                    weather: '晴',
+                    track: '芝',
+                    distance: '中距離'
+                };
+                const betTypeMetrics = BetTypeOptimizationSystem.calculateBetTypeMetrics(predictions, marketConditions);
+                const betTypeOptimization = BetTypeOptimizationSystem.determineOptimalBetTypeCombination(betTypeMetrics, 50000);
+                
+                // 結果を予測データに統合
+                predictions.forEach(prediction => {
+                    // 投資配分情報
+                    const investment = investmentAllocation.investments.find(inv => inv.horse.name === prediction.name);
+                    if (investment) {
+                        prediction.investmentAmount = investment.amount;
+                        prediction.investmentReason = investment.investmentReason;
+                    }
+                    
+                    // ケリー基準情報
+                    const kellyBet = kellyPortfolio.bets.find(bet => bet.horse === prediction.name);
+                    if (kellyBet) {
+                        prediction.kellyOptimalBet = kellyBet.finalBetSize;
+                        prediction.kellyExpectedGrowth = kellyBet.expectedGrowthRate;
+                        prediction.kellyBettingReason = kellyBet.bettingReason;
+                    }
+                    
+                    // 券種最適化情報
+                    prediction.betTypeRecommendations = betTypeOptimization.budgetAllocation;
+                });
+                
+                console.log(`Phase 2統合完了: 投資額=${investmentAllocation.totalInvestment.toLocaleString()}円, ケリー推奨=${kellyPortfolio.totalInvestment.toLocaleString()}円`);
             }
         }
         
