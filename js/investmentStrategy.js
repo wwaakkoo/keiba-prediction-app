@@ -5,23 +5,23 @@ class InvestmentStrategy {
         const strategies = {
             conservative: {
                 name: '安定型',
-                description: '的中率重視、リスク最小',
-                tripleBox: { horses: 5, investment: 1000, expectedHitRate: 55 },
+                description: '的中率重視、リスク最小（単勝・複勝中心）',
+                tripleBox: { horses: 5, investment: 1000, expectedHitRate: 18 }, // 現実的な的中率
                 tripleExact: { horses: 0, investment: 0, expectedHitRate: 0 }, // 推奨しない
                 risk: 'low'
             },
             balanced: {
                 name: 'バランス型',
                 description: '的中率と配当のバランス',
-                tripleBox: { horses: 4, investment: 400, expectedHitRate: 22 },
-                tripleExact: { horses: 3, investment: 600, expectedHitRate: 1.8 },
+                tripleBox: { horses: 4, investment: 400, expectedHitRate: 12 }, // 現実的な的中率
+                tripleExact: { horses: 3, investment: 600, expectedHitRate: 0.8 }, // 現実的な的中率
                 risk: 'medium'
             },
             aggressive: {
                 name: '攻撃型',
                 description: '高配当狙い、リスク高',
-                tripleBox: { horses: 3, investment: 100, expectedHitRate: 5.5 },
-                tripleExact: { horses: 3, investment: 600, expectedHitRate: 1.8 },
+                tripleBox: { horses: 3, investment: 100, expectedHitRate: 3.5 }, // 現実的な的中率
+                tripleExact: { horses: 3, investment: 600, expectedHitRate: 0.8 }, // 現実的な的中率
                 risk: 'high'
             }
         };
@@ -84,12 +84,12 @@ class InvestmentStrategy {
         return 'low';
     }
 
-    // 期待リターン計算
+    // 期待リターン計算（現実的な配当率に修正）
     static calculateExpectedReturn(strategy, confidence) {
         const baseReturns = {
-            conservative: { high: 280, medium: 240, low: 200 },
-            balanced: { high: 320, medium: 280, low: 220 },
-            aggressive: { high: 400, medium: 300, low: 180 }
+            conservative: { high: 180, medium: 160, low: 140 }, // 40-80%の回収率
+            balanced: { high: 220, medium: 190, low: 150 }, // 50-120%の回収率
+            aggressive: { high: 280, medium: 220, low: 120 } // 20-180%の回収率
         };
         
         const strategyKey = Object.keys(baseReturns).find(key => 

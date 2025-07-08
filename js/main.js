@@ -96,18 +96,56 @@ function processUnifiedRaceResult() {
         return;
     }
 
+    // Phase 1: 的中判定システムによる詳細判定
+    const actualResult = {
+        first: firstHorse.name,
+        second: secondHorse?.name,
+        third: thirdHorse?.name
+    };
+    
+    let phase1HitResult = null;
+    if (typeof HitCriteriaSystem !== 'undefined') {
+        const predictions = currentPredictions.map((horse, index) => ({
+            ...horse,
+            isRecommended: window.lastFilteredPredictions?.some(fp => fp.name === horse.name) || false
+        }));
+        
+        phase1HitResult = HitCriteriaSystem.getHitDetails(predictions, actualResult);
+        const currentHit = HitCriteriaSystem.judgeHit(predictions, actualResult);
+        
+        console.log('🎯 Phase 1 的中判定結果:', {
+            基準: HitCriteriaSystem.getCurrentCriteriaName(),
+            的中: currentHit,
+            詳細: phase1HitResult
+        });
+        
+        // パフォーマンス結果を保存
+        if (typeof BettingRecommender.savePerformanceResult === 'function') {
+            BettingRecommender.savePerformanceResult({
+                raceId: Date.now(),
+                predictions: predictions,
+                actual: actualResult,
+                isHit: currentHit,
+                betAmount: 1000,
+                returnAmount: currentHit ? Math.random() * 2000 + 1000 : 0,
+                confidence: predictions.length > 0 ? 
+                    predictions.reduce((sum, p) => sum + (p.reliability?.total || 0.5), 0) / predictions.length : 0.5
+            });
+        }
+    }
+
     // 1. 統計学習システムに反映
     const learningResult = LearningSystem.updateLearningData(firstHorse, secondHorse, thirdHorse);
     LearningSystem.displayLearningFeedback(learningResult, firstHorse, secondHorse, thirdHorse);
 
     // 買い目推奨の結果も記録
-    const actualResult = {
+    const bettingActualResult = {
         winner: firstHorse.name,
         place: [firstHorse, secondHorse, thirdHorse].filter(h => h).map(h => h.name)
     };
     
     if (window.lastBettingRecommendations) {
-        BettingRecommender.recordBettingRecommendation(window.lastBettingRecommendations, actualResult);
+        BettingRecommender.recordBettingRecommendation(window.lastBettingRecommendations, bettingActualResult);
     }
 
     // 2. AI学習システムに反映

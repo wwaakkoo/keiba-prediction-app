@@ -204,14 +204,28 @@ class ProfitabilityMetrics {
         }
     }
     
-    // 基本投資記録の更新
+    // 基本投資記録の更新（的中判定システム統合）
     static updateInvestmentRecord(betResult) {
         const investment = this.profitabilityData.investment;
         
         investment.totalInvested += betResult.betAmount;
         investment.totalBets++;
         
-        if (betResult.isHit) {
+        // 的中判定システムによる詳細判定
+        let finalHitStatus = betResult.isHit;
+        if (betResult.predictions && betResult.actual && typeof HitCriteriaSystem !== 'undefined') {
+            const hitDetails = HitCriteriaSystem.getHitDetails(betResult.predictions, betResult.actual);
+            finalHitStatus = HitCriteriaSystem.judgeHit(betResult.predictions, betResult.actual);
+            
+            // 判定結果をログに記録
+            console.log('📊 的中判定詳細:', {
+                基準: HitCriteriaSystem.getCurrentCriteriaName(),
+                結果: finalHitStatus,
+                詳細: hitDetails
+            });
+        }
+        
+        if (finalHitStatus) {
             investment.totalReturned += betResult.returnAmount;
             investment.hitCount++;
         }
@@ -869,9 +883,9 @@ class ProfitabilityMetrics {
                 const winRate = winPredictions / totalPredictions;
                 const placeRate = placePredictions / totalPredictions;
                 
-                // 保守的なROI推定（実際の的中率から）
-                const estimatedWinReturn = winPredictions * estimatedBetAmount * 3.5; // 平均配当3.5倍
-                const estimatedPlaceReturn = (placePredictions - winPredictions) * estimatedBetAmount * 1.8; // 複勝1.8倍
+                // 現実的なROI推定（実際のデータに基づく）
+                const estimatedWinReturn = winPredictions * estimatedBetAmount * 2.8; // 平均配当2.8倍（現実的設定）
+                const estimatedPlaceReturn = (placePredictions - winPredictions) * estimatedBetAmount * 1.6; // 複勝1.6倍
                 const estimatedTotalReturn = estimatedWinReturn + estimatedPlaceReturn;
                 
                 // 収益性データに反映

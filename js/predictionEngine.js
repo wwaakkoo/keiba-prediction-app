@@ -102,6 +102,17 @@ class PredictionEngine {
                 const ensembleResult = EnhancedLearningSystem.ensemblePredict(raceData);
                 console.log(`🎯 アンサンブル予測完了: 信頼度 ${(ensembleResult.confidence * 100).toFixed(1)}%`);
                 
+                // Phase 1: 信頼度フィルタリング適用
+                if (typeof ReliabilityFilter !== 'undefined') {
+                    console.log('🔍 Phase 1 信頼度フィルタリング開始');
+                    const filteredPredictions = ReliabilityFilter.filterRecommendations(predictions, ensembleResult);
+                    console.log(`📊 フィルタリング結果: ${predictions.length}頭 → ${filteredPredictions.length}頭推奨`);
+                    
+                    // フィルタリング結果をグローバルに保存
+                    window.lastFilteredPredictions = filteredPredictions;
+                    window.lastEnsembleResult = ensembleResult;
+                }
+                
                 // 既存予測結果を強化
                 predictions.forEach((prediction, index) => {
                     if (ensembleResult.predictions[index]) {
@@ -137,6 +148,10 @@ class PredictionEngine {
         }
         
         this.displayResults(predictions);
+        
+        // Phase 1: 信頼度フィルタリング情報を表示
+        this.displayPhase1Information();
+        
         BettingRecommender.generateBettingRecommendations(predictions);
         
         // 拡張推奨システムも表示
@@ -2412,6 +2427,113 @@ class PredictionEngine {
             case 'D': return '#90a4ae'; // ライトグレー
             default: return '#616161'; // デフォルトグレー
         }
+    }
+    
+    // Phase 1情報表示
+    static displayPhase1Information() {
+        // Phase 1情報表示エリアを作成または取得
+        let phase1Container = document.getElementById('phase1InfoContainer');
+        if (!phase1Container) {
+            phase1Container = document.createElement('div');
+            phase1Container.id = 'phase1InfoContainer';
+            phase1Container.style.cssText = `
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 20px;
+                margin: 15px 0;
+                border-radius: 10px;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            `;
+            
+            // 予測結果の後に挿入
+            const resultsContainer = document.getElementById('results');
+            if (resultsContainer && resultsContainer.nextSibling) {
+                resultsContainer.parentNode.insertBefore(phase1Container, resultsContainer.nextSibling);
+            } else if (resultsContainer) {
+                resultsContainer.parentNode.appendChild(phase1Container);
+            }
+        }
+        
+        let infoHTML = '<h3 style="margin-top:0; color:#fff;">🎯 Phase 1 推奨精度向上システム</h3>';
+        
+        // 的中判定基準表示
+        if (typeof HitCriteriaSystem !== 'undefined') {
+            const currentCriteria = HitCriteriaSystem.getCurrentCriteriaName();
+            infoHTML += `<div style="background:rgba(255,255,255,0.1); padding:10px; border-radius:5px; margin:10px 0;">
+                <strong>📊 現在の的中判定基準:</strong> ${currentCriteria}
+            </div>`;
+        }
+        
+        // 信頼度フィルタリング結果表示
+        if (window.lastFilteredPredictions && window.lastEnsembleResult) {
+            const filtered = window.lastFilteredPredictions;
+            const ensemble = window.lastEnsembleResult;
+            
+            const highConf = filtered.filter(p => p.recommendationLevel === 'high').length;
+            const mediumConf = filtered.filter(p => p.recommendationLevel === 'medium').length;
+            const lowConf = filtered.filter(p => p.recommendationLevel === 'low').length;
+            
+            infoHTML += `<div style="background:rgba(255,255,255,0.1); padding:10px; border-radius:5px; margin:10px 0;">
+                <strong>🔍 信頼度フィルタリング結果:</strong><br>
+                総予測数: ${this.currentPredictions.length}頭 → 推奨数: ${filtered.length}頭<br>
+                <span style="color:#4CAF50;">高信頼度: ${highConf}頭</span> | 
+                <span style="color:#FF9800;">中信頼度: ${mediumConf}頭</span> | 
+                <span style="color:#F44336;">低信頼度: ${lowConf}頭</span><br>
+                アンサンブル信頼度: ${(ensemble.confidence * 100).toFixed(1)}%
+            </div>`;
+        }
+        
+        // 動的調整情報表示
+        if (typeof DynamicRecommendationAdjuster !== 'undefined') {
+            try {
+                const adjustmentParams = DynamicRecommendationAdjuster.adjustmentHistory.adjustmentParameters;
+                if (adjustmentParams) {
+                    infoHTML += `<div style="background:rgba(255,255,255,0.1); padding:10px; border-radius:5px; margin:10px 0;">
+                        <strong>📈 動的調整パラメータ:</strong><br>
+                        信頼度閾値: ${(adjustmentParams.confidenceThreshold * 100).toFixed(1)}% | 
+                        強度乗数: ${adjustmentParams.strengthMultiplier.toFixed(2)} | 
+                        フィルタ厳格度: ${adjustmentParams.filterStrictness.toFixed(2)}
+                    </div>`;
+                }
+            } catch (error) {
+                console.error('動的調整情報表示エラー:', error);
+            }
+        }
+        
+        // 期待ROI情報表示
+        if (typeof HitCriteriaSystem !== 'undefined' && this.currentPredictions.length > 0) {
+            try {
+                const expectedROI = HitCriteriaSystem.calculateExpectedROI(this.currentPredictions);
+                const currentROI = expectedROI[HitCriteriaSystem.currentCriteria];
+                
+                if (currentROI !== undefined) {
+                    // より現実的な月間ROI計算（複利効果と損失を考慮）
+                    const dailyROI = currentROI / 100; // 日次ROI
+                    const monthlyROI = Math.round(((Math.pow(1 + dailyROI, 20) - 1) * 100) * 10) / 10; // 20レース複利計算
+                    const roiColor = monthlyROI >= 100 ? '#4CAF50' : monthlyROI >= 50 ? '#FF9800' : '#F44336';
+                    
+                    infoHTML += `<div style="background:rgba(255,255,255,0.1); padding:10px; border-radius:5px; margin:10px 0;">
+                        <strong>💰 期待収益予測:</strong><br>
+                        現在基準ROI: ${currentROI.toFixed(1)}% | 
+                        <span style="color:${roiColor}; font-weight:bold;">月間ROI予測: ${monthlyROI.toFixed(1)}%</span><br>
+                        <small>※月20レース参加想定</small>
+                    </div>`;
+                }
+            } catch (error) {
+                console.error('期待ROI計算エラー:', error);
+            }
+        }
+        
+        // Phase 1の効果説明
+        infoHTML += `<div style="background:rgba(255,255,255,0.15); padding:10px; border-radius:5px; margin:10px 0; font-size:14px;">
+            <strong>✨ Phase 1 改善効果:</strong><br>
+            • 現実的な配当設定 (3.5倍→2.8倍)<br>
+            • 明確な的中判定基準<br>
+            • アンサンブル統合による推奨精度向上<br>
+            • 動的調整による継続的最適化
+        </div>`;
+        
+        phase1Container.innerHTML = infoHTML;
     }
 }
 
