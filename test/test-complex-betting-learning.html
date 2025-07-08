@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎯 3連複・3連単学習機能テスト</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 8px; }
+        .success { background: #d4edda; border-color: #c3e6cb; color: #155724; }
+        .error { background: #f8d7da; border-color: #f5c6cb; color: #721c24; }
+        .info { background: #d1ecf1; border-color: #bee5eb; color: #0c5460; }
+        .warning { background: #fff3cd; border-color: #ffeaa7; color: #856404; }
+        button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin: 5px; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 5px; overflow-x: auto; font-size: 12px; }
+        .form-group { margin: 10px 0; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        select, input { padding: 8px; border: 1px solid #ddd; border-radius: 4px; width: 200px; }
+    </style>
+</head>
+<body>
+    <h1>🎯 3連複・3連単学習機能テスト</h1>
+    
+    <div class="test-section">
+        <h2>📋 テスト目的</h2>
+        <p>3連複・3連単の学習機能が正常に動作するかテストします。</p>
+        <ul>
+            <li>入力フィールドの動作確認</li>
+            <li>学習データの記録確認</li>
+            <li>効率閾値の動的調整確認</li>
+            <li>統計表示の確認</li>
+        </ul>
+    </div>
+    
+    <div class="test-section">
+        <h2>🛠️ テスト環境設定</h2>
+        <button onclick="setupTestEnvironment()">テスト環境初期化</button>
+        <button onclick="clearTestData()">テストデータクリア</button>
+        
+        <div id="testStatus" class="info test-section" style="display: none;">
+            <h4>テスト環境状態</h4>
+            <div id="environmentInfo"></div>
+        </div>
+    </div>
+    
+    <div class="test-section">
+        <h2>🎲 テスト用入力フィールド</h2>
+        <p>実際のアプリと同じ入力フィールドで学習をテストします。</p>
+        
+        <div class="warning test-section">
+            <h4>🏇 実際の着順結果</h4>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+                <div class="form-group">
+                    <label>1着馬名</label>
+                    <input type="text" id="actualFirst" placeholder="例: サンライズホープ" value="サンライズホープ">
+                </div>
+                <div class="form-group">
+                    <label>2着馬名</label>
+                    <input type="text" id="actualSecond" placeholder="例: ミラクルスター" value="ミラクルスター">
+                </div>
+                <div class="form-group">
+                    <label>3着馬名</label>
+                    <input type="text" id="actualThird" placeholder="例: ゴールデンボルト" value="ゴールデンボルト">
+                </div>
+            </div>
+        </div>
+        
+        <div class="warning test-section">
+            <h4>🎯 3連複・3連単学習結果入力</h4>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 10px;">
+                <div class="form-group">
+                    <label>🏆 3連複結果</label>
+                    <select id="tripleBoxResult">
+                        <option value="">選択してください</option>
+                        <option value="hit">✅ 的中</option>
+                        <option value="miss">❌ 外れ</option>
+                        <option value="no-bet">➖ 購入なし</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>🏁 3連単結果</label>
+                    <select id="tripleExactResult">
+                        <option value="">選択してください</option>
+                        <option value="hit">✅ 的中</option>
+                        <option value="miss">❌ 外れ</option>
+                        <option value="no-bet">➖ 購入なし</option>
+                    </select>
+                </div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div class="form-group">
+                    <label>💰 3連複配当</label>
+                    <input type="number" id="tripleBoxDividend" placeholder="例: 1250">
+                </div>
+                <div class="form-group">
+                    <label>💰 3連単配当</label>
+                    <input type="number" id="tripleExactDividend" placeholder="例: 15840">
+                </div>
+            </div>
+        </div>
+        
+        <button onclick="runLearningTest()">🧠 学習テスト実行</button>
+        <button onclick="showTestStatistics()">📊 学習統計確認</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>📊 テスト結果</h2>
+        <div id="testResults"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>📝 実行ログ</h2>
+        <pre id="testLog">テストログがここに表示されます...\n</pre>
+        <button onclick="clearLog()">ログクリア</button>
+    </div>
+
+    <!-- 必要なスクリプトファイル -->
+    <script src="../js/config.js"></script>
+    <script src="../js/learningSystem.js"></script>
+    
+    <script>
+        let testLogs = [];
+        let testData = {
+            horses: [
+                { name: "サンライズホープ", odds: 2.1 },
+                { name: "ミラクルスター", odds: 4.5 },
+                { name: "ゴールデンボルト", odds: 7.2 },
+                { name: "シルバーアロー", odds: 12.8 },
+                { name: "クリムゾンフレーム", odds: 18.4 }
+            ]
+        };
+        
+        function addTestLog(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            testLogs.push(`${timestamp} ${message}`);
+            document.getElementById('testLog').textContent = testLogs.slice(-15).join('\n');
+        }
+        
+        function clearLog() {
+            testLogs = [];
+            document.getElementById('testLog').textContent = 'ログをクリアしました...\n';
+        }
+        
+        function setupTestEnvironment() {
+            addTestLog('🔧 テスト環境を初期化中...');
+            
+            // LearningSystemの初期化確認
+            if (typeof LearningSystem !== 'undefined') {
+                addTestLog('✅ LearningSystemクラスが利用可能です');
+                
+                // 学習システム初期化
+                LearningSystem.initialize();
+                addTestLog('✅ LearningSystem初期化完了');
+                
+                // 必要なメソッドの存在確認
+                if (typeof LearningSystem.processComplexBettingResults === 'function') {
+                    addTestLog('✅ processComplexBettingResults メソッド確認');
+                } else {
+                    addTestLog('❌ processComplexBettingResults メソッドが見つかりません');
+                }
+                
+                if (typeof LearningSystem.getComplexBettingThresholds === 'function') {
+                    addTestLog('✅ getComplexBettingThresholds メソッド確認');
+                } else {
+                    addTestLog('❌ getComplexBettingThresholds メソッドが見つかりません');
+                }
+                
+                if (typeof LearningSystem.showComplexBettingStats === 'function') {
+                    addTestLog('✅ showComplexBettingStats メソッド確認');
+                } else {
+                    addTestLog('❌ showComplexBettingStats メソッドが見つかりません');
+                }
+                
+                // 初期閾値を確認
+                const thresholds = LearningSystem.getComplexBettingThresholds();
+                addTestLog(`📊 初期閾値: 3連複メイン=${thresholds.tripleBox.main}, 3連単メイン=${thresholds.tripleExact.main}`);
+                
+            } else {
+                addTestLog('❌ LearningSystemクラスが見つかりません');
+            }
+            
+            const environmentInfo = document.getElementById('environmentInfo');
+            environmentInfo.innerHTML = `
+                <p><strong>テスト馬:</strong> ${testData.horses.map(h => h.name).join(', ')}</p>
+                <p><strong>LearningSystem:</strong> ${typeof LearningSystem !== 'undefined' ? '✅ 利用可能' : '❌ 未対応'}</p>
+                <p><strong>テスト準備:</strong> ✅ 完了</p>
+            `;
+            
+            document.getElementById('testStatus').style.display = 'block';
+            addTestLog('🎯 テスト環境初期化完了');
+        }
+        
+        function clearTestData() {
+            // 入力フィールドをクリア
+            document.getElementById('tripleBoxResult').value = '';
+            document.getElementById('tripleExactResult').value = '';
+            document.getElementById('tripleBoxDividend').value = '';
+            document.getElementById('tripleExactDividend').value = '';
+            
+            addTestLog('🧹 テストデータをクリアしました');
+        }
+        
+        function runLearningTest() {
+            addTestLog('🧠 学習テスト開始');
+            
+            const actualFirst = document.getElementById('actualFirst').value.trim();
+            const actualSecond = document.getElementById('actualSecond').value.trim();
+            const actualThird = document.getElementById('actualThird').value.trim();
+            
+            if (!actualFirst || !actualSecond || !actualThird) {
+                addTestLog('❌ 1-3着の馬名をすべて入力してください');
+                return;
+            }
+            
+            // テスト用の馬データを作成
+            const mockHorses = testData.horses.map(h => ({
+                name: h.name,
+                odds: h.odds
+            }));
+            
+            const firstHorse = mockHorses.find(h => h.name === actualFirst);
+            const secondHorse = mockHorses.find(h => h.name === actualSecond);
+            const thirdHorse = mockHorses.find(h => h.name === actualThird);
+            
+            if (!firstHorse || !secondHorse || !thirdHorse) {
+                addTestLog('❌ 入力された馬名がテストデータにありません');
+                return;
+            }
+            
+            addTestLog(`🏇 着順: 1着=${firstHorse.name}, 2着=${secondHorse.name}, 3着=${thirdHorse.name}`);
+            
+            // 学習前の閾値を記録
+            const beforeThresholds = LearningSystem.getComplexBettingThresholds();
+            addTestLog(`📊 学習前閾値: 3連複=${beforeThresholds.tripleBox.main.toFixed(3)}, 3連単=${beforeThresholds.tripleExact.main.toFixed(3)}`);
+            
+            try {
+                // 複雑馬券種の学習を実行
+                LearningSystem.processComplexBettingResults(firstHorse, secondHorse, thirdHorse);
+                
+                // 学習後の閾値を確認
+                const afterThresholds = LearningSystem.getComplexBettingThresholds();
+                addTestLog(`📊 学習後閾値: 3連複=${afterThresholds.tripleBox.main.toFixed(3)}, 3連単=${afterThresholds.tripleExact.main.toFixed(3)}`);
+                
+                // 閾値変化を確認
+                const tripleBoxChange = afterThresholds.tripleBox.main - beforeThresholds.tripleBox.main;
+                const tripleExactChange = afterThresholds.tripleExact.main - beforeThresholds.tripleExact.main;
+                
+                if (Math.abs(tripleBoxChange) > 0.001 || Math.abs(tripleExactChange) > 0.001) {
+                    addTestLog(`📈 閾値が学習により調整されました: 3連複${tripleBoxChange > 0 ? '+' : ''}${tripleBoxChange.toFixed(3)}, 3連単${tripleExactChange > 0 ? '+' : ''}${tripleExactChange.toFixed(3)}`);
+                } else {
+                    addTestLog('📊 今回の学習では閾値に大きな変化はありませんでした');
+                }
+                
+                addTestLog('✅ 複雑馬券種学習テスト完了');
+                
+                // 結果を表示
+                showTestResults(beforeThresholds, afterThresholds);
+                
+            } catch (error) {
+                addTestLog(`❌ 学習テスト中にエラー: ${error.message}`);
+                console.error('学習テストエラー:', error);
+            }
+        }
+        
+        function showTestResults(beforeThresholds, afterThresholds) {
+            const resultsContainer = document.getElementById('testResults');
+            
+            const tripleBoxResult = document.getElementById('tripleBoxResult').value;
+            const tripleExactResult = document.getElementById('tripleExactResult').value;
+            const tripleBoxDividend = document.getElementById('tripleBoxDividend').value;
+            const tripleExactDividend = document.getElementById('tripleExactDividend').value;
+            
+            let html = `
+                <div class="success test-section">
+                    <h4>✅ 学習テスト結果</h4>
+                    <p><strong>入力データ:</strong></p>
+                    <ul>
+                        <li>3連複結果: ${tripleBoxResult || 'なし'}</li>
+                        <li>3連単結果: ${tripleExactResult || 'なし'}</li>
+                        <li>3連複配当: ${tripleBoxDividend || 'なし'}円</li>
+                        <li>3連単配当: ${tripleExactDividend || 'なし'}円</li>
+                    </ul>
+                    
+                    <p><strong>効率閾値の変化:</strong></p>
+                    <ul>
+                        <li>3連複メイン: ${beforeThresholds.tripleBox.main.toFixed(3)} → ${afterThresholds.tripleBox.main.toFixed(3)}</li>
+                        <li>3連複フォーメーション: ${beforeThresholds.tripleBox.formation.toFixed(3)} → ${afterThresholds.tripleBox.formation.toFixed(3)}</li>
+                        <li>3連単メイン: ${beforeThresholds.tripleExact.main.toFixed(3)} → ${afterThresholds.tripleExact.main.toFixed(3)}</li>
+                        <li>3連単フォーメーション: ${beforeThresholds.tripleExact.formation.toFixed(3)} → ${afterThresholds.tripleExact.formation.toFixed(3)}</li>
+                    </ul>
+                </div>
+            `;
+            
+            resultsContainer.innerHTML = html;
+        }
+        
+        function showTestStatistics() {
+            if (typeof LearningSystem.showComplexBettingStats === 'function') {
+                addTestLog('📊 複雑馬券種統計を表示中...');
+                LearningSystem.showComplexBettingStats();
+            } else {
+                addTestLog('❌ showComplexBettingStats関数が見つかりません');
+            }
+        }
+        
+        // 初期化
+        document.addEventListener('DOMContentLoaded', function() {
+            addTestLog('🎯 3連複・3連単学習機能テストツールを初期化しました');
+        });
+    </script>
+</body>
+</html>
