@@ -203,6 +203,37 @@ class PredictionEngine {
             }
         }
         
+        // Phase 3: リアルタイム学習・市場適応システム適用
+        if (typeof MarketAdaptationSystem !== 'undefined') {
+            console.log('🔄 Phase 3: 市場環境適応システム適用');
+            
+            // 市場環境適応分析
+            const raceData = {
+                venue: document.getElementById('raceCourse')?.value || '東京',
+                distance: document.getElementById('raceDistance')?.value || '2000',
+                trackType: document.getElementById('raceTrackType')?.value || '芝',
+                trackCondition: document.getElementById('raceTrackCondition')?.value || '良',
+                raceClass: document.getElementById('raceLevel')?.value || '3勝'
+            };
+            
+            // 最近の市場データ（簡易シミュレーション）
+            const recentMarketData = this.generateRecentMarketData();
+            
+            const marketAdaptation = MarketAdaptationSystem.adaptToMarketConditions(raceData, recentMarketData);
+            
+            // 適応結果を予測データに統合
+            predictions.forEach(prediction => {
+                prediction.marketAdaptation = {
+                    strategyType: marketAdaptation.adaptationStrategy?.strategyType || 'balanced',
+                    riskLevel: marketAdaptation.marketAnalysis?.riskLevel || 0.3,
+                    venueAdaptation: marketAdaptation.venueAnalysis?.suitability || 0.7,
+                    expectedImprovement: marketAdaptation.adaptationStrategy?.expectedImprovement || 0
+                };
+            });
+            
+            console.log(`Phase 3市場適応完了: 戦略=${marketAdaptation.adaptationStrategy?.strategyType}, リスク=${((marketAdaptation.marketAnalysis?.riskLevel || 0) * 100).toFixed(1)}%`);
+        }
+        
         this.displayResults(predictions);
         
         // Phase 1: 信頼度フィルタリング情報を表示
@@ -2590,6 +2621,34 @@ class PredictionEngine {
         </div>`;
         
         phase1Container.innerHTML = infoHTML;
+    }
+    
+    // Phase 3: 市場データ生成（簡易シミュレーション）
+    static generateRecentMarketData() {
+        const marketData = [];
+        const baseDate = new Date();
+        
+        // 過去7日分の市場データを生成
+        for (let i = 0; i < 7; i++) {
+            const date = new Date(baseDate);
+            date.setDate(date.getDate() - i);
+            
+            // 市場データシミュレーション
+            const favoriteWinRate = 0.25 + (Math.random() - 0.5) * 0.1; // 20-30%
+            const averageOdds = 4.5 + (Math.random() - 0.5) * 2; // 3.5-5.5倍
+            const surpriseRate = 0.08 + (Math.random() - 0.5) * 0.04; // 6-10%
+            
+            marketData.push({
+                date: date.toISOString().split('T')[0],
+                favoriteWinRate: favoriteWinRate,
+                averageOdds: averageOdds,
+                averagePayout: averageOdds * 0.85, // 控除率15%
+                surpriseRate: surpriseRate,
+                volatility: Math.random() * 0.3 + 0.1 // 10-40%
+            });
+        }
+        
+        return marketData.reverse(); // 古い順に並び替え
     }
 }
 

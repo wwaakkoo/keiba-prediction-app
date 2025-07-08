@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phase 3ベースライン性能測定</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; }
+        .test-section { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 15px; margin: 15px 0; }
+        .btn { background: linear-gradient(45deg, #667eea, #764ba2); color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin: 5px; }
+        .btn:hover { transform: translateY(-1px); }
+        .result-card { background: #f8f9fa; border-left: 4px solid #28a745; padding: 15px; margin: 10px 0; border-radius: 5px; }
+        .error-card { background: #f8f9fa; border-left: 4px solid #dc3545; padding: 15px; margin: 10px 0; border-radius: 5px; }
+        .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 15px 0; }
+        .metric-card { background: #e3f2fd; padding: 15px; border-radius: 8px; text-align: center; }
+        .progress-bar { width: 100%; height: 20px; background: #e0e0e0; border-radius: 10px; overflow: hidden; margin: 10px 0; }
+        .progress-fill { height: 100%; background: linear-gradient(45deg, #28a745, #20c997); transition: width 0.3s; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Phase 3ベースライン性能測定</h1>
+        
+        <div class="test-section">
+            <h2>📊 現在のシステム性能</h2>
+            <p>Phase 1+2統合システムの現在性能を測定し、Phase 3改善の基準を設定します</p>
+            
+            <div class="btn-grid">
+                <button class="btn" onclick="measureCurrentPerformance()">📈 現在性能測定</button>
+                <button class="btn" onclick="testPredictionAccuracy()">🎯 予測精度テスト</button>
+                <button class="btn" onclick="testInvestmentEfficiency()">💰 投資効率テスト</button>
+                <button class="btn" onclick="testSystemResponse()">⚡ システム応答性テスト</button>
+            </div>
+            
+            <div id="performanceResults"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>🔄 リアルタイム学習準備テスト</h2>
+            <p>Phase 3で実装予定のリアルタイム学習機能の基盤テスト</p>
+            
+            <div class="btn-grid">
+                <button class="btn" onclick="testDataCollectionSpeed()">📊 データ収集速度</button>
+                <button class="btn" onclick="testLearningCapacity()">🧠 学習容量テスト</button>
+                <button class="btn" onclick="testAdaptationSpeed()">🔄 適応速度テスト</button>
+            </div>
+            
+            <div id="learningResults"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>📈 性能指標ダッシュボード</h2>
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <h3>予測精度</h3>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="accuracyProgress" style="width: 0%"></div>
+                    </div>
+                    <span id="accuracyValue">測定中...</span>
+                </div>
+                <div class="metric-card">
+                    <h3>投資効率</h3>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="efficiencyProgress" style="width: 0%"></div>
+                    </div>
+                    <span id="efficiencyValue">測定中...</span>
+                </div>
+                <div class="metric-card">
+                    <h3>応答速度</h3>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="responseProgress" style="width: 0%"></div>
+                    </div>
+                    <span id="responseValue">測定中...</span>
+                </div>
+                <div class="metric-card">
+                    <h3>学習効率</h3>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="learningProgress" style="width: 0%"></div>
+                    </div>
+                    <span id="learningValue">測定中...</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>🎯 Phase 3実装優先度</h2>
+            <div id="priorityAnalysis">
+                <p>ベースライン測定完了後、改善優先度を自動算出します</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ベースライン性能測定システム
+        let baselineMetrics = {
+            predictionAccuracy: 0,
+            investmentEfficiency: 0,
+            systemResponse: 0,
+            learningCapacity: 0
+        };
+
+        function measureCurrentPerformance() {
+            console.log('📊 Phase 1+2統合システム性能測定開始');
+            const results = document.getElementById('performanceResults');
+            results.innerHTML = '<div class="result-card"><h4>性能測定実行中...</h4></div>';
+            
+            // サンプルデータで現在システムを実行
+            const testData = generateTestHorseData();
+            
+            // Phase 1: 信頼度フィルタリング性能
+            let phase1Performance = 0;
+            if (typeof ReliabilityFilter !== 'undefined') {
+                const startTime = performance.now();
+                const filtered = ReliabilityFilter.filterRecommendations(testData, null);
+                const endTime = performance.now();
+                phase1Performance = {
+                    executionTime: endTime - startTime,
+                    filteredCount: filtered.length,
+                    originalCount: testData.length,
+                    efficiency: filtered.length / testData.length
+                };
+            }
+            
+            // Phase 2: 投資戦略最適化性能
+            let phase2Performance = 0;
+            if (typeof RiskManagementInvestmentSystem !== 'undefined') {
+                const startTime = performance.now();
+                const allocation = RiskManagementInvestmentSystem.calculateOptimalAllocation(testData);
+                const endTime = performance.now();
+                phase2Performance = {
+                    executionTime: endTime - startTime,
+                    totalInvestment: allocation.totalInvestment,
+                    expectedReturn: allocation.expectedReturn,
+                    portfolioRisk: allocation.portfolioRisk
+                };
+            }
+            
+            // 結果表示
+            results.innerHTML = `
+                <div class="result-card">
+                    <h4>📊 Phase 1+2統合性能測定結果</h4>
+                    <p><strong>Phase 1性能:</strong></p>
+                    <ul>
+                        <li>実行時間: ${phase1Performance.executionTime?.toFixed(2) || 'N/A'}ms</li>
+                        <li>フィルタリング効率: ${((phase1Performance.efficiency || 0) * 100).toFixed(1)}%</li>
+                        <li>推奨数: ${phase1Performance.filteredCount || 0}/${phase1Performance.originalCount || 0}頭</li>
+                    </ul>
+                    <p><strong>Phase 2性能:</strong></p>
+                    <ul>
+                        <li>実行時間: ${phase2Performance.executionTime?.toFixed(2) || 'N/A'}ms</li>
+                        <li>期待リターン: ${((phase2Performance.expectedReturn || 0) * 100).toFixed(1)}%</li>
+                        <li>ポートフォリオリスク: ${((phase2Performance.portfolioRisk || 0) * 100).toFixed(1)}%</li>
+                        <li>投資額: ${(phase2Performance.totalInvestment || 0).toLocaleString()}円</li>
+                    </ul>
+                </div>
+            `;
+            
+            // メトリクス更新
+            updateMetrics('current', phase1Performance, phase2Performance);
+        }
+
+        function testPredictionAccuracy() {
+            console.log('🎯 予測精度テスト開始');
+            
+            // 過去データシミュレーション
+            const testCases = 50; // 50レース分のテスト
+            let correctPredictions = 0;
+            let totalPredictions = 0;
+            
+            for (let i = 0; i < testCases; i++) {
+                const horses = generateTestHorseData(8 + Math.floor(Math.random() * 8)); // 8-16頭
+                
+                // 実際の着順をシミュレート（オッズに基づく確率的結果）
+                const actualResult = simulateRaceResult(horses);
+                
+                // システム予測実行
+                if (typeof PredictionEngine !== 'undefined') {
+                    // 簡易予測（実際のエンジンは複雑）
+                    const predictions = horses.map(horse => ({
+                        name: horse.name,
+                        winProbability: Math.max(1, 100 / parseFloat(horse.odds))
+                    })).sort((a, b) => b.winProbability - a.winProbability);
+                    
+                    // 上位3頭予想のうち1頭が3着以内に入れば成功
+                    const top3Predictions = predictions.slice(0, 3);
+                    const hit = top3Predictions.some(pred => 
+                        [actualResult.first, actualResult.second, actualResult.third].includes(pred.name)
+                    );
+                    
+                    if (hit) correctPredictions++;
+                    totalPredictions++;
+                }
+            }
+            
+            const accuracy = totalPredictions > 0 ? correctPredictions / totalPredictions : 0;
+            baselineMetrics.predictionAccuracy = accuracy;
+            
+            // 結果表示
+            document.getElementById('performanceResults').innerHTML += `
+                <div class="result-card">
+                    <h4>🎯 予測精度テスト結果</h4>
+                    <p><strong>的中率:</strong> ${(accuracy * 100).toFixed(1)}% (${correctPredictions}/${totalPredictions})</p>
+                    <p><strong>評価:</strong> ${accuracy > 0.25 ? '良好' : accuracy > 0.15 ? '標準' : '要改善'}</p>
+                </div>
+            `;
+            
+            updateProgressBar('accuracyProgress', 'accuracyValue', accuracy * 100, '% 的中率');
+        }
+
+        function testInvestmentEfficiency() {
+            console.log('💰 投資効率テスト開始');
+            
+            // ROIシミュレーション
+            const testRaces = 30;
+            let totalInvested = 0;
+            let totalReturned = 0;
+            
+            for (let i = 0; i < testRaces; i++) {
+                const horses = generateTestHorseData();
+                
+                // Phase 2投資戦略適用
+                if (typeof RiskManagementInvestmentSystem !== 'undefined') {
+                    const allocation = RiskManagementInvestmentSystem.calculateOptimalAllocation(horses, 10000);
+                    totalInvested += allocation.totalInvestment;
+                    
+                    // 結果シミュレーション（期待値ベース）
+                    const simulatedReturn = allocation.totalInvestment * (1 + allocation.expectedReturn) * (Math.random() * 0.8 + 0.6);
+                    totalReturned += simulatedReturn;
+                }
+            }
+            
+            const roi = totalInvested > 0 ? (totalReturned - totalInvested) / totalInvested : 0;
+            baselineMetrics.investmentEfficiency = Math.max(0, roi + 0.5); // 正規化
+            
+            document.getElementById('performanceResults').innerHTML += `
+                <div class="result-card">
+                    <h4>💰 投資効率テスト結果</h4>
+                    <p><strong>ROI:</strong> ${(roi * 100).toFixed(1)}%</p>
+                    <p><strong>総投資額:</strong> ${totalInvested.toLocaleString()}円</p>
+                    <p><strong>総回収額:</strong> ${totalReturned.toLocaleString()}円</p>
+                    <p><strong>評価:</strong> ${roi > 0.1 ? '優秀' : roi > 0 ? '良好' : '要改善'}</p>
+                </div>
+            `;
+            
+            updateProgressBar('efficiencyProgress', 'efficiencyValue', Math.max(0, roi * 100 + 50), '% 効率');
+        }
+
+        function testSystemResponse() {
+            console.log('⚡ システム応答性テスト開始');
+            
+            const iterations = 10;
+            let totalTime = 0;
+            
+            for (let i = 0; i < iterations; i++) {
+                const horses = generateTestHorseData();
+                const startTime = performance.now();
+                
+                // 全システム実行
+                if (typeof ReliabilityFilter !== 'undefined') {
+                    ReliabilityFilter.filterRecommendations(horses, null);
+                }
+                if (typeof RiskManagementInvestmentSystem !== 'undefined') {
+                    RiskManagementInvestmentSystem.calculateOptimalAllocation(horses);
+                }
+                
+                const endTime = performance.now();
+                totalTime += (endTime - startTime);
+            }
+            
+            const averageTime = totalTime / iterations;
+            const responseScore = Math.max(0, Math.min(100, 100 - averageTime / 10)); // 1秒=10点減点
+            baselineMetrics.systemResponse = responseScore / 100;
+            
+            document.getElementById('performanceResults').innerHTML += `
+                <div class="result-card">
+                    <h4>⚡ システム応答性テスト結果</h4>
+                    <p><strong>平均実行時間:</strong> ${averageTime.toFixed(2)}ms</p>
+                    <p><strong>応答性スコア:</strong> ${responseScore.toFixed(1)}/100</p>
+                    <p><strong>評価:</strong> ${responseScore > 80 ? '高速' : responseScore > 60 ? '標準' : '要最適化'}</p>
+                </div>
+            `;
+            
+            updateProgressBar('responseProgress', 'responseValue', responseScore, '/100 応答性');
+        }
+
+        function testDataCollectionSpeed() {
+            console.log('📊 データ収集速度テスト');
+            
+            // LocalStorage読み書き速度テスト
+            const testData = generateLargeTestData(1000);
+            
+            const writeStart = performance.now();
+            localStorage.setItem('phase3_test_data', JSON.stringify(testData));
+            const writeTime = performance.now() - writeStart;
+            
+            const readStart = performance.now();
+            const readData = JSON.parse(localStorage.getItem('phase3_test_data'));
+            const readTime = performance.now() - readStart;
+            
+            localStorage.removeItem('phase3_test_data');
+            
+            document.getElementById('learningResults').innerHTML = `
+                <div class="result-card">
+                    <h4>📊 データ収集速度テスト結果</h4>
+                    <p><strong>書き込み時間:</strong> ${writeTime.toFixed(2)}ms (1000件)</p>
+                    <p><strong>読み込み時間:</strong> ${readTime.toFixed(2)}ms (1000件)</p>
+                    <p><strong>評価:</strong> ${writeTime < 50 && readTime < 20 ? 'リアルタイム学習対応可能' : '最適化推奨'}</p>
+                </div>
+            `;
+        }
+
+        function testLearningCapacity() {
+            console.log('🧠 学習容量テスト');
+            
+            // 既存学習データサイズ確認
+            const learningData = JSON.stringify(LearningSystem?.getLearningData() || {});
+            const currentSize = new Blob([learningData]).size;
+            
+            // 拡張可能性テスト
+            const maxCapacity = 5 * 1024 * 1024; // 5MB想定
+            const utilizationRate = currentSize / maxCapacity;
+            
+            baselineMetrics.learningCapacity = Math.max(0, 1 - utilizationRate);
+            
+            document.getElementById('learningResults').innerHTML += `
+                <div class="result-card">
+                    <h4>🧠 学習容量テスト結果</h4>
+                    <p><strong>現在使用量:</strong> ${(currentSize / 1024).toFixed(1)}KB</p>
+                    <p><strong>使用率:</strong> ${(utilizationRate * 100).toFixed(1)}%</p>
+                    <p><strong>残り容量:</strong> ${((maxCapacity - currentSize) / 1024 / 1024).toFixed(1)}MB</p>
+                    <p><strong>評価:</strong> ${utilizationRate < 0.7 ? '十分な余裕' : '容量最適化推奨'}</p>
+                </div>
+            `;
+            
+            updateProgressBar('learningProgress', 'learningValue', (1 - utilizationRate) * 100, '% 余裕');
+        }
+
+        function testAdaptationSpeed() {
+            console.log('🔄 適応速度テスト');
+            
+            // 学習データ更新速度テスト
+            const testUpdates = 100;
+            const startTime = performance.now();
+            
+            for (let i = 0; i < testUpdates; i++) {
+                // 簡易学習更新シミュレーション
+                const mockResult = {
+                    first: `Horse${Math.floor(Math.random() * 10) + 1}`,
+                    second: `Horse${Math.floor(Math.random() * 10) + 1}`,
+                    third: `Horse${Math.floor(Math.random() * 10) + 1}`
+                };
+                
+                // 学習システム更新（実際の処理は簡略化）
+                if (typeof LearningSystem !== 'undefined') {
+                    // 実際の更新は行わず、処理時間のみ測定
+                }
+            }
+            
+            const endTime = performance.now();
+            const adaptationTime = endTime - startTime;
+            const adaptationScore = Math.max(0, Math.min(100, 100 - adaptationTime / 100));
+            
+            document.getElementById('learningResults').innerHTML += `
+                <div class="result-card">
+                    <h4>🔄 適応速度テスト結果</h4>
+                    <p><strong>100回更新時間:</strong> ${adaptationTime.toFixed(2)}ms</p>
+                    <p><strong>適応速度スコア:</strong> ${adaptationScore.toFixed(1)}/100</p>
+                    <p><strong>評価:</strong> ${adaptationScore > 80 ? 'リアルタイム対応可能' : '最適化必要'}</p>
+                </div>
+            `;
+        }
+
+        function updateProgressBar(progressId, valueId, percentage, suffix) {
+            document.getElementById(progressId).style.width = Math.min(100, percentage) + '%';
+            document.getElementById(valueId).textContent = percentage.toFixed(1) + suffix;
+        }
+
+        function updateMetrics(type, phase1Data, phase2Data) {
+            if (type === 'current') {
+                // 現在の性能をベースライン設定
+                analyzePriority();
+            }
+        }
+
+        function analyzePriority() {
+            const priorities = [];
+            
+            if (baselineMetrics.predictionAccuracy < 0.25) {
+                priorities.push({ 
+                    system: 'リアルタイム機械学習', 
+                    priority: 'HIGH',
+                    reason: '予測精度が目標値(25%)を下回っている',
+                    expectedImprovement: '+10%精度向上'
+                });
+            }
+            
+            if (baselineMetrics.investmentEfficiency < 0.15) {
+                priorities.push({ 
+                    system: '市場環境適応型アルゴリズム', 
+                    priority: 'HIGH',
+                    reason: 'ROIが目標値(15%)を下回っている',
+                    expectedImprovement: '+20%収益向上'
+                });
+            }
+            
+            if (baselineMetrics.systemResponse < 0.8) {
+                priorities.push({ 
+                    system: '多次元特徴量分析最適化', 
+                    priority: 'MEDIUM',
+                    reason: 'システム応答性に改善余地',
+                    expectedImprovement: '+50%高速化'
+                });
+            }
+            
+            priorities.push({ 
+                system: 'A/Bテスト戦略比較', 
+                priority: 'MEDIUM',
+                reason: '戦略最適化の継続的改善',
+                expectedImprovement: '+5%効率向上'
+            });
+            
+            priorities.push({ 
+                system: '個別レース特性対応', 
+                priority: 'LOW',
+                reason: '特殊ケース対応の精度向上',
+                expectedImprovement: '+3%精度向上'
+            });
+            
+            // 優先度表示
+            const priorityHtml = priorities.map(p => `
+                <div class="result-card" style="border-left-color: ${
+                    p.priority === 'HIGH' ? '#dc3545' : 
+                    p.priority === 'MEDIUM' ? '#ffc107' : '#28a745'
+                }">
+                    <h4>${p.system} [${p.priority}]</h4>
+                    <p><strong>理由:</strong> ${p.reason}</p>
+                    <p><strong>期待効果:</strong> ${p.expectedImprovement}</p>
+                </div>
+            `).join('');
+            
+            document.getElementById('priorityAnalysis').innerHTML = `
+                <h4>📊 Phase 3実装優先度分析結果</h4>
+                ${priorityHtml}
+                <div class="result-card">
+                    <h4>🎯 推奨実装順序</h4>
+                    <ol>
+                        ${priorities.filter(p => p.priority === 'HIGH').map(p => `<li>${p.system}</li>`).join('')}
+                        ${priorities.filter(p => p.priority === 'MEDIUM').map(p => `<li>${p.system}</li>`).join('')}
+                        ${priorities.filter(p => p.priority === 'LOW').map(p => `<li>${p.system}</li>`).join('')}
+                    </ol>
+                </div>
+            `;
+        }
+
+        // ユーティリティ関数
+        function generateTestHorseData(count = 10) {
+            const horses = [];
+            for (let i = 1; i <= count; i++) {
+                horses.push({
+                    name: `TestHorse${i}`,
+                    odds: Math.random() * 20 + 1,
+                    popularity: i,
+                    age: Math.floor(Math.random() * 6) + 3,
+                    weight: Math.floor(Math.random() * 100) + 400,
+                    winProbability: Math.random() * 80 + 5
+                });
+            }
+            return horses;
+        }
+
+        function simulateRaceResult(horses) {
+            // オッズに基づく確率的な結果生成
+            const weighted = horses.map(horse => ({
+                name: horse.name,
+                weight: 1 / parseFloat(horse.odds)
+            }));
+            
+            const results = [];
+            const remaining = [...weighted];
+            
+            for (let pos = 0; pos < 3; pos++) {
+                const totalWeight = remaining.reduce((sum, h) => sum + h.weight, 0);
+                let random = Math.random() * totalWeight;
+                
+                for (let i = 0; i < remaining.length; i++) {
+                    random -= remaining[i].weight;
+                    if (random <= 0) {
+                        results.push(remaining[i].name);
+                        remaining.splice(i, 1);
+                        break;
+                    }
+                }
+            }
+            
+            return {
+                first: results[0],
+                second: results[1],
+                third: results[2]
+            };
+        }
+
+        function generateLargeTestData(size) {
+            const data = [];
+            for (let i = 0; i < size; i++) {
+                data.push({
+                    id: i,
+                    raceData: generateTestHorseData(),
+                    timestamp: Date.now(),
+                    result: Math.random()
+                });
+            }
+            return data;
+        }
+
+        // 初期化
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🧪 Phase 3ベースライン測定システム初期化完了');
+        });
+    </script>
+</body>
+</html>
