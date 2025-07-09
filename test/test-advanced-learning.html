@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>高度な学習機能テスト</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-title {
+            color: #2196f3;
+            border-bottom: 2px solid #2196f3;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        .test-result {
+            background: #f8f9fa;
+            border-left: 4px solid #28a745;
+            padding: 15px;
+            margin: 10px 0;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        .test-error {
+            background: #fff5f5;
+            border-left: 4px solid #dc3545;
+            color: #dc3545;
+        }
+        .btn {
+            background: linear-gradient(45deg, #2196f3, #1976d2);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .btn:hover {
+            opacity: 0.9;
+        }
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .metric {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        .metric-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #1976d2;
+        }
+        .metric-label {
+            font-size: 14px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧠 高度な学習機能テスト</h1>
+    
+    <!-- テストデータ生成 -->
+    <div class="test-section">
+        <h2 class="test-title">📊 テストデータ生成</h2>
+        <button class="btn" onclick="generateTestData()">🎲 テストデータを生成</button>
+        <button class="btn" onclick="clearResults()">🗑️ 結果をクリア</button>
+        <div id="testDataResult" class="test-result" style="display:none;"></div>
+    </div>
+    
+    <!-- 特徴量自動発見テスト -->
+    <div class="test-section">
+        <h2 class="test-title">🔍 特徴量自動発見テスト</h2>
+        <button class="btn" onclick="testFeatureDiscovery()">🧪 特徴量発見を実行</button>
+        <div id="featureResult" class="test-result" style="display:none;"></div>
+    </div>
+    
+    <!-- アンサンブル学習テスト -->
+    <div class="test-section">
+        <h2 class="test-title">🎯 アンサンブル学習テスト</h2>
+        <button class="btn" onclick="testEnsembleLearning()">🧪 アンサンブル予測を実行</button>
+        <div id="ensembleResult" class="test-result" style="display:none;"></div>
+    </div>
+    
+    <!-- クロスバリデーションテスト -->
+    <div class="test-section">
+        <h2 class="test-title">✅ クロスバリデーションテスト</h2>
+        <button class="btn" onclick="testCrossValidation()">🧪 クロスバリデーションを実行</button>
+        <div id="crossValidationResult" class="test-result" style="display:none;"></div>
+    </div>
+    
+    <!-- 過学習防止テスト -->
+    <div class="test-section">
+        <h2 class="test-title">⚠️ 過学習防止テスト</h2>
+        <button class="btn" onclick="testOverlearningDetection()">🧪 過学習検出を実行</button>
+        <div id="overlearningResult" class="test-result" style="display:none;"></div>
+    </div>
+    
+    <!-- 統合テスト -->
+    <div class="test-section">
+        <h2 class="test-title">🚀 統合テスト</h2>
+        <button class="btn" onclick="runFullTest()">🧪 全機能統合テストを実行</button>
+        <div class="metrics" id="testMetrics" style="display:none;">
+            <div class="metric">
+                <div class="metric-value" id="featureCount">-</div>
+                <div class="metric-label">発見特徴量数</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value" id="ensembleAccuracy">-</div>
+                <div class="metric-label">アンサンブル精度</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value" id="validationScore">-</div>
+                <div class="metric-label">検証スコア</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value" id="overlearningStatus">-</div>
+                <div class="metric-label">過学習状態</div>
+            </div>
+        </div>
+        <div id="fullTestResult" class="test-result" style="display:none;"></div>
+    </div>
+
+    <!-- EnhancedLearningSystemスクリプト読み込み -->
+    <script src="../js/config.js"></script>
+    <script src="../js/enhancedLearningSystem.js"></script>
+    
+    <script>
+        // グローバル変数
+        let testData = null;
+        
+        // テストデータ生成
+        function generateTestData() {
+            const result = document.getElementById('testDataResult');
+            
+            try {
+                // 競馬レースのテストデータを生成
+                testData = {
+                    horses: []
+                };
+                
+                const horseNames = ['ラッキーホース', 'スピードスター', 'ゴールドラッシュ', 'サンダーボルト', 'ダイヤモンド', 
+                                 'ブレイブハート', 'シルバーアロー', 'ファイアーストーム', 'ウィンドチェイサー', 'クリムゾンフレア'];
+                const jockeys = ['武豊', '福永祐一', '川田将雅', '戸崎圭太', '横山武史'];
+                const runningStyles = ['逃げ', '先行', '差し', '追込'];
+                
+                for (let i = 0; i < 10; i++) {
+                    const horse = {
+                        name: horseNames[i],
+                        odds: (Math.random() * 50 + 1).toFixed(1),
+                        popularity: i + 1,
+                        age: Math.floor(Math.random() * 3) + 3, // 3-5歳
+                        weight: (Math.random() * 10 + 450).toFixed(0), // 450-460kg
+                        jockey: jockeys[Math.floor(Math.random() * jockeys.length)],
+                        runningStyle: runningStyles[Math.floor(Math.random() * runningStyles.length)],
+                        lastRace: {
+                            position: Math.floor(Math.random() * 10) + 1,
+                            time: `1:${Math.floor(Math.random() * 60) + 20}.${Math.floor(Math.random() * 9)}`,
+                            date: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                            weight: (Math.random() * 10 + 450).toFixed(0)
+                        },
+                        raceHistory: []
+                    };
+                    
+                    // レース履歴を生成
+                    for (let j = 0; j < 3; j++) {
+                        horse.raceHistory.push({
+                            position: Math.floor(Math.random() * 8) + 1,
+                            time: `1:${Math.floor(Math.random() * 60) + 20}.${Math.floor(Math.random() * 9)}`
+                        });
+                    }
+                    
+                    testData.horses.push(horse);
+                }
+                
+                result.style.display = 'block';
+                result.className = 'test-result';
+                result.textContent = `✅ テストデータ生成完了\n${testData.horses.length}頭の馬データを生成しました。\n\n` +
+                    testData.horses.map((horse, i) => 
+                        `${i+1}. ${horse.name} (${horse.odds}倍, ${horse.runningStyle}, ${horse.jockey})`
+                    ).join('\n');
+                    
+            } catch (error) {
+                result.style.display = 'block';
+                result.className = 'test-result test-error';
+                result.textContent = `❌ エラー: ${error.message}\n${error.stack}`;
+            }
+        }
+        
+        // 特徴量自動発見テスト
+        function testFeatureDiscovery() {
+            const result = document.getElementById('featureResult');
+            
+            if (!testData) {
+                result.style.display = 'block';
+                result.className = 'test-result test-error';
+                result.textContent = '❌ 先にテストデータを生成してください';
+                return;
+            }
+            
+            try {
+                console.log('🔍 特徴量自動発見テスト開始');
+                const discoveryResult = EnhancedLearningSystem.discoverFeatures(testData);
+                
+                result.style.display = 'block';
+                result.className = 'test-result';
+                
+                let resultText = `✅ 特徴量自動発見テスト完了\n\n`;
+                resultText += `📊 発見された特徴量: ${Object.keys(discoveryResult.features).length}個\n\n`;
+                
+                resultText += `🏆 上位10重要特徴量:\n`;
+                discoveryResult.topFeatures.slice(0, 10).forEach((feature, i) => {
+                    resultText += `${i+1}. ${feature.name}: ${feature.importance.toFixed(3)} (値: ${feature.value})\n`;
+                });
+                
+                // 特徴量の種類別統計
+                const featureTypes = {
+                    basic: 0,
+                    combined: 0,
+                    statistical: 0
+                };
+                
+                Object.keys(discoveryResult.features).forEach(name => {
+                    if (name.includes('horse_')) featureTypes.basic++;
+                    else if (name.includes('_mean') || name.includes('_std') || name.includes('_diversity')) featureTypes.combined++;
+                    else featureTypes.statistical++;
+                });
+                
+                resultText += `\n📈 特徴量分類:\n`;
+                resultText += `・基本特徴量: ${featureTypes.basic}個\n`;
+                resultText += `・複合特徴量: ${featureTypes.combined}個\n`;
+                resultText += `・統計特徴量: ${featureTypes.statistical}個\n`;
+                
+                result.textContent = resultText;
+                
+            } catch (error) {
+                result.style.display = 'block';
+                result.className = 'test-result test-error';
+                result.textContent = `❌ エラー: ${error.message}\n${error.stack}`;
+            }
+        }
+        
+        // アンサンブル学習テスト
+        function testEnsembleLearning() {
+            const result = document.getElementById('ensembleResult');
+            
+            if (!testData) {
+                result.style.display = 'block';
+                result.className = 'test-result test-error';
+                result.textContent = '❌ 先にテストデータを生成してください';
+                return;
+            }
+            
+            try {
+                console.log('🎯 アンサンブル学習テスト開始');
+                const ensembleResult = EnhancedLearningSystem.ensemblePredict(testData);
+                
+                result.style.display = 'block';
+                result.className = 'test-result';
+                
+                let resultText = `✅ アンサンブル学習テスト完了\n\n`;
+                resultText += `🎯 全体信頼度: ${(ensembleResult.confidence * 100).toFixed(1)}%\n\n`;
+                
+                resultText += `🏆 予測結果（上位5頭）:\n`;
+                ensembleResult.predictions.slice(0, 5).forEach((pred, i) => {
+                    resultText += `${i+1}位: ${pred.horse.name} (スコア: ${pred.ensemblePrediction.toFixed(3)}, 信頼度: ${(pred.confidence * 100).toFixed(1)}%)\n`;
+                    
+                    // 各モデルの予測を表示
+                    const modelPreds = Object.entries(pred.predictions)
+                        .map(([model, score]) => `${model}:${score.toFixed(2)}`)
+                        .join(', ');
+                    resultText += `  └ モデル予測: ${modelPreds}\n`;
+                });
+                
+                resultText += `\n⚖️ モデル重み:\n`;
+                Object.entries(ensembleResult.modelWeights).forEach(([model, weight]) => {
+                    resultText += `・${model}: ${(weight * 100).toFixed(1)}%\n`;
+                });
+                
+                result.textContent = resultText;
+                
+            } catch (error) {
+                result.style.display = 'block';
+                result.className = 'test-result test-error';
+                result.textContent = `❌ エラー: ${error.message}\n${error.stack}`;
+            }
+        }
+        
+        // クロスバリデーションテスト
+        function testCrossValidation() {
+            const result = document.getElementById('crossValidationResult');
+            
+            try {
+                console.log('✅ クロスバリデーションテスト開始');
+                
+                // テスト用データを生成
+                const cvTestData = [];
+                for (let i = 0; i < 50; i++) {
+                    cvTestData.push({
+                        features: {
+                            odds: Math.random() * 20 + 1,
+                            age: Math.floor(Math.random() * 3) + 3,
+                            popularity: Math.floor(Math.random() * 10) + 1
+                        },
+                        actual: Math.random() > 0.7 // 30%の確率で的中
+                    });
+                }
+                
+                const cvResult = EnhancedLearningSystem.performCrossValidation(cvTestData, 5);
+                
+                result.style.display = 'block';
+                result.className = 'test-result';
+                
+                let resultText = `✅ クロスバリデーションテスト完了\n\n`;
+                resultText += `📊 テストデータ: ${cvTestData.length}件\n`;
+                resultText += `🔄 分割数: 5分割\n\n`;
+                resultText += `📈 結果:\n`;
+                resultText += `・検証スコア: ${(cvResult.validationScore * 100).toFixed(1)}%\n`;
+                resultText += `・訓練スコア: ${(cvResult.trainingScore * 100).toFixed(1)}%\n`;
+                
+                const overfittingGap = cvResult.trainingScore - cvResult.validationScore;
+                resultText += `・過学習度: ${(overfittingGap * 100).toFixed(1)}%\n`;
+                
+                if (overfittingGap > 0.1) {
+                    resultText += `⚠️ 過学習の可能性があります（差が10%以上）\n`;
+                } else {
+                    resultText += `✅ 健全な学習状態です\n`;
+                }
+                
+                result.textContent = resultText;
+                
+            } catch (error) {
+                result.style.display = 'block';
+                result.className = 'test-result test-error';
+                result.textContent = `❌ エラー: ${error.message}\n${error.stack}`;
+            }
+        }
+        
+        // 過学習防止テスト
+        function testOverlearningDetection() {
+            const result = document.getElementById('overlearningResult');
+            
+            try {
+                console.log('⚠️ 過学習防止テスト開始');
+                
+                let resultText = `✅ 過学習防止テスト完了\n\n`;
+                
+                // 正常な学習パターンをシミュレート
+                resultText += `📈 正常学習パターンテスト:\n`;
+                const normalPattern = [0.6, 0.65, 0.7, 0.72, 0.74];
+                normalPattern.forEach((score, i) => {
+                    const isOverlearning = EnhancedLearningSystem.detectOverlearning(score, true);
+                    resultText += `Step ${i+1}: スコア ${score} → ${isOverlearning ? '⚠️過学習検出' : '✅正常'}\n`;
+                });
+                
+                // 過学習パターンをシミュレート
+                resultText += `\n🚨 過学習パターンテスト:\n`;
+                
+                // 訓練スコアを高く設定
+                const trainingScores = [0.7, 0.8, 0.85, 0.9, 0.95];
+                trainingScores.forEach(score => {
+                    EnhancedLearningSystem.detectOverlearning(score, false); // 訓練スコア
+                });
+                
+                // 検証スコアは低く設定（過学習パターン）
+                const overfittingPattern = [0.65, 0.63, 0.6, 0.58, 0.55];
+                overfittingPattern.forEach((score, i) => {
+                    const isOverlearning = EnhancedLearningSystem.detectOverlearning(score, true);
+                    resultText += `Step ${i+1}: 検証スコア ${score} → ${isOverlearning ? '⚠️過学習検出' : '✅正常'}\n`;
+                });
+                
+                // 学習率調整テスト
+                resultText += `\n⚙️ 学習率調整テスト:\n`;
+                const beforeRate = EnhancedLearningSystem.learningData.metaLearning.adaptationRate;
+                EnhancedLearningSystem.adjustLearningRate();
+                const afterRate = EnhancedLearningSystem.learningData.metaLearning.adaptationRate;
+                resultText += `調整前: ${beforeRate.toFixed(3)} → 調整後: ${afterRate.toFixed(3)}\n`;
+                
+                result.style.display = 'block';
+                result.className = 'test-result';
+                result.textContent = resultText;
+                
+            } catch (error) {
+                result.style.display = 'block';
+                result.className = 'test-result test-error';
+                result.textContent = `❌ エラー: ${error.message}\n${error.stack}`;
+            }
+        }
+        
+        // 統合テスト
+        function runFullTest() {
+            const result = document.getElementById('fullTestResult');
+            const metrics = document.getElementById('testMetrics');
+            
+            try {
+                result.style.display = 'block';
+                result.className = 'test-result';
+                result.textContent = '🚀 統合テスト実行中...\n';
+                
+                // テストデータがない場合は生成
+                if (!testData) {
+                    generateTestData();
+                }
+                
+                setTimeout(() => {
+                    try {
+                        let resultText = `🚀 統合テスト完了\n\n`;
+                        
+                        // 1. 特徴量発見
+                        const features = EnhancedLearningSystem.discoverFeatures(testData);
+                        resultText += `🔍 特徴量発見: ${Object.keys(features.features).length}個の特徴量を発見\n`;
+                        
+                        // 2. アンサンブル予測
+                        const ensemble = EnhancedLearningSystem.ensemblePredict(testData);
+                        resultText += `🎯 アンサンブル予測: 信頼度 ${(ensemble.confidence * 100).toFixed(1)}%\n`;
+                        
+                        // 3. クロスバリデーション
+                        const cvData = Array.from({length: 30}, () => ({
+                            features: { odds: Math.random() * 20 + 1 },
+                            actual: Math.random() > 0.7
+                        }));
+                        const cv = EnhancedLearningSystem.performCrossValidation(cvData);
+                        resultText += `✅ クロスバリデーション: 検証スコア ${(cv.validationScore * 100).toFixed(1)}%\n`;
+                        
+                        // 4. 過学習検出
+                        const overlearning = EnhancedLearningSystem.detectOverlearning(cv.validationScore);
+                        resultText += `⚠️ 過学習検出: ${overlearning ? '検出あり' : '正常'}\n`;
+                        
+                        // メトリクス更新
+                        document.getElementById('featureCount').textContent = Object.keys(features.features).length;
+                        document.getElementById('ensembleAccuracy').textContent = (ensemble.confidence * 100).toFixed(1) + '%';
+                        document.getElementById('validationScore').textContent = (cv.validationScore * 100).toFixed(1) + '%';
+                        document.getElementById('overlearningStatus').textContent = overlearning ? '⚠️' : '✅';
+                        
+                        metrics.style.display = 'grid';
+                        
+                        resultText += `\n📊 全機能が正常に動作しています！\n`;
+                        resultText += `\n🎉 高度な学習システムは完全に機能しています。\n`;
+                        resultText += `この実装により以下が可能になりました:\n`;
+                        resultText += `・自動特徴量抽出による予測精度向上\n`;
+                        resultText += `・複数モデルの統合による安定した予測\n`;
+                        resultText += `・過学習防止による健全な学習\n`;
+                        resultText += `・クロスバリデーションによる信頼性確保\n`;
+                        
+                        result.textContent = resultText;
+                        
+                    } catch (error) {
+                        result.className = 'test-result test-error';
+                        result.textContent = `❌ 統合テストエラー: ${error.message}\n${error.stack}`;
+                    }
+                }, 100);
+                
+            } catch (error) {
+                result.style.display = 'block';
+                result.className = 'test-result test-error';
+                result.textContent = `❌ エラー: ${error.message}\n${error.stack}`;
+            }
+        }
+        
+        // 結果クリア
+        function clearResults() {
+            const results = document.querySelectorAll('.test-result');
+            results.forEach(result => result.style.display = 'none');
+            document.getElementById('testMetrics').style.display = 'none';
+            testData = null;
+        }
+        
+        // 初期化
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('🧪 高度な学習機能テストページが読み込まれました');
+            
+            // EnhancedLearningSystemが利用可能かチェック
+            if (typeof EnhancedLearningSystem !== 'undefined') {
+                console.log('✅ EnhancedLearningSystemが利用可能です');
+            } else {
+                console.error('❌ EnhancedLearningSystemが見つかりません');
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎯 拡張推奨システム デバッグ</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 8px; }
+        .success { background: #d4edda; border-color: #c3e6cb; color: #155724; }
+        .error { background: #f8d7da; border-color: #f5c6cb; color: #721c24; }
+        .info { background: #d1ecf1; border-color: #bee5eb; color: #0c5460; }
+        .warning { background: #fff3cd; border-color: #ffeaa7; color: #856404; }
+        button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin: 5px; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 5px; overflow-x: auto; font-size: 12px; }
+        .horse-data { background: white; border: 1px solid #ddd; border-radius: 8px; padding: 10px; margin: 10px 0; }
+        .confidence-debug { background: #f8f9fa; border-left: 4px solid #007bff; padding: 10px; margin: 5px 0; }
+        table { border-collapse: collapse; width: 100%; margin: 10px 0; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+        th { background: #f8f9fa; }
+    </style>
+</head>
+<body>
+    <h1>🎯 拡張推奨システム デバッグ</h1>
+    
+    <div class="test-section">
+        <h2>📋 デバッグ目的</h2>
+        <p>拡張推奨システムの信頼度計算と分類ロジックをテストします。</p>
+        <ul>
+            <li>信頼度計算の詳細分析</li>
+            <li>動的閾値調整の確認</li>
+            <li>注目馬分類の適切性検証</li>
+            <li>戦略推奨の妥当性確認</li>
+        </ul>
+    </div>
+    
+    <div class="test-section">
+        <h2>🏇 テストデータ設定</h2>
+        <button onclick="setupTestData()">標準テストデータ</button>
+        <button onclick="setupHighOddsData()">高オッズ偏重データ</button>
+        <button onclick="setupBalancedData()">バランス型データ</button>
+        <button onclick="clearResults()">結果クリア</button>
+        
+        <div id="testHorses" class="info test-section" style="display: none;">
+            <h4>テスト馬データ</h4>
+            <div id="horseDataDisplay"></div>
+        </div>
+    </div>
+    
+    <div class="test-section">
+        <h2>🔍 信頼度計算デバッグ</h2>
+        <button onclick="runConfidenceDebug()">信頼度計算テスト</button>
+        
+        <div id="confidenceResults"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>📊 注目馬分類結果</h2>
+        <div id="watchListResults"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>💡 戦略推奨結果</h2>
+        <div id="strategyResults"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>📝 デバッグログ</h2>
+        <pre id="debugLog">デバッグログがここに表示されます...\n</pre>
+        <button onclick="clearLog()">ログクリア</button>
+    </div>
+
+    <!-- 必要なスクリプトファイル -->
+    <script src="../js/config.js"></script>
+    <script src="../js/enhancedRecommendationSystem.js"></script>
+    
+    <script>
+        let testData = [];
+        let debugLogs = [];
+        
+        // ログ関数をオーバーライド
+        const originalConsoleLog = console.log;
+        console.log = function(...args) {
+            debugLogs.push(args.join(' '));
+            originalConsoleLog.apply(console, args);
+            updateDebugLog();
+        };
+        
+        function updateDebugLog() {
+            document.getElementById('debugLog').textContent = debugLogs.slice(-20).join('\n');
+        }
+        
+        function addDebugLog(message) {
+            debugLogs.push(`[DEBUG] ${new Date().toLocaleTimeString()} ${message}`);
+            updateDebugLog();
+        }
+        
+        function clearLog() {
+            debugLogs = [];
+            updateDebugLog();
+        }
+        
+        // 標準テストデータ
+        function setupTestData() {
+            testData = [
+                {
+                    name: "サンライズホープ",
+                    odds: 2.1,
+                    winProbability: 25.3,
+                    placeProbability: 65.2,
+                    winExpectedValue: 1.2,
+                    efficiencyScore: 75,
+                    score: 82
+                },
+                {
+                    name: "ミラクルスター",
+                    odds: 4.5,
+                    winProbability: 18.7,
+                    placeProbability: 58.1,
+                    winExpectedValue: 0.8,
+                    efficiencyScore: 68,
+                    score: 74
+                },
+                {
+                    name: "ゴールデンボルト",
+                    odds: 7.2,
+                    winProbability: 12.4,
+                    placeProbability: 45.3,
+                    winExpectedValue: 0.9,
+                    efficiencyScore: 62,
+                    score: 65
+                },
+                {
+                    name: "シルバーアロー",
+                    odds: 12.8,
+                    winProbability: 8.1,
+                    placeProbability: 38.7,
+                    winExpectedValue: 1.0,
+                    efficiencyScore: 58,
+                    score: 59
+                },
+                {
+                    name: "クリムゾンフレーム",
+                    odds: 18.4,
+                    winProbability: 5.2,
+                    placeProbability: 28.9,
+                    winExpectedValue: 0.95,
+                    efficiencyScore: 45,
+                    score: 48
+                }
+            ];
+            
+            displayTestData();
+            addDebugLog('標準テストデータを設定しました');
+        }
+        
+        // 高オッズ偏重データ
+        function setupHighOddsData() {
+            testData = [
+                {
+                    name: "大穴スペシャル",
+                    odds: 70.0,
+                    winProbability: 2.5,
+                    placeProbability: 12.1,
+                    winExpectedValue: 1.75,
+                    efficiencyScore: 95,
+                    score: 45
+                },
+                {
+                    name: "ミドル穴馬",
+                    odds: 25.0,
+                    winProbability: 4.8,
+                    placeProbability: 22.3,
+                    winExpectedValue: 1.2,
+                    efficiencyScore: 78,
+                    score: 52
+                },
+                {
+                    name: "人気薄",
+                    odds: 15.0,
+                    winProbability: 7.2,
+                    placeProbability: 28.5,
+                    winExpectedValue: 1.08,
+                    efficiencyScore: 65,
+                    score: 58
+                },
+                {
+                    name: "中人気",
+                    odds: 8.0,
+                    winProbability: 12.5,
+                    placeProbability: 42.1,
+                    winExpectedValue: 1.0,
+                    efficiencyScore: 62,
+                    score: 65
+                },
+                {
+                    name: "本命",
+                    odds: 2.5,
+                    winProbability: 35.2,
+                    placeProbability: 72.8,
+                    winExpectedValue: 0.88,
+                    efficiencyScore: 58,
+                    score: 85
+                }
+            ];
+            
+            displayTestData();
+            addDebugLog('高オッズ偏重データを設定しました');
+        }
+        
+        // バランス型データ
+        function setupBalancedData() {
+            testData = [
+                {
+                    name: "バランス本命",
+                    odds: 3.2,
+                    winProbability: 28.5,
+                    placeProbability: 68.2,
+                    winExpectedValue: 0.91,
+                    efficiencyScore: 72,
+                    score: 78
+                },
+                {
+                    name: "バランス対抗",
+                    odds: 5.1,
+                    winProbability: 18.2,
+                    placeProbability: 55.7,
+                    winExpectedValue: 0.93,
+                    efficiencyScore: 68,
+                    score: 71
+                },
+                {
+                    name: "バランス注目",
+                    odds: 8.5,
+                    winProbability: 11.8,
+                    placeProbability: 42.3,
+                    winExpectedValue: 1.0,
+                    efficiencyScore: 65,
+                    score: 63
+                },
+                {
+                    name: "バランス警戒",
+                    odds: 14.2,
+                    winProbability: 7.1,
+                    placeProbability: 32.1,
+                    winExpectedValue: 1.01,
+                    efficiencyScore: 58,
+                    score: 55
+                },
+                {
+                    name: "バランス穴",
+                    odds: 22.8,
+                    winProbability: 4.4,
+                    placeProbability: 23.5,
+                    winExpectedValue: 1.0,
+                    efficiencyScore: 52,
+                    score: 48
+                }
+            ];
+            
+            displayTestData();
+            addDebugLog('バランス型データを設定しました');
+        }
+        
+        function displayTestData() {
+            const container = document.getElementById('horseDataDisplay');
+            let html = '<table><tr><th>馬名</th><th>オッズ</th><th>勝率</th><th>複勝率</th><th>期待値</th><th>効率</th><th>スコア</th></tr>';
+            
+            testData.forEach(horse => {
+                html += `<tr>
+                    <td><strong>${horse.name}</strong></td>
+                    <td>${horse.odds}倍</td>
+                    <td>${horse.winProbability}%</td>
+                    <td>${horse.placeProbability}%</td>
+                    <td>${horse.winExpectedValue}</td>
+                    <td>${horse.efficiencyScore}</td>
+                    <td>${horse.score}</td>
+                </tr>`;
+            });
+            
+            html += '</table>';
+            container.innerHTML = html;
+            document.getElementById('testHorses').style.display = 'block';
+        }
+        
+        function runConfidenceDebug() {
+            if (testData.length === 0) {
+                alert('まずテストデータを設定してください');
+                return;
+            }
+            
+            addDebugLog('信頼度計算デバッグを開始');
+            
+            // 信頼度計算の詳細表示
+            const confidenceResults = document.getElementById('confidenceResults');
+            let html = '<h4>信頼度計算詳細</h4>';
+            
+            testData.forEach(horse => {
+                const confidence = EnhancedRecommendationSystem.calculateHorseConfidence(horse);
+                
+                html += `
+                    <div class="confidence-debug">
+                        <h5>${horse.name} - 信頼度: ${confidence.toFixed(1)}点</h5>
+                        <div style="font-size: 0.9em;">
+                            <div>勝率基礎点: ${Math.min(horse.winProbability * 2.5, 50).toFixed(1)}点 (勝率${horse.winProbability}% × 2.5)</div>
+                            <div>複勝率加点: ${horse.placeProbability > 70 ? 15 : horse.placeProbability > 50 ? 10 : horse.placeProbability > 30 ? 5 : 0}点</div>
+                            <div>オッズ調整: ${getOddsAdjustment(horse.odds)}点 (${horse.odds}倍)</div>
+                            <div>期待値補正: ${getExpectedValueAdjustment(horse.winExpectedValue)}点</div>
+                            <div>効率補正: ${getEfficiencyAdjustment(horse.efficiencyScore)}点</div>
+                            <div>スコア補正: ${getScoreAdjustment(horse.score)}点</div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            confidenceResults.innerHTML = html;
+            
+            // 注目馬リスト生成テスト
+            const watchList = EnhancedRecommendationSystem.generateWatchList(testData);
+            displayWatchListResults(watchList);
+            
+            // 戦略生成テスト
+            const strategies = EnhancedRecommendationSystem.generateBettingStrategies(watchList);
+            displayStrategyResults(strategies);
+            
+            addDebugLog('信頼度計算デバッグ完了');
+        }
+        
+        function getOddsAdjustment(odds) {
+            if (odds <= 2) return 20;
+            if (odds <= 3) return 15;
+            if (odds <= 5) return 10;
+            if (odds <= 8) return 5;
+            if (odds <= 15) return 0;
+            if (odds <= 30) return -5;
+            return -10;
+        }
+        
+        function getExpectedValueAdjustment(ev) {
+            if (ev > 1.2) return 10;
+            if (ev > 1.0) return 5;
+            if (ev < 0.8) return -5;
+            return 0;
+        }
+        
+        function getEfficiencyAdjustment(eff) {
+            if (eff > 85) return 8;
+            if (eff > 70) return 5;
+            if (eff < 50) return -3;
+            return 0;
+        }
+        
+        function getScoreAdjustment(score) {
+            if (score > 80) return 10;
+            if (score > 70) return 5;
+            if (score < 50) return -5;
+            return 0;
+        }
+        
+        function displayWatchListResults(watchList) {
+            const container = document.getElementById('watchListResults');
+            let html = '<h4>注目馬分類結果</h4>';
+            
+            html += `<div class="info test-section">
+                <h5>動的閾値</h5>
+                <div>最有力: ${watchList.adjustedThresholds.highest.threshold}点以上</div>
+                <div>有力: ${watchList.adjustedThresholds.high.threshold}点以上</div>
+                <div>注目: ${watchList.adjustedThresholds.medium.threshold}点以上</div>
+                <div>警戒: ${watchList.adjustedThresholds.watch.threshold}点以上</div>
+            </div>`;
+            
+            Object.entries(EnhancedRecommendationSystem.confidenceLevels).forEach(([level, config]) => {
+                const horses = watchList.byLevel[level] || [];
+                if (horses.length > 0) {
+                    html += `
+                        <div class="horse-data" style="border-left: 4px solid ${config.color};">
+                            <h5>${config.symbol} ${config.name} (${horses.length}頭)</h5>
+                            ${horses.map(horse => `
+                                <div>${horse.name}: ${horse.confidence.toFixed(1)}点 (勝率${horse.winProbability}%, オッズ${horse.odds}倍)</div>
+                            `).join('')}
+                        </div>
+                    `;
+                }
+            });
+            
+            container.innerHTML = html;
+        }
+        
+        function displayStrategyResults(strategies) {
+            const container = document.getElementById('strategyResults');
+            let html = '<h4>戦略推奨結果</h4>';
+            
+            Object.entries(strategies).forEach(([key, strategy]) => {
+                html += `
+                    <div class="horse-data ${strategy.recommended ? 'success' : ''}">
+                        <h5>${strategy.name} ${strategy.recommended ? '(推奨)' : ''}</h5>
+                        <div>選定馬数: ${strategy.horses.length}頭</div>
+                        <div>的中率: ${strategy.expectedHitRate}%</div>
+                        <div>投資額: ${strategy.totalInvestment}円</div>
+                        <div>期待値: ${strategy.expectedValue.toFixed(2)}</div>
+                        <div>選定馬: ${strategy.horses.map(h => h.name).join(', ')}</div>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+        }
+        
+        function clearResults() {
+            document.getElementById('confidenceResults').innerHTML = '';
+            document.getElementById('watchListResults').innerHTML = '';
+            document.getElementById('strategyResults').innerHTML = '';
+            document.getElementById('testHorses').style.display = 'none';
+        }
+        
+        // 初期化
+        document.addEventListener('DOMContentLoaded', function() {
+            addDebugLog('拡張推奨システム デバッグツールを初期化しました');
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>💰 収益性分析指標の解説</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; line-height: 1.6; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        h1 { color: #2e8b57; text-align: center; border-bottom: 3px solid #2e8b57; padding-bottom: 15px; }
+        h2 { color: #1976d2; border-left: 4px solid #1976d2; padding-left: 15px; margin-top: 30px; }
+        h3 { color: #d32f2f; margin-top: 25px; }
+        .metric-section { background: #f8f9fa; padding: 20px; margin: 15px 0; border-radius: 8px; border-left: 4px solid #28a745; }
+        .example { background: #e8f5e8; padding: 15px; margin: 10px 0; border-radius: 5px; border: 1px solid #c3e6cb; }
+        .warning { background: #fff3cd; padding: 15px; margin: 10px 0; border-radius: 5px; border: 1px solid #ffeaa7; color: #856404; }
+        .formula { background: #e3f2fd; padding: 10px; margin: 10px 0; border-radius: 5px; font-family: monospace; font-size: 14px; }
+        .grade-table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+        .grade-table th, .grade-table td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+        .grade-table th { background: #f8f9fa; font-weight: bold; }
+        .grade-aaa { background: #d4edda; color: #155724; }
+        .grade-aa { background: #cce5ff; color: #0056b3; }
+        .grade-a { background: #e6f3ff; color: #004080; }
+        .grade-bbb { background: #fff3cd; color: #856404; }
+        .grade-bb { background: #ffe6cc; color: #cc6600; }
+        .grade-poor { background: #f8d7da; color: #721c24; }
+        .calculation-flow { background: #f0f8ff; padding: 20px; margin: 15px 0; border-radius: 8px; border: 1px solid #b3d9ff; }
+        ul { margin: 10px 0; padding-left: 20px; }
+        li { margin: 5px 0; }
+        .highlight { font-weight: bold; color: #d32f2f; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>💰 収益性分析指標の解説ガイド</h1>
+        
+        <div class="warning">
+            <strong>⚠️ 注意事項</strong><br>
+            このシステムは競馬予想の参考情報として設計されています。実際の投資判断は自己責任で行ってください。
+        </div>
+
+        <h2>📊 基本指標の説明</h2>
+        
+        <div class="metric-section">
+            <h3>💎 投資効率スコア (0-100点)</h3>
+            <p><strong>意味:</strong> その馬への投資がどれだけ効率的かを総合的に評価した点数</p>
+            <ul>
+                <li><strong>80点以上:</strong> 非常に効率的（強く推奨）</li>
+                <li><strong>60-79点:</strong> 効率的（推奨）</li>
+                <li><strong>40-59点:</strong> 普通（検討）</li>
+                <li><strong>20-39点:</strong> 非効率（弱い）</li>
+                <li><strong>20点未満:</strong> 著しく非効率（非推奨）</li>
+            </ul>
+            <div class="formula">
+                計算要素: 期待値 + 信頼度 + オッズ帯ボーナス + 勝率バランス + 穴馬ボーナス
+            </div>
+        </div>
+
+        <div class="metric-section">
+            <h3>📈 期待値 (Expected Value)</h3>
+            <p><strong>意味:</strong> 理論的に1円賭けた時に戻ってくる金額</p>
+            <ul>
+                <li><strong>1.0以上:</strong> 理論的に利益が期待できる</li>
+                <li><strong>1.0未満:</strong> 理論的には損失が予想される</li>
+            </ul>
+            <div class="formula">
+                計算式: (オッズ × 勝率) + (0 × 負け率) = 期待値
+            </div>
+            <div class="example">
+                <strong>例:</strong> オッズ10倍、勝率15%の場合<br>
+                期待値 = (10 × 0.15) + (0 × 0.85) = 1.5<br>
+                → 1円賭けると理論的に1.5円戻ってくる
+            </div>
+        </div>
+
+        <div class="metric-section">
+            <h3>💰 ROI (Return on Investment)</h3>
+            <p><strong>意味:</strong> 投資収益率。投資額に対する利益の割合</p>
+            <ul>
+                <li><strong>プラス:</strong> 利益が出ている</li>
+                <li><strong>マイナス:</strong> 損失が出ている</li>
+            </ul>
+            <div class="formula">
+                計算式: ((戻り金額 - 投資額) ÷ 投資額) × 100 = ROI(%)
+            </div>
+            <div class="example">
+                <strong>例:</strong> 1000円賭けて15000円戻ってきた場合<br>
+                ROI = ((15000 - 1000) ÷ 1000) × 100 = 1400%
+            </div>
+        </div>
+
+        <div class="metric-section">
+            <h3>🎯 ケリー基準 (Kelly Criterion)</h3>
+            <p><strong>意味:</strong> 理論的に最適な賭け金の割合</p>
+            <ul>
+                <li><strong>正の値:</strong> 投資価値あり</li>
+                <li><strong>0またはマイナス:</strong> 投資すべきでない</li>
+                <li><strong>0.25以上:</strong> 25%以上は危険なので制限</li>
+            </ul>
+            <div class="formula">
+                計算式: ((オッズ-1) × 勝率 - 負け率) ÷ (オッズ-1) = ケリー基準
+            </div>
+        </div>
+
+        <h2>🐎 穴馬関連指標</h2>
+        
+        <div class="metric-section">
+            <h3>💎 穴馬ボーナス (0-20点)</h3>
+            <p><strong>意味:</strong> 穴馬としての価値を評価したボーナス点</p>
+            <ul>
+                <li><strong>オッズ50倍以上:</strong> +20点</li>
+                <li><strong>オッズ25-49倍:</strong> +15点</li>
+                <li><strong>オッズ15-24倍:</strong> +10点</li>
+                <li><strong>オッズ10-14倍:</strong> +5点</li>
+                <li><strong>オッズ7-9倍:</strong> +2点</li>
+                <li><strong>人気下位:</strong> 追加ボーナス</li>
+            </ul>
+        </div>
+
+        <div class="metric-section">
+            <h3>🔍 穴馬判定</h3>
+            <p><strong>基準:</strong> オッズ5.0倍以上で穴馬と判定</p>
+            <ul>
+                <li><strong>true:</strong> 穴馬候補</li>
+                <li><strong>false:</strong> 人気馬</li>
+            </ul>
+            <div class="warning">
+                <strong>注意:</strong> 以前は7.0倍以上でしたが、より多くの穴馬を発見するために5.0倍以上に緩和されました。
+            </div>
+        </div>
+
+        <h2>⭐ 投資グレード評価</h2>
+        
+        <table class="grade-table">
+            <thead>
+                <tr>
+                    <th>グレード</th>
+                    <th>効率スコア</th>
+                    <th>評価</th>
+                    <th>投資判断</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr class="grade-aaa">
+                    <td><strong>AAA</strong></td>
+                    <td>90-100点</td>
+                    <td>最高評価</td>
+                    <td>積極的投資推奨</td>
+                </tr>
+                <tr class="grade-aa">
+                    <td><strong>AA</strong></td>
+                    <td>80-89点</td>
+                    <td>優良</td>
+                    <td>強く推奨</td>
+                </tr>
+                <tr class="grade-a">
+                    <td><strong>A</strong></td>
+                    <td>70-79点</td>
+                    <td>良好</td>
+                    <td>推奨</td>
+                </tr>
+                <tr class="grade-bbb">
+                    <td><strong>BBB</strong></td>
+                    <td>60-69点</td>
+                    <td>普通</td>
+                    <td>検討</td>
+                </tr>
+                <tr class="grade-bb">
+                    <td><strong>BB以下</strong></td>
+                    <td>60点未満</td>
+                    <td>低評価</td>
+                    <td>慎重検討</td>
+                </tr>
+                <tr class="grade-poor">
+                    <td><strong>D</strong></td>
+                    <td>10点未満</td>
+                    <td>危険</td>
+                    <td>投資回避</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>🎯 推奨レベルの意味</h2>
+        
+        <div class="metric-section">
+            <ul>
+                <li><strong>HIGHLY_RECOMMENDED:</strong> 強く推奨（効率スコア80点以上）</li>
+                <li><strong>RECOMMENDED:</strong> 推奨（効率スコア60-79点）</li>
+                <li><strong>CONSIDER:</strong> 検討（効率スコア40-59点）</li>
+                <li><strong>WEAK:</strong> 弱い（効率スコア20-39点）</li>
+                <li><strong>NOT_RECOMMENDED:</strong> 非推奨（効率スコア20点未満）</li>
+                <li><strong>AVOID:</strong> 避けるべき（期待値1.05未満）</li>
+            </ul>
+        </div>
+
+        <h2>🔄 ソート機能の違い</h2>
+        
+        <div class="calculation-flow">
+            <h3>💎 投資効率順ソート</h3>
+            <p>単純に投資効率スコアの高い順に並べます</p>
+            <ul>
+                <li>効率スコアが高い馬から順番に表示</li>
+                <li>総合的な投資価値を重視</li>
+            </ul>
+        </div>
+
+        <div class="calculation-flow">
+            <h3>🐎 穴馬候補順ソート</h3>
+            <p>穴馬の価値を重視した特別なソート</p>
+            <ol>
+                <li><strong>1st優先:</strong> 穴馬判定された馬を上位に</li>
+                <li><strong>2nd優先:</strong> 穴馬同士では穴馬ボーナス → 効率スコア順</li>
+                <li><strong>3rd優先:</strong> 非穴馬同士ではオッズ高い順（大穴順）</li>
+            </ol>
+            <div class="example">
+                <strong>例:</strong> 穴馬候補順では、オッズ15倍の穴馬がオッズ3倍の人気馬より上位に表示される
+            </div>
+        </div>
+
+        <h2>⚠️ 注意点とリスク</h2>
+        
+        <div class="warning">
+            <ul>
+                <li><strong>期待値が高くても100%勝てるわけではありません</strong></li>
+                <li><strong>短期的には損失が出る可能性があります</strong></li>
+                <li><strong>資金管理を徹底し、余剰資金での投資を心がけてください</strong></li>
+                <li><strong>このシステムは過去データに基づく分析であり、将来の結果を保証するものではありません</strong></li>
+            </ul>
+        </div>
+
+        <h2>🎯 効果的な使用方法</h2>
+        
+        <div class="metric-section">
+            <h3>基本戦略</h3>
+            <ul>
+                <li><strong>高グレード馬:</strong> 少額多数投資で安定した収益を狙う</li>
+                <li><strong>中グレード穴馬:</strong> 適度な投資で中程度のリターンを狙う</li>
+                <li><strong>低グレード馬:</strong> 投資を控えるか、最小限の遊び感覚で</li>
+            </ul>
+        </div>
+
+        <div class="metric-section">
+            <h3>ポートフォリオ戦略</h3>
+            <ul>
+                <li><strong>分散投資:</strong> 複数の異なるオッズ帯に分散</li>
+                <li><strong>リスク管理:</strong> 一度に大きな金額を投資しない</li>
+                <li><strong>長期視点:</strong> 短期的な勝敗に一喜一憂しない</li>
+            </ul>
+        </div>
+
+        <div class="example">
+            <strong>💡 実践例:</strong><br>
+            効率スコア85点のAAグレード馬（オッズ8倍）を発見した場合：<br>
+            → 期待値が高く、穴馬ボーナスもあるため、適度な投資を検討<br>
+            → ただし、勝率は12.5%程度なので、8回中1回程度の勝利を想定
+        </div>
+    </div>
+</body>
+</html>

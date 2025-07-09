@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔍 3連単推奨表示デバッグ</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }
+        .debug-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 8px; }
+        .success { background: #d4edda; border-color: #c3e6cb; color: #155724; }
+        .error { background: #f8d7da; border-color: #f5c6cb; color: #721c24; }
+        .info { background: #d1ecf1; border-color: #bee5eb; color: #0c5460; }
+        .warning { background: #fff3cd; border-color: #ffeaa7; color: #856404; }
+        button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin: 5px; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 5px; overflow-x: auto; font-size: 12px; }
+        .recommendation-display { background: white; border: 1px solid #ddd; border-radius: 8px; padding: 15px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>🔍 3連単推奨表示デバッグ</h1>
+    
+    <div class="debug-section">
+        <h2>📋 デバッグの目的</h2>
+        <p>3連単の買い目推奨が表示されない問題を調査します。</p>
+        <ul>
+            <li>推奨生成ロジックの確認</li>
+            <li>印分類の確認</li>
+            <li>期待値計算の確認</li>
+            <li>表示ロジックの確認</li>
+        </ul>
+    </div>
+    
+    <div class="debug-section">
+        <h2>🏇 テストデータ設定</h2>
+        <button onclick="setupDebugData()">デバッグ用データを設定</button>
+        <button onclick="runDebugTest()">3連単推奨デバッグ実行</button>
+        <button onclick="clearResults()">結果クリア</button>
+        
+        <div id="testDataInfo" class="info debug-section" style="display: none;">
+            <h4>設定されたデータ</h4>
+            <div id="horseDataDisplay"></div>
+        </div>
+    </div>
+    
+    <div class="debug-section">
+        <h2>🔍 印分類デバッグ</h2>
+        <div id="marksDebug" class="info debug-section">
+            印分類待機中...
+        </div>
+    </div>
+    
+    <div class="debug-section">
+        <h2>📊 期待値計算デバッグ</h2>
+        <div id="calculationDebug" class="info debug-section">
+            期待値計算待機中...
+        </div>
+    </div>
+    
+    <div class="debug-section">
+        <h2>🎯 推奨生成デバッグ</h2>
+        <div id="recommendationDebug" class="info debug-section">
+            推奨生成待機中...
+        </div>
+    </div>
+    
+    <div class="debug-section">
+        <h2>📱 実際の推奨表示</h2>
+        <div id="actualRecommendations"></div>
+    </div>
+    
+    <div class="debug-section">
+        <h2>📝 デバッグログ</h2>
+        <pre id="debugLog">デバッグログがここに表示されます...\n</pre>
+        <button onclick="clearLog()">ログクリア</button>
+    </div>
+
+    <!-- 必要なスクリプトファイル -->
+    <script src="../js/config.js"></script>
+    <script src="../js/bettingRecommender.js"></script>
+    
+    <script>
+        // デバッグ用のグローバル変数
+        let debugPredictions = [];
+        let debugLogs = [];
+        
+        // ログ関数をオーバーライド
+        const originalConsoleLog = console.log;
+        console.log = function(...args) {
+            debugLogs.push(args.join(' '));
+            originalConsoleLog.apply(console, args);
+            updateDebugLog();
+        };
+        
+        function updateDebugLog() {
+            document.getElementById('debugLog').textContent = debugLogs.slice(-30).join('\n');
+        }
+        
+        function addDebugLog(message) {
+            debugLogs.push(`[DEBUG] ${new Date().toLocaleTimeString()} ${message}`);
+            updateDebugLog();
+        }
+        
+        // モック学習システム
+        class LearningSystem {
+            static getLearningData() {
+                return {
+                    adjustments: { oddsWeight: 1.0, timeWeight: 1.0, jockeyWeight: 1.0 }
+                };
+            }
+        }
+        
+        // テストデータ設定
+        function setupDebugData() {
+            debugPredictions = [
+                {
+                    name: "サンライズホープ",
+                    odds: 2.1,
+                    winProbability: 25.3,
+                    placeProbability: 65.2,
+                    winExpectedValue: 1.2
+                },
+                {
+                    name: "ミラクルスター", 
+                    odds: 4.5,
+                    winProbability: 18.7,
+                    placeProbability: 58.1,
+                    winExpectedValue: 0.8
+                },
+                {
+                    name: "ゴールデンボルト",
+                    odds: 7.2,
+                    winProbability: 12.4,
+                    placeProbability: 45.3,
+                    winExpectedValue: 0.9
+                },
+                {
+                    name: "シルバーアロー",
+                    odds: 12.8,
+                    winProbability: 8.1,
+                    placeProbability: 38.7,
+                    winExpectedValue: 1.0
+                },
+                {
+                    name: "クリムゾンフレーム",
+                    odds: 18.4,
+                    winProbability: 5.2,
+                    placeProbability: 28.9,
+                    winExpectedValue: 0.95
+                }
+            ];
+            
+            const horseDataDisplay = document.getElementById('horseDataDisplay');
+            horseDataDisplay.innerHTML = debugPredictions.map((horse, i) => `
+                <p><strong>${i+1}. ${horse.name}</strong> - オッズ:${horse.odds}倍 勝率:${horse.winProbability}% 複勝率:${horse.placeProbability}%</p>
+            `).join('');
+            
+            document.getElementById('testDataInfo').style.display = 'block';
+            addDebugLog('デバッグ用テストデータを設定しました');
+        }
+        
+        function getHorseNumber(horseName) {
+            const index = debugPredictions.findIndex(h => h.name === horseName);
+            return index !== -1 ? index + 1 : '?';
+        }
+        
+        function runDebugTest() {
+            if (debugPredictions.length === 0) {
+                alert('まずデバッグ用データを設定してください');
+                return;
+            }
+            
+            addDebugLog('3連単推奨デバッグテストを開始');
+            
+            try {
+                // Step 1: 印分類のテスト
+                addDebugLog('Step 1: 印分類を実行中...');
+                const sortedByWinProbability = [...debugPredictions].sort((a, b) => b.winProbability - a.winProbability);
+                const sortedByWinExpected = [...debugPredictions].sort((a, b) => b.winExpectedValue - a.winExpectedValue);
+                
+                const marks = BettingRecommender.classifyHorses(
+                    debugPredictions,
+                    sortedByWinProbability,
+                    sortedByWinExpected
+                );
+                
+                displayMarksDebug(marks);
+                
+                // Step 2: 3連単推奨生成のテスト
+                addDebugLog('Step 2: 3連単推奨生成を実行中...');
+                const tripleExactRecommendations = BettingRecommender.generateTripleExactRecommendations(
+                    marks,
+                    debugPredictions,
+                    getHorseNumber
+                );
+                
+                displayRecommendationDebug(tripleExactRecommendations);
+                
+                // Step 3: 期待値計算の詳細テスト
+                addDebugLog('Step 3: 期待値計算の詳細確認...');
+                if (marks.honmei && marks.taikou && marks.tanana) {
+                    const detailedCalculation = BettingRecommender.calculateTripleExactExpectedValue(
+                        [marks.honmei, marks.taikou, marks.tanana],
+                        debugPredictions
+                    );
+                    displayCalculationDebug(detailedCalculation, [marks.honmei, marks.taikou, marks.tanana]);
+                }
+                
+                // Step 4: 実際の表示テスト
+                addDebugLog('Step 4: 実際の推奨表示テスト...');
+                const allRecommendations = BettingRecommender.generateRecommendationsFromMarks(marks, getHorseNumber);
+                displayActualRecommendations(allRecommendations, marks);
+                
+                addDebugLog('デバッグテスト完了');
+                
+            } catch (error) {
+                addDebugLog(`エラー発生: ${error.message}`);
+                console.error('デバッグテストエラー:', error);
+            }
+        }
+        
+        function displayMarksDebug(marks) {
+            const marksDebug = document.getElementById('marksDebug');
+            marksDebug.innerHTML = `
+                <h4>印分類結果</h4>
+                <p><strong>◎ 本命:</strong> ${marks.honmei ? marks.honmei.name : 'なし'}</p>
+                <p><strong>○ 対抗:</strong> ${marks.taikou ? marks.taikou.name : 'なし'}</p>
+                <p><strong>▲ 単穴:</strong> ${marks.tanana ? marks.tanana.name : 'なし'}</p>
+                <p><strong>△ 連複:</strong> ${marks.renpuku ? marks.renpuku.name : 'なし'}</p>
+                <p><strong>印数:</strong> ${[marks.honmei, marks.taikou, marks.tanana, marks.renpuku].filter(h => h).length}頭</p>
+                <p><strong>3連単条件:</strong> ${[marks.honmei, marks.taikou, marks.tanana, marks.renpuku].filter(h => h).length >= 3 ? '✅ 満たす' : '❌ 不足'}</p>
+            `;
+            
+            addDebugLog(`印分類完了: 本命=${marks.honmei?.name}, 対抗=${marks.taikou?.name}, 単穴=${marks.tanana?.name}, 連複=${marks.renpuku?.name}`);
+        }
+        
+        function displayCalculationDebug(calculation, horses) {
+            const calculationDebug = document.getElementById('calculationDebug');
+            calculationDebug.innerHTML = `
+                <h4>期待値計算詳細</h4>
+                <p><strong>対象馬:</strong> ${horses.map(h => h.name).join(' → ')}</p>
+                <p><strong>的中確率:</strong> ${calculation.hitProbability.toFixed(3)}%</p>
+                <p><strong>推定配当:</strong> ${calculation.estimatedDividend}倍</p>
+                <p><strong>効率:</strong> ${calculation.efficiency.toFixed(3)}</p>
+                <p><strong>閾値判定:</strong> ${calculation.efficiency > 0.08 ? '✅ 推奨基準クリア' : '❌ 推奨基準未達'}</p>
+                <p><strong>推奨基準:</strong> 効率 > 0.08</p>
+            `;
+            
+            addDebugLog(`期待値計算: 効率=${calculation.efficiency.toFixed(3)}, 的中率=${calculation.hitProbability.toFixed(3)}%, 配当=${calculation.estimatedDividend}倍`);
+        }
+        
+        function displayRecommendationDebug(recommendations) {
+            const recommendationDebug = document.getElementById('recommendationDebug');
+            
+            if (recommendations.length === 0) {
+                recommendationDebug.innerHTML = `
+                    <h4>❌ 3連単推奨生成結果</h4>
+                    <p><strong>生成数:</strong> 0件</p>
+                    <p><strong>原因:</strong> 効率基準を満たす組み合わせなし、または印不足</p>
+                `;
+                recommendationDebug.className = 'error debug-section';
+                addDebugLog('3連単推奨生成: 0件（推奨基準未達または印不足）');
+            } else {
+                recommendationDebug.innerHTML = `
+                    <h4>✅ 3連単推奨生成結果</h4>
+                    <p><strong>生成数:</strong> ${recommendations.length}件</p>
+                    ${recommendations.map((rec, i) => `
+                        <div class="recommendation-display">
+                            <h5>推奨 #${i+1}</h5>
+                            <p><strong>タイプ:</strong> ${rec.type}</p>
+                            <p><strong>馬:</strong> ${rec.horse}</p>
+                            <p><strong>確率:</strong> ${rec.probability}</p>
+                            <p><strong>配当:</strong> ${rec.odds}</p>
+                            <p><strong>効率:</strong> ${rec.efficiency ? rec.efficiency.toFixed(3) : 'N/A'}</p>
+                        </div>
+                    `).join('')}
+                `;
+                recommendationDebug.className = 'success debug-section';
+                addDebugLog(`3連単推奨生成: ${recommendations.length}件生成`);
+            }
+        }
+        
+        function displayActualRecommendations(allRecommendations, marks) {
+            const container = document.getElementById('actualRecommendations');
+            
+            addDebugLog(`全推奨生成: 合計${allRecommendations.length}件`);
+            
+            // 3連単のみフィルタリング
+            const tripleExactOnly = allRecommendations.filter(rec => rec.category === '3連単');
+            addDebugLog(`3連単推奨フィルタ結果: ${tripleExactOnly.length}件`);
+            
+            if (tripleExactOnly.length === 0) {
+                container.innerHTML = `
+                    <div class="error debug-section">
+                        <h4>❌ 3連単推奨が含まれていません</h4>
+                        <p>全推奨数: ${allRecommendations.length}件</p>
+                        <p>3連単推奨数: 0件</p>
+                    </div>
+                `;
+            } else {
+                container.innerHTML = `
+                    <div class="success debug-section">
+                        <h4>✅ 3連単推奨表示テスト</h4>
+                        <p>全推奨数: ${allRecommendations.length}件</p>
+                        <p>3連単推奨数: ${tripleExactOnly.length}件</p>
+                        ${tripleExactOnly.map((rec, i) => `
+                            <div class="recommendation-display">
+                                <h5>${rec.category} #${i+1}</h5>
+                                <p><strong>印:</strong> ${rec.mark}</p>
+                                <p><strong>タイプ:</strong> ${rec.type}</p>
+                                <p><strong>馬:</strong> ${rec.horse}</p>
+                                <p><strong>オッズ:</strong> ${rec.odds}</p>
+                                <p><strong>確率:</strong> ${rec.probability}</p>
+                                <p><strong>推奨金額:</strong> ${rec.amount}</p>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            }
+        }
+        
+        function clearResults() {
+            document.getElementById('marksDebug').innerHTML = '印分類待機中...';
+            document.getElementById('calculationDebug').innerHTML = '期待値計算待機中...';
+            document.getElementById('recommendationDebug').innerHTML = '推奨生成待機中...';
+            document.getElementById('actualRecommendations').innerHTML = '';
+            document.getElementById('testDataInfo').style.display = 'none';
+        }
+        
+        function clearLog() {
+            debugLogs = [];
+            updateDebugLog();
+        }
+        
+        // 初期化
+        document.addEventListener('DOMContentLoaded', function() {
+            addDebugLog('3連単推奨表示デバッグツールを初期化しました');
+            
+            if (typeof BettingRecommender !== 'undefined') {
+                addDebugLog('✅ BettingRecommenderクラスが利用可能です');
+                
+                if (typeof BettingRecommender.generateTripleExactRecommendations === 'function') {
+                    addDebugLog('✅ generateTripleExactRecommendations メソッドが存在します');
+                } else {
+                    addDebugLog('❌ generateTripleExactRecommendations メソッドが見つかりません');
+                }
+                
+                if (typeof BettingRecommender.calculateTripleExactExpectedValue === 'function') {
+                    addDebugLog('✅ calculateTripleExactExpectedValue メソッドが存在します');
+                } else {
+                    addDebugLog('❌ calculateTripleExactExpectedValue メソッドが見つかりません');
+                }
+            } else {
+                addDebugLog('❌ BettingRecommenderクラスが見つかりません');
+            }
+        });
+    </script>
+</body>
+</html>

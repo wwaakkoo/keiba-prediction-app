@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎨 緑背景表示確認テスト</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; }
+        .test-result { padding: 15px; margin: 15px 0; border-radius: 8px; }
+        .success { background: #d4edda; border-left: 4px solid #28a745; }
+        .info { background: #d1ecf1; border-left: 4px solid #17a2b8; }
+        .check-item { padding: 8px; margin: 5px 0; border: 1px solid #ddd; border-radius: 3px; }
+        .green-bg { background: linear-gradient(135deg, #e8f5e8, #c8e6c9); }
+        .no-green-bg { background: #f8f9fa; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 緑背景表示確認テスト</h1>
+        
+        <div class="test-result success">
+            <h2>✅ 拡張学習システム動作確認完了</h2>
+            <p>見落とし学習: 2件（ルクスメンデス・ジューンセレッソ）正常記録</p>
+        </div>
+        
+        <div class="test-result info">
+            <h2>📋 緑背景表示確認チェックリスト</h2>
+            <p>メインアプリで以下を確認してください：</p>
+            
+            <h3>✅ 緑背景になるべき馬（6番人気以降）</h3>
+            <div class="check-item green-bg">
+                <strong>例:</strong> 10倍以上の馬 → 緑背景 ✅
+            </div>
+            <div class="check-item green-bg">
+                <strong>例:</strong> 15倍以上の馬 → 緑背景 ✅
+            </div>
+            
+            <h3>❌ 緑背景にならないべき馬（5番人気以下）</h3>
+            <div class="check-item no-green-bg">
+                <strong>例:</strong> 2-3倍の馬 → 緑背景なし ✅
+            </div>
+            <div class="check-item no-green-bg">
+                <strong>例:</strong> 4-6倍の馬 → 緑背景なし ✅
+            </div>
+            <div class="check-item no-green-bg">
+                <strong>例:</strong> 7-8倍の馬（5番人気相当） → 緑背景なし ✅
+            </div>
+            
+            <h3>🎯 確認手順</h3>
+            <ol>
+                <li>メインアプリでサンプルデータ追加</li>
+                <li>🚀 予測開始ボタンをクリック</li>
+                <li>予測結果で緑背景馬を確認</li>
+                <li>7-8倍程度の馬が緑背景になっていないことを確認</li>
+                <li>10倍以上の馬のみ緑背景になっていることを確認</li>
+            </ol>
+        </div>
+        
+        <div class="test-result info">
+            <h2>📊 Phase 4 完了条件</h2>
+            <ul>
+                <li>✅ 拡張学習システム動作確認済み</li>
+                <li>🔄 緑背景表示が6番人気以降のみ（要確認）</li>
+                <li>🔄 ▲単穴推奨が緑背景候補から選ばれる（要確認）</li>
+                <li>✅ 見落とし学習データ蓄積確認済み</li>
+                <li>✅ コンソールログで動作確認済み</li>
+            </ul>
+        </div>
+        
+        <div class="test-result success">
+            <h2>🎉 次のステップ</h2>
+            <p>緑背景表示確認完了後、Phase 4統合テスト完了となります！</p>
+        </div>
+    </div>
+</body>
+</html>

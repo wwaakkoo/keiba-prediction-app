@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📊 ケリー基準（Kelly Criterion）の解説</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; line-height: 1.6; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        h1 { color: #2e8b57; text-align: center; border-bottom: 3px solid #2e8b57; padding-bottom: 15px; }
+        h2 { color: #1976d2; border-left: 4px solid #1976d2; padding-left: 15px; margin-top: 30px; }
+        h3 { color: #d32f2f; margin-top: 25px; }
+        .formula-section { background: #e8f5e8; padding: 20px; margin: 15px 0; border-radius: 8px; border-left: 4px solid #28a745; }
+        .example { background: #fff3cd; padding: 15px; margin: 10px 0; border-radius: 5px; border: 1px solid #ffeaa7; color: #856404; }
+        .warning { background: #f8d7da; padding: 15px; margin: 10px 0; border-radius: 5px; border: 1px solid #f5c6cb; color: #721c24; }
+        .tip { background: #d1ecf1; padding: 15px; margin: 10px 0; border-radius: 5px; border: 1px solid #bee5eb; color: #0c5460; }
+        .formula { background: #f8f9fa; padding: 15px; margin: 10px 0; border-radius: 5px; font-family: 'Courier New', monospace; font-size: 16px; text-align: center; border: 2px solid #6c757d; }
+        .kelly-table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+        .kelly-table th, .kelly-table td { border: 1px solid #ddd; padding: 10px; text-align: center; }
+        .kelly-table th { background: #f8f9fa; font-weight: bold; }
+        .excellent { background: #d4edda; color: #155724; }
+        .good { background: #cce5ff; color: #0056b3; }
+        .neutral { background: #fff3cd; color: #856404; }
+        .poor { background: #f8d7da; color: #721c24; }
+        .calculation-flow { background: #f0f8ff; padding: 20px; margin: 15px 0; border-radius: 8px; border: 1px solid #b3d9ff; }
+        .step { margin: 10px 0; padding: 10px; background: #e9ecef; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📊 ケリー基準（Kelly Criterion）の解説</h1>
+        
+        <div class="warning">
+            <strong>⚠️ 重要な注意事項</strong><br>
+            ケリー基準は理論上の最適賭け金を計算する手法です。実際の投資判断は自己責任で行い、余剰資金の範囲内で投資してください。
+        </div>
+
+        <h2>🎯 ケリー基準とは</h2>
+        
+        <div class="formula-section">
+            <h3>📖 定義</h3>
+            <p><strong>ケリー基準</strong>は、長期的に資産を最大化するための最適な賭け金の割合を計算する数学的手法です。</p>
+            <ul>
+                <li><strong>開発者</strong>: ジョン・ラリー・ケリー・ジュニア（1956年）</li>
+                <li><strong>用途</strong>: ギャンブル、投資、ポートフォリオ管理</li>
+                <li><strong>目的</strong>: 破産リスクを避けながら長期的利益を最大化</li>
+            </ul>
+        </div>
+
+        <h2>🧮 計算式</h2>
+        
+        <div class="formula">
+            <strong>ケリー基準 = (b × p - q) ÷ b</strong>
+        </div>
+        
+        <div class="calculation-flow">
+            <h3>📚 変数の説明</h3>
+            <div class="step">
+                <strong>b</strong> = ネットオッズ（オッズ - 1）<br>
+                例：オッズ5.0倍の場合、b = 5.0 - 1 = 4.0
+            </div>
+            <div class="step">
+                <strong>p</strong> = 勝率（予測される勝利確率）<br>
+                例：20%の勝率の場合、p = 0.20
+            </div>
+            <div class="step">
+                <strong>q</strong> = 負け率（1 - p）<br>
+                例：勝率20%の場合、q = 1 - 0.20 = 0.80
+            </div>
+        </div>
+
+        <h2>💡 具体的な計算例</h2>
+        
+        <div class="example">
+            <h3>🐎 例1: オッズ8.0倍、勝率15%の馬</h3>
+            <div class="step">
+                <strong>Step 1:</strong> 変数を設定<br>
+                • オッズ = 8.0倍<br>
+                • b = 8.0 - 1 = 7.0<br>
+                • p = 0.15（15%）<br>
+                • q = 1 - 0.15 = 0.85
+            </div>
+            <div class="step">
+                <strong>Step 2:</strong> ケリー基準を計算<br>
+                ケリー基準 = (7.0 × 0.15 - 0.85) ÷ 7.0<br>
+                = (1.05 - 0.85) ÷ 7.0<br>
+                = 0.20 ÷ 7.0<br>
+                = <strong>0.029 (2.9%)</strong>
+            </div>
+            <div class="step">
+                <strong>結果:</strong> 資金の2.9%を投資するのが最適
+            </div>
+        </div>
+
+        <div class="example">
+            <h3>🏇 例2: オッズ15.0倍、勝率10%の馬</h3>
+            <div class="step">
+                <strong>Step 1:</strong> 変数を設定<br>
+                • オッズ = 15.0倍<br>
+                • b = 15.0 - 1 = 14.0<br>
+                • p = 0.10（10%）<br>
+                • q = 1 - 0.10 = 0.90
+            </div>
+            <div class="step">
+                <strong>Step 2:</strong> ケリー基準を計算<br>
+                ケリー基準 = (14.0 × 0.10 - 0.90) ÷ 14.0<br>
+                = (1.40 - 0.90) ÷ 14.0<br>
+                = 0.50 ÷ 14.0<br>
+                = <strong>0.036 (3.6%)</strong>
+            </div>
+        </div>
+
+        <h2>📊 ケリー基準の解釈</h2>
+        
+        <table class="kelly-table">
+            <thead>
+                <tr>
+                    <th>ケリー基準</th>
+                    <th>推奨投資割合</th>
+                    <th>投資判断</th>
+                    <th>解釈</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr class="excellent">
+                    <td><strong>0.10以上</strong></td>
+                    <td>10%以上</td>
+                    <td>強く推奨</td>
+                    <td>非常に有利な投資機会</td>
+                </tr>
+                <tr class="good">
+                    <td><strong>0.05-0.09</strong></td>
+                    <td>5-9%</td>
+                    <td>推奨</td>
+                    <td>有利な投資機会</td>
+                </tr>
+                <tr class="neutral">
+                    <td><strong>0.01-0.04</strong></td>
+                    <td>1-4%</td>
+                    <td>検討</td>
+                    <td>小額投資を検討</td>
+                </tr>
+                <tr class="poor">
+                    <td><strong>0.00</strong></td>
+                    <td>0%</td>
+                    <td>投資しない</td>
+                    <td>不利な賭け</td>
+                </tr>
+                <tr class="poor">
+                    <td><strong>負の値</strong></td>
+                    <td>0%</td>
+                    <td>絶対避ける</td>
+                    <td>期待値がマイナス</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>⚙️ アプリでの実装</h2>
+        
+        <div class="formula-section">
+            <h3>🔧 システムの制限</h3>
+            <ul>
+                <li><strong>負の値制限</strong>: ケリー基準が負の場合は0に設定</li>
+                <li><strong>上限制限</strong>: 25%以上は25%に制限（リスク管理）</li>
+                <li><strong>安全性重視</strong>: 理論値より保守的な設定</li>
+            </ul>
+            
+            <div class="formula">
+                実装式: Math.max(0, Math.min(0.25, kellyFraction))
+            </div>
+        </div>
+
+        <h2>🎯 実際の活用例</h2>
+        
+        <div class="tip">
+            <h3>💰 資金10万円での投資例</h3>
+            
+            <div class="step">
+                <strong>馬A</strong>: オッズ6倍、勝率20%<br>
+                ケリー基準 = (5×0.2-0.8)÷5 = 0.04 (4%)<br>
+                推奨投資額 = 100,000円 × 4% = <strong>4,000円</strong>
+            </div>
+            
+            <div class="step">
+                <strong>馬B</strong>: オッズ12倍、勝率12%<br>
+                ケリー基準 = (11×0.12-0.88)÷11 = 0.04 (4%)<br>
+                推奨投資額 = 100,000円 × 4% = <strong>4,000円</strong>
+            </div>
+            
+            <div class="step">
+                <strong>馬C</strong>: オッズ25倍、勝率8%<br>
+                ケリー基準 = (24×0.08-0.92)÷24 = 0.04 (4%)<br>
+                推奨投資額 = 100,000円 × 4% = <strong>4,000円</strong>
+            </div>
+        </div>
+
+        <h2>⚠️ 注意点とリスク</h2>
+        
+        <div class="warning">
+            <h3>🚨 重要な制限事項</h3>
+            <ul>
+                <li><strong>勝率の正確性が前提</strong>: 勝率予測が間違っていると最適投資額も間違う</li>
+                <li><strong>短期的な損失は避けられない</strong>: 長期的最適化のため短期損失もある</li>
+                <li><strong>感情的負担</strong>: 理論通りの投資は心理的に困難な場合がある</li>
+                <li><strong>資金管理の重要性</strong>: 全資金を競馬に投入することは推奨しない</li>
+            </ul>
+        </div>
+
+        <div class="tip">
+            <h3>💡 実践的なアドバイス</h3>
+            <ul>
+                <li><strong>フラクショナルケリー</strong>: ケリー基準の50%程度から始める</li>
+                <li><strong>上限設定</strong>: 1回の投資は総資金の5%以下に抑える</li>
+                <li><strong>複数分散</strong>: 複数の投資機会に分散投資する</li>
+                <li><strong>定期見直し</strong>: 予測精度を定期的に検証し調整する</li>
+            </ul>
+        </div>
+
+        <h2>📈 長期的な効果</h2>
+        
+        <div class="formula-section">
+            <h3>🎯 ケリー基準の利点</h3>
+            <ul>
+                <li><strong>破産確率の最小化</strong>: 理論上破産しない投資戦略</li>
+                <li><strong>複利効果の最大化</strong>: 長期的に資産成長率を最大化</li>
+                <li><strong>感情的判断の排除</strong>: 数学的根拠に基づく客観的投資</li>
+                <li><strong>リスク調整済みリターン</strong>: リスクを考慮した最適化</li>
+            </ul>
+        </div>
+
+        <div class="example">
+            <h3>📊 1年間のシミュレーション例</h3>
+            <p><strong>条件</strong>: 初期資金10万円、月4回投資、ケリー基準に従って投資</p>
+            <ul>
+                <li><strong>予測精度70%</strong>の場合: 年間15-25%の成長期待</li>
+                <li><strong>予測精度50%</strong>の場合: 微減〜微増</li>
+                <li><strong>予測精度30%</strong>の場合: 年間10-20%の損失</li>
+            </ul>
+            <p><strong>重要</strong>: 予測精度がケリー基準の有効性を決定する最重要要素</p>
+        </div>
+
+        <div class="tip">
+            <strong>💡 アプリでの確認方法</strong><br>
+            予測結果画面で各馬の「ケリー基準」欄を確認してください。数値が高いほど、その馬への投資が理論上有利であることを示しています。
+        </div>
+    </div>
+</body>
+</html>

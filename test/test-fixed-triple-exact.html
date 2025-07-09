@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>✅ 修正済み3連単機能テスト</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 8px; }
+        .success { background: #d4edda; border-color: #c3e6cb; color: #155724; }
+        .error { background: #f8d7da; border-color: #f5c6cb; color: #721c24; }
+        .info { background: #d1ecf1; border-color: #bee5eb; color: #0c5460; }
+        button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin: 5px; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 5px; overflow-x: auto; font-size: 12px; }
+        .recommendation-item { background: white; border: 1px solid #ddd; border-radius: 8px; padding: 15px; margin: 10px 0; border-left: 4px solid #007bff; }
+        .triple-exact { border-left-color: #dc3545; }
+        .triple-box { border-left-color: #28a745; }
+        .win-place { border-left-color: #ffc107; }
+    </style>
+</head>
+<body>
+    <h1>✅ 修正済み3連単機能テスト</h1>
+    
+    <div class="test-section">
+        <h2>🔧 修正内容</h2>
+        <div class="info test-section">
+            <h4>問題と修正</h4>
+            <p><strong>問題:</strong> 3連単推奨がメイン関数から呼び出されていなかった</p>
+            <p><strong>修正:</strong> generateBettingRecommendations() に3連複・3連単の呼び出しを追加</p>
+            <p><strong>削除:</strong> generateRecommendationsFromMarks() 内の重複呼び出しを削除</p>
+        </div>
+    </div>
+    
+    <div class="test-section">
+        <h2>🏇 修正版テスト実行</h2>
+        <button onclick="setupTestData()">テストデータ設定</button>
+        <button onclick="runFixedTest()">修正版テスト実行</button>
+        <button onclick="clearResults()">結果クリア</button>
+        
+        <div id="testInfo" class="info test-section" style="display: none;">
+            <h4>テストデータ</h4>
+            <div id="horseInfo"></div>
+        </div>
+    </div>
+    
+    <div class="test-section">
+        <h2>📊 推奨生成結果</h2>
+        <div id="recommendationResults"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>📝 実行ログ</h2>
+        <pre id="executionLog">ログがここに表示されます...\n</pre>
+        <button onclick="clearLog()">ログクリア</button>
+    </div>
+
+    <!-- 必要なスクリプトファイル -->
+    <script src="../js/config.js"></script>
+    <script src="../js/bettingRecommender.js"></script>
+    
+    <script>
+        let testPredictions = [];
+        let logs = [];
+        
+        // ログ関数
+        function addLog(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            logs.push(`${timestamp} ${message}`);
+            document.getElementById('executionLog').textContent = logs.slice(-20).join('\n');
+        }
+        
+        // モック学習システム
+        class LearningSystem {
+            static getLearningData() {
+                return {
+                    adjustments: { oddsWeight: 1.0, timeWeight: 1.0, jockeyWeight: 1.0 }
+                };
+            }
+        }
+        
+        // テストデータ設定
+        function setupTestData() {
+            testPredictions = [
+                {
+                    name: "サンライズホープ",
+                    odds: 2.1,
+                    winProbability: 25.3,
+                    placeProbability: 65.2,
+                    winExpectedValue: 1.2
+                },
+                {
+                    name: "ミラクルスター",
+                    odds: 4.5,
+                    winProbability: 18.7,
+                    placeProbability: 58.1,
+                    winExpectedValue: 0.8
+                },
+                {
+                    name: "ゴールデンボルト",
+                    odds: 7.2,
+                    winProbability: 12.4,
+                    placeProbability: 45.3,
+                    winExpectedValue: 0.9
+                },
+                {
+                    name: "シルバーアロー",
+                    odds: 12.8,
+                    winProbability: 8.1,
+                    placeProbability: 38.7,
+                    winExpectedValue: 1.0
+                },
+                {
+                    name: "クリムゾンフレーム",
+                    odds: 18.4,
+                    winProbability: 5.2,
+                    placeProbability: 28.9,
+                    winExpectedValue: 0.95
+                }
+            ];
+            
+            const horseInfo = document.getElementById('horseInfo');
+            horseInfo.innerHTML = testPredictions.map((horse, i) => `
+                <p><strong>${i+1}. ${horse.name}</strong> - オッズ:${horse.odds}倍 勝率:${horse.winProbability}% 複勝率:${horse.placeProbability}%</p>
+            `).join('');
+            
+            document.getElementById('testInfo').style.display = 'block';
+            addLog('テストデータを設定しました（5頭）');
+        }
+        
+        function getHorseNumber(horseName) {
+            const index = testPredictions.findIndex(h => h.name === horseName);
+            return index !== -1 ? index + 1 : '?';
+        }
+        
+        function runFixedTest() {
+            if (testPredictions.length === 0) {
+                alert('まずテストデータを設定してください');
+                return;
+            }
+            
+            addLog('修正版3連単テストを開始');
+            
+            try {
+                // Step 1: 印分類
+                addLog('Step 1: 印分類を実行...');
+                const sortedByWinProbability = [...testPredictions].sort((a, b) => b.winProbability - a.winProbability);
+                const sortedByWinExpected = [...testPredictions].sort((a, b) => b.winExpectedValue - a.winExpectedValue);
+                
+                const horseMarks = BettingRecommender.classifyHorses(
+                    testPredictions,
+                    sortedByWinProbability,
+                    sortedByWinExpected
+                );
+                
+                addLog(`印分類完了: 本命=${horseMarks.honmei?.name}, 対抗=${horseMarks.taikou?.name}, 単穴=${horseMarks.tanana?.name}, 連複=${horseMarks.renpuku?.name}`);
+                
+                // Step 2: 基本推奨生成
+                addLog('Step 2: 基本推奨を生成...');
+                const basicRecommendations = BettingRecommender.generateRecommendationsFromMarks(horseMarks, getHorseNumber);
+                addLog(`基本推奨生成完了: ${basicRecommendations.length}件`);
+                
+                // Step 3: 3連複推奨生成
+                addLog('Step 3: 3連複推奨を生成...');
+                const tripleBoxRecommendations = BettingRecommender.generateTripleBoxRecommendations(
+                    horseMarks, 
+                    testPredictions, 
+                    getHorseNumber
+                );
+                addLog(`3連複推奨生成完了: ${tripleBoxRecommendations.length}件`);
+                
+                // Step 4: 3連単推奨生成
+                addLog('Step 4: 3連単推奨を生成...');
+                const tripleExactRecommendations = BettingRecommender.generateTripleExactRecommendations(
+                    horseMarks,
+                    testPredictions,
+                    getHorseNumber
+                );
+                addLog(`3連単推奨生成完了: ${tripleExactRecommendations.length}件`);
+                
+                // 統合
+                const allRecommendations = [
+                    ...basicRecommendations,
+                    ...tripleBoxRecommendations,
+                    ...tripleExactRecommendations
+                ];
+                
+                addLog(`全推奨統合完了: 合計${allRecommendations.length}件`);
+                
+                // 結果表示
+                displayResults(allRecommendations);
+                
+                addLog('修正版テスト完了 ✅');
+                
+            } catch (error) {
+                addLog(`エラー発生: ${error.message} ❌`);
+                console.error('テストエラー:', error);
+            }
+        }
+        
+        function displayResults(recommendations) {
+            const container = document.getElementById('recommendationResults');
+            
+            if (recommendations.length === 0) {
+                container.innerHTML = `
+                    <div class="error test-section">
+                        <h4>❌ 推奨が生成されませんでした</h4>
+                        <p>条件を満たす推奨がありません。</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            // カテゴリ別に分類
+            const winPlace = recommendations.filter(r => r.category === '単勝' || r.category === '複勝');
+            const wide = recommendations.filter(r => r.category === 'ワイド');
+            const tripleBox = recommendations.filter(r => r.category === '3連複');
+            const tripleExact = recommendations.filter(r => r.category === '3連単');
+            
+            let html = `
+                <div class="success test-section">
+                    <h4>✅ 推奨生成成功</h4>
+                    <p>総推奨数: ${recommendations.length}件</p>
+                    <p>内訳: 単勝・複勝 ${winPlace.length}件, ワイド ${wide.length}件, 3連複 ${tripleBox.length}件, 3連単 ${tripleExact.length}件</p>
+                </div>
+            `;
+            
+            // 各カテゴリの表示
+            if (winPlace.length > 0) {
+                html += createCategorySection('単勝・複勝推奨', winPlace, 'win-place');
+            }
+            
+            if (wide.length > 0) {
+                html += createCategorySection('ワイド推奨', wide, 'win-place');
+            }
+            
+            if (tripleBox.length > 0) {
+                html += createCategorySection('3連複推奨', tripleBox, 'triple-box');
+            }
+            
+            if (tripleExact.length > 0) {
+                html += createCategorySection('3連単推奨', tripleExact, 'triple-exact');
+            } else {
+                html += `
+                    <div class="error test-section">
+                        <h4>❌ 3連単推奨が生成されませんでした</h4>
+                        <p>効率基準を満たす3連単の組み合わせがありません。</p>
+                    </div>
+                `;
+            }
+            
+            container.innerHTML = html;
+        }
+        
+        function createCategorySection(title, recommendations, cssClass) {
+            let html = `<h4>${title}</h4>`;
+            
+            recommendations.forEach((rec, index) => {
+                html += `
+                    <div class="recommendation-item ${cssClass}">
+                        <h5>${rec.category} #${index + 1}</h5>
+                        <p><strong>印:</strong> ${rec.mark}</p>
+                        <p><strong>タイプ:</strong> ${rec.type}</p>
+                        <p><strong>馬:</strong> ${rec.horse}</p>
+                        <p><strong>オッズ:</strong> ${rec.odds}</p>
+                        <p><strong>確率:</strong> ${rec.probability}</p>
+                        <p><strong>推奨金額:</strong> ${rec.amount}</p>
+                        ${rec.efficiency ? `<p><strong>効率:</strong> ${rec.efficiency.toFixed(3)}</p>` : ''}
+                        ${rec.strategy ? `<p><strong>戦略:</strong> ${rec.strategy}</p>` : ''}
+                    </div>
+                `;
+            });
+            
+            return html;
+        }
+        
+        function clearResults() {
+            document.getElementById('recommendationResults').innerHTML = '';
+            document.getElementById('testInfo').style.display = 'none';
+        }
+        
+        function clearLog() {
+            logs = [];
+            document.getElementById('executionLog').textContent = 'ログをクリアしました...\n';
+        }
+        
+        // 初期化
+        document.addEventListener('DOMContentLoaded', function() {
+            addLog('修正版3連単テストツールを初期化しました');
+        });
+    </script>
+</body>
+</html>
