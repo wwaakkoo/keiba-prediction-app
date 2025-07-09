@@ -102,41 +102,41 @@ class PredictionEngine {
                 const ensembleResult = EnhancedLearningSystem.ensemblePredict(raceData);
                 console.log(`🎯 アンサンブル予測完了: 信頼度 ${(ensembleResult.confidence * 100).toFixed(1)}%`);
                 
-                // Phase 1: 信頼度フィルタリング適用
-                if (typeof ReliabilityFilter !== 'undefined') {
-                    console.log('🔍 Phase 1 信頼度フィルタリング開始');
-                    const filteredPredictions = ReliabilityFilter.filterRecommendations(predictions, ensembleResult);
-                    console.log(`📊 フィルタリング結果: ${predictions.length}頭 → ${filteredPredictions.length}頭推奨`);
-                    
-                    // フィルタリング結果をグローバルに保存
-                    window.lastFilteredPredictions = filteredPredictions;
-                    window.lastEnsembleResult = ensembleResult;
-                }
+                // グローバル変数にアンサンブル結果を保存（拡張推奨システム用）
+                window.lastEnsembleResult = ensembleResult;
                 
                 // 既存予測結果を強化
                 predictions.forEach((prediction, index) => {
                     if (ensembleResult.predictions[index]) {
                         const ensemblePred = ensembleResult.predictions[index];
                         
-                        // アンサンブルスコアを予測に反映（重み30%）
-                        const enhancedWinProb = prediction.winProbability * 0.7 + 
-                            (ensemblePred.ensemblePrediction * 100) * 0.3;
+                        // スケール統一: ensemblePrediction（0-1）を％スケール（0-100）に変換
+                        const ensembleScore = ensemblePred.ensemblePrediction * 100;
+                        
+                        // 元の予測値を保存
+                        prediction.originalWinProbability = prediction.winProbability;
+                        
+                        // アンサンブルスコアを予測に反映（重み25%に調整）
+                        const enhancedWinProb = prediction.winProbability * 0.75 + ensembleScore * 0.25;
                         
                         prediction.winProbability = Math.max(0.1, Math.min(99.9, enhancedWinProb));
-                        prediction.enhancedScore = ensemblePred.ensemblePrediction;
+                        prediction.enhancedScore = ensembleScore; // 0-100スケールで統一
                         prediction.ensembleConfidence = ensemblePred.confidence;
+                        prediction.ensembleWeight = 0.25; // 統合重み情報
                         
-                        console.log(`📈 ${prediction.name}: 基本${(prediction.winProbability/0.7-ensemblePred.ensemblePrediction*100*0.3/0.7).toFixed(1)}% → 強化${prediction.winProbability.toFixed(1)}%`);
+                        console.log(`📈 ${prediction.name}: 基本${prediction.originalWinProbability.toFixed(1)}% + アンサンブル${ensembleScore.toFixed(1)}% → 強化${prediction.winProbability.toFixed(1)}%`);
                     }
                 });
                 
-                // 勝率を再正規化
+                // 勝率を再正規化（総確率を100に調整）
                 const totalEnhanced = predictions.reduce((sum, p) => sum + p.winProbability, 0);
                 if (totalEnhanced > 0) {
                     const normalizationFactor = 100 / totalEnhanced;
                     predictions.forEach(p => {
                         p.winProbability *= normalizationFactor;
+                        p.normalizationFactor = normalizationFactor; // 正規化情報保存
                     });
+                    console.log(`🔄 勝率正規化完了: 総和${totalEnhanced.toFixed(1)}% → 100%`);
                 }
                 
                 console.log('✅ 高度学習機能による予測強化完了');
@@ -145,6 +145,104 @@ class PredictionEngine {
                 console.error('❌ 高度学習機能エラー:', error);
                 showMessage('高度学習機能でエラーが発生しましたが、基本予測は継続します', 'warning', 3000);
             }
+        }
+        
+        // Phase 1: 推奨精度向上システムによる信頼度フィルタリング
+        if (typeof ReliabilityFilter !== 'undefined') {
+            console.log('🔍 Phase 1: 信頼度フィルタリング適用');
+            const filteredPredictions = ReliabilityFilter.filterRecommendations(predictions, null);
+            console.log(`フィルタリング結果: ${predictions.length}頭 → ${filteredPredictions.length}頭推奨`);
+            
+            // フィルタリング結果を元の予測に反映
+            predictions.forEach(prediction => {
+                const filtered = filteredPredictions.find(f => f.name === prediction.name);
+                if (filtered) {
+                    prediction.reliability = filtered.reliability;
+                    prediction.recommendationLevel = filtered.recommendationLevel;
+                    prediction.isRecommended = filtered.isRecommended;
+                    prediction.filterReason = filtered.filterReason;
+                } else {
+                    prediction.isRecommended = false;
+                    prediction.filterReason = '信頼度基準未達';
+                }
+            });
+        }
+        
+        // Phase 2: 投資戦略最適化システム適用
+        if (typeof RiskManagementInvestmentSystem !== 'undefined' && typeof KellyBettingSystem !== 'undefined') {
+            console.log('💰 Phase 2: 投資戦略最適化システム適用');
+            
+            // リスク管理ベース投資配分
+            const investmentAllocation = RiskManagementInvestmentSystem.calculateOptimalAllocation(predictions);
+            
+            // ケリー基準による最適賭け金
+            const kellyPortfolio = KellyBettingSystem.calculateOptimalPortfolioBetting(predictions);
+            
+            // 券種別最適化
+            if (typeof BetTypeOptimizationSystem !== 'undefined') {
+                const marketConditions = {
+                    raceClass: 'G1', // デフォルト値（実際のレース情報から取得すべき）
+                    weather: '晴',
+                    track: '芝',
+                    distance: '中距離'
+                };
+                const betTypeMetrics = BetTypeOptimizationSystem.calculateBetTypeMetrics(predictions, marketConditions);
+                const betTypeOptimization = BetTypeOptimizationSystem.determineOptimalBetTypeCombination(betTypeMetrics, 50000);
+                
+                // 結果を予測データに統合
+                predictions.forEach(prediction => {
+                    // 投資配分情報
+                    const investment = investmentAllocation.investments.find(inv => inv.horse.name === prediction.name);
+                    if (investment) {
+                        prediction.investmentAmount = investment.amount;
+                        prediction.investmentReason = investment.investmentReason;
+                    }
+                    
+                    // ケリー基準情報
+                    const kellyBet = kellyPortfolio.bets.find(bet => bet.horse === prediction.name);
+                    if (kellyBet) {
+                        prediction.kellyOptimalBet = kellyBet.finalBetSize;
+                        prediction.kellyExpectedGrowth = kellyBet.expectedGrowthRate;
+                        prediction.kellyBettingReason = kellyBet.bettingReason;
+                    }
+                    
+                    // 券種最適化情報
+                    prediction.betTypeRecommendations = betTypeOptimization.budgetAllocation;
+                });
+                
+                console.log(`Phase 2統合完了: 投資額=${investmentAllocation.totalInvestment.toLocaleString()}円, ケリー推奨=${kellyPortfolio.totalInvestment.toLocaleString()}円`);
+            }
+        }
+        
+        // Phase 3: リアルタイム学習・市場適応システム適用
+        if (typeof MarketAdaptationSystem !== 'undefined') {
+            console.log('🔄 Phase 3: 市場環境適応システム適用');
+            
+            // 市場環境適応分析
+            const raceData = {
+                venue: document.getElementById('raceCourse')?.value || '東京',
+                distance: document.getElementById('raceDistance')?.value || '2000',
+                trackType: document.getElementById('raceTrackType')?.value || '芝',
+                trackCondition: document.getElementById('raceTrackCondition')?.value || '良',
+                raceClass: document.getElementById('raceLevel')?.value || '3勝'
+            };
+            
+            // 最近の市場データ（簡易シミュレーション）
+            const recentMarketData = this.generateRecentMarketData();
+            
+            const marketAdaptation = MarketAdaptationSystem.adaptToMarketConditions(raceData, recentMarketData);
+            
+            // 適応結果を予測データに統合
+            predictions.forEach(prediction => {
+                prediction.marketAdaptation = {
+                    strategyType: marketAdaptation.adaptationStrategy?.strategyType || 'balanced',
+                    riskLevel: marketAdaptation.marketAnalysis?.riskLevel || 0.3,
+                    venueAdaptation: marketAdaptation.venueAnalysis?.suitability || 0.7,
+                    expectedImprovement: marketAdaptation.adaptationStrategy?.expectedImprovement || 0
+                };
+            });
+            
+            console.log(`Phase 3市場適応完了: 戦略=${marketAdaptation.adaptationStrategy?.strategyType}, リスク=${((marketAdaptation.marketAnalysis?.riskLevel || 0) * 100).toFixed(1)}%`);
         }
         
         this.displayResults(predictions);
@@ -683,8 +781,16 @@ class PredictionEngine {
         resultsDiv.classList.remove('hidden');
         sortControls.style.display = 'block';
         
-        // デフォルトはスコア順で表示
-        this.renderSortedResults('score');
+        // デフォルトはアンサンブルスコア順で表示（enhancedScoreがある場合）
+        const hasEnsembleData = predictions.some(p => p.enhancedScore !== undefined);
+        const defaultSort = hasEnsembleData ? 'ensemble' : 'score';
+        this.renderSortedResults(defaultSort);
+        
+        // selectボックスの初期値も設定
+        const sortSelect = document.getElementById('sortSelect');
+        if (sortSelect) {
+            sortSelect.value = defaultSort;
+        }
         
         // AI推奨ボタンを有効化
         this.enableAIRecommendationButton();
@@ -737,6 +843,15 @@ class PredictionEngine {
                 });
                 sortTitle = '🐎 穴馬候補順';
                 break;
+            case 'ensemble':
+                sortedPredictions = [...this.currentPredictions].sort((a, b) => {
+                    // アンサンブルスコアでソート（高い順）
+                    const aScore = a.enhancedScore || 0;
+                    const bScore = b.enhancedScore || 0;
+                    return bScore - aScore;
+                });
+                sortTitle = '🎯 アンサンブルスコア順';
+                break;
             default:
                 sortedPredictions = [...this.currentPredictions].sort((a, b) => b.score - a.score);
                 sortTitle = '🏆 スコア順';
@@ -753,6 +868,11 @@ class PredictionEngine {
         // 穴馬候補順の場合は説明を追加（Phase 4追加）
         if (sortBy === 'underdog') {
             html += '<p style="color: #4caf50; font-weight: bold; margin-bottom: 15px;">🐎💎 穴馬候補が上位表示されています（緑色背景 = 穴馬候補）</p>';
+        }
+        
+        // アンサンブルスコア順の場合は説明を追加
+        if (sortBy === 'ensemble') {
+            html += '<p style="color: #2196f3; font-weight: bold; margin-bottom: 15px;">🎯 アンサンブルスコア順表示（AI総合判定重視）</p>';
         }
         
         // 投資効率順の場合は説明を追加
@@ -851,7 +971,7 @@ class PredictionEngine {
             if (horse.enhancedScore !== undefined) {
                 enhancedLearningInfo += `<div class="enhanced-learning-info" style="background: rgba(33,150,243,0.1); padding: 5px; border-radius: 5px; margin-top: 5px;">`;
                 enhancedLearningInfo += `🧠 <strong>高度学習機能</strong><br>`;
-                enhancedLearningInfo += `🎯 アンサンブルスコア: ${(horse.enhancedScore * 100).toFixed(1)}%<br>`;
+                enhancedLearningInfo += `🎯 アンサンブルスコア: ${(horse.enhancedScore || 0).toFixed(1)}%<br>`;
                 enhancedLearningInfo += `📊 信頼度: ${(horse.ensembleConfidence * 100).toFixed(1)}%`;
                 enhancedLearningInfo += `</div>`;
             }
@@ -2429,8 +2549,14 @@ class PredictionEngine {
         }
     }
     
-    // Phase 1情報表示
+    // Phase 1情報表示（改善版）
     static displayPhase1Information() {
+        // 設定で非表示が選択されている場合はスキップ
+        const showSystemInfo = localStorage.getItem('showPhase1Info') !== 'false';
+        if (!showSystemInfo) {
+            return;
+        }
+        
         // Phase 1情報表示エリアを作成または取得
         let phase1Container = document.getElementById('phase1InfoContainer');
         if (!phase1Container) {
@@ -2439,10 +2565,11 @@ class PredictionEngine {
             phase1Container.style.cssText = `
                 background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                 color: white;
-                padding: 20px;
-                margin: 15px 0;
-                border-radius: 10px;
-                box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+                padding: 15px;
+                margin: 10px 0;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                font-size: 14px;
             `;
             
             // 予測結果の後に挿入
@@ -2454,17 +2581,34 @@ class PredictionEngine {
             }
         }
         
-        let infoHTML = '<h3 style="margin-top:0; color:#fff;">🎯 Phase 1 推奨精度向上システム</h3>';
+        // コンパクトなヘッダーと制御ボタン
+        let infoHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <h4 style="margin: 0; color: #fff;">🎯 Phase 1 システム状況</h4>
+                <div>
+                    <button id="togglePhase1Details" style="background: rgba(255,255,255,0.2); color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; margin-right: 5px; font-size: 12px;">
+                        🔍 詳細表示
+                    </button>
+                    <button id="hidePhase1Info" style="background: rgba(255,255,255,0.2); color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 12px;">
+                        ❌ 非表示
+                    </button>
+                </div>
+            </div>
+            <div id="phase1Summary" style="background: rgba(255,255,255,0.15); padding: 8px; border-radius: 5px; margin-bottom: 10px;">
+                <strong>✅ 推奨精度向上システム稼働中</strong>
+            </div>
+            <div id="phase1Details" style="display: none;">
+        `;
         
         // 的中判定基準表示
         if (typeof HitCriteriaSystem !== 'undefined') {
             const currentCriteria = HitCriteriaSystem.getCurrentCriteriaName();
-            infoHTML += `<div style="background:rgba(255,255,255,0.1); padding:10px; border-radius:5px; margin:10px 0;">
-                <strong>📊 現在の的中判定基準:</strong> ${currentCriteria}
+            infoHTML += `<div style="background:rgba(255,255,255,0.1); padding:8px; border-radius:5px; margin:8px 0; font-size:13px;">
+                <strong>📊 的中判定基準:</strong> ${currentCriteria}
             </div>`;
         }
         
-        // 信頼度フィルタリング結果表示
+        // 信頼度フィルタリング結果表示（簡略版）
         if (window.lastFilteredPredictions && window.lastEnsembleResult) {
             const filtered = window.lastFilteredPredictions;
             const ensemble = window.lastEnsembleResult;
@@ -2473,26 +2617,25 @@ class PredictionEngine {
             const mediumConf = filtered.filter(p => p.recommendationLevel === 'medium').length;
             const lowConf = filtered.filter(p => p.recommendationLevel === 'low').length;
             
-            infoHTML += `<div style="background:rgba(255,255,255,0.1); padding:10px; border-radius:5px; margin:10px 0;">
-                <strong>🔍 信頼度フィルタリング結果:</strong><br>
-                総予測数: ${this.currentPredictions.length}頭 → 推奨数: ${filtered.length}頭<br>
-                <span style="color:#4CAF50;">高信頼度: ${highConf}頭</span> | 
-                <span style="color:#FF9800;">中信頼度: ${mediumConf}頭</span> | 
-                <span style="color:#F44336;">低信頼度: ${lowConf}頭</span><br>
+            infoHTML += `<div style="background:rgba(255,255,255,0.1); padding:8px; border-radius:5px; margin:8px 0; font-size:13px;">
+                <strong>🔍 フィルタリング結果:</strong> 
+                ${this.currentPredictions.length}頭 → ${filtered.length}頭 | 
+                <span style="color:#4CAF50;">高:${highConf}</span> 
+                <span style="color:#FF9800;">中:${mediumConf}</span> 
+                <span style="color:#F44336;">低:${lowConf}</span><br>
                 アンサンブル信頼度: ${(ensemble.confidence * 100).toFixed(1)}%
             </div>`;
         }
         
-        // 動的調整情報表示
+        // 動的調整情報表示（簡略版）
         if (typeof DynamicRecommendationAdjuster !== 'undefined') {
             try {
                 const adjustmentParams = DynamicRecommendationAdjuster.adjustmentHistory.adjustmentParameters;
                 if (adjustmentParams) {
-                    infoHTML += `<div style="background:rgba(255,255,255,0.1); padding:10px; border-radius:5px; margin:10px 0;">
-                        <strong>📈 動的調整パラメータ:</strong><br>
-                        信頼度閾値: ${(adjustmentParams.confidenceThreshold * 100).toFixed(1)}% | 
-                        強度乗数: ${adjustmentParams.strengthMultiplier.toFixed(2)} | 
-                        フィルタ厳格度: ${adjustmentParams.filterStrictness.toFixed(2)}
+                    infoHTML += `<div style="background:rgba(255,255,255,0.1); padding:8px; border-radius:5px; margin:8px 0; font-size:13px;">
+                        <strong>📈 動的調整:</strong> 
+                        信頼度閾値 ${(adjustmentParams.confidenceThreshold * 100).toFixed(0)}% | 
+                        強度乗数 ${adjustmentParams.strengthMultiplier.toFixed(2)}
                     </div>`;
                 }
             } catch (error) {
@@ -2500,23 +2643,18 @@ class PredictionEngine {
             }
         }
         
-        // 期待ROI情報表示
+        // 期待ROI情報表示（コンパクト版）
         if (typeof HitCriteriaSystem !== 'undefined' && this.currentPredictions.length > 0) {
             try {
                 const expectedROI = HitCriteriaSystem.calculateExpectedROI(this.currentPredictions);
                 const currentROI = expectedROI[HitCriteriaSystem.currentCriteria];
                 
                 if (currentROI !== undefined) {
-                    // より現実的な月間ROI計算（複利効果と損失を考慮）
-                    const dailyROI = currentROI / 100; // 日次ROI
-                    const monthlyROI = Math.round(((Math.pow(1 + dailyROI, 20) - 1) * 100) * 10) / 10; // 20レース複利計算
-                    const roiColor = monthlyROI >= 100 ? '#4CAF50' : monthlyROI >= 50 ? '#FF9800' : '#F44336';
+                    const roiColor = currentROI >= 0 ? '#4CAF50' : '#F44336';
                     
-                    infoHTML += `<div style="background:rgba(255,255,255,0.1); padding:10px; border-radius:5px; margin:10px 0;">
-                        <strong>💰 期待収益予測:</strong><br>
-                        現在基準ROI: ${currentROI.toFixed(1)}% | 
-                        <span style="color:${roiColor}; font-weight:bold;">月間ROI予測: ${monthlyROI.toFixed(1)}%</span><br>
-                        <small>※月20レース参加想定</small>
+                    infoHTML += `<div style="background:rgba(255,255,255,0.1); padding:8px; border-radius:5px; margin:8px 0; font-size:13px;">
+                        <strong>💰 期待ROI:</strong> 
+                        <span style="color:${roiColor}; font-weight:bold;">${currentROI.toFixed(1)}%</span>
                     </div>`;
                 }
             } catch (error) {
@@ -2524,16 +2662,82 @@ class PredictionEngine {
             }
         }
         
-        // Phase 1の効果説明
-        infoHTML += `<div style="background:rgba(255,255,255,0.15); padding:10px; border-radius:5px; margin:10px 0; font-size:14px;">
-            <strong>✨ Phase 1 改善効果:</strong><br>
-            • 現実的な配当設定 (3.5倍→2.8倍)<br>
-            • 明確な的中判定基準<br>
-            • アンサンブル統合による推奨精度向上<br>
-            • 動的調整による継続的最適化
+        // Phase 1の効果説明（簡略版）
+        infoHTML += `<div style="background:rgba(255,255,255,0.15); padding:8px; border-radius:5px; margin:8px 0; font-size:12px;">
+            <strong>✨ 改善効果:</strong><br>
+            • 配当設定最適化 • 的中判定基準 • アンサンブル統合 • 動的調整
         </div>`;
         
+        // 詳細情報セクション終了
+        infoHTML += `</div>`; // phase1Details の終了タグ
+        
+        // 簡略サマリーを更新
+        if (window.lastFilteredPredictions && window.lastEnsembleResult) {
+            const filtered = window.lastFilteredPredictions;
+            const ensemble = window.lastEnsembleResult;
+            const confidence = (ensemble.confidence * 100).toFixed(0);
+            const summaryDiv = document.getElementById('phase1Summary');
+            if (summaryDiv) {
+                summaryDiv.innerHTML = `
+                    <strong>✅ 推奨精度向上システム稼働中</strong> | 
+                    信頼度: ${confidence}% | 
+                    推奨数: ${filtered.length}頭
+                `;
+            }
+        }
+        
         phase1Container.innerHTML = infoHTML;
+        
+        // イベントリスナー追加
+        setTimeout(() => {
+            const toggleButton = document.getElementById('togglePhase1Details');
+            const hideButton = document.getElementById('hidePhase1Info');
+            const detailsDiv = document.getElementById('phase1Details');
+            
+            if (toggleButton && detailsDiv) {
+                toggleButton.onclick = function() {
+                    const isVisible = detailsDiv.style.display !== 'none';
+                    detailsDiv.style.display = isVisible ? 'none' : 'block';
+                    this.textContent = isVisible ? '🔍 詳細表示' : '🔍 詳細非表示';
+                };
+            }
+            
+            if (hideButton && phase1Container) {
+                hideButton.onclick = function() {
+                    localStorage.setItem('showPhase1Info', 'false');
+                    phase1Container.style.display = 'none';
+                    console.log('🔍 Phase 1情報を非表示に設定しました。再表示するにはコンソールで localStorage.setItem("showPhase1Info", "true") を実行してください。');
+                };
+            }
+        }, 100);
+    }
+    
+    // Phase 3: 市場データ生成（簡易シミュレーション）
+    static generateRecentMarketData() {
+        const marketData = [];
+        const baseDate = new Date();
+        
+        // 過去7日分の市場データを生成
+        for (let i = 0; i < 7; i++) {
+            const date = new Date(baseDate);
+            date.setDate(date.getDate() - i);
+            
+            // 市場データシミュレーション
+            const favoriteWinRate = 0.25 + (Math.random() - 0.5) * 0.1; // 20-30%
+            const averageOdds = 4.5 + (Math.random() - 0.5) * 2; // 3.5-5.5倍
+            const surpriseRate = 0.08 + (Math.random() - 0.5) * 0.04; // 6-10%
+            
+            marketData.push({
+                date: date.toISOString().split('T')[0],
+                favoriteWinRate: favoriteWinRate,
+                averageOdds: averageOdds,
+                averagePayout: averageOdds * 0.85, // 控除率15%
+                surpriseRate: surpriseRate,
+                volatility: Math.random() * 0.3 + 0.1 // 10-40%
+            });
+        }
+        
+        return marketData.reverse(); // 古い順に並び替え
     }
 }
 

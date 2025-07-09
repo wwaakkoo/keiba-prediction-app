@@ -44,8 +44,18 @@ class BettingRecommender {
             }
         }
         
-        // アンサンブルデータを取得
+        // アンサンブルデータを取得と検証
         const ensembleData = window.lastEnsembleResult || null;
+        
+        // アンサンブルデータの一貫性を確認
+        if (ensembleData) {
+            console.log(`🔄 アンサンブルデータ検証: 信頼度${(ensembleData.confidence * 100).toFixed(1)}%`);
+            
+            // 予測数とアンサンブル予測数の一致性を確認
+            if (ensembleData.predictions.length !== enhancedPredictions.length) {
+                console.warn(`⚠️ アンサンブル予測数不一致: ${ensembleData.predictions.length} vs ${enhancedPredictions.length}`);
+            }
+        }
         
         // 印による馬の分類（アンサンブル統合）
         const horseMarks = this.classifyHorses(enhancedPredictions, sortedByWinProbability, sortedByWinExpected, ensembleData);
@@ -53,10 +63,16 @@ class BettingRecommender {
         // 従来の推奨生成（循環参照を防ぐため直接呼び出し）
         recommendations = this.generateRecommendationsFromMarks(horseMarks, getHorseNumber);
         
-        // 拡張情報を推奨に統合
+        // 拡張情報を推奨に統合（アンサンブルデータの一貫性を確認）
         if (ensembleData && window.lastFilteredPredictions && typeof ReliabilityFilter !== 'undefined') {
             console.log('🎯 Phase 1 拡張情報統合');
             try {
+                // アンサンブルデータとフィルターデータの一貫性を確認
+                const consistencyCheck = this.checkDataConsistency(ensembleData, window.lastFilteredPredictions, enhancedPredictions);
+                if (consistencyCheck.hasIssues) {
+                    console.warn('⚠️ データ一貫性の問題を検出:', consistencyCheck.issues);
+                }
+                
                 const investmentStrategy = ReliabilityFilter.suggestInvestmentStrategy(window.lastFilteredPredictions);
                 recommendations = this.applyInvestmentStrategy(recommendations, investmentStrategy, window.lastFilteredPredictions);
             } catch (error) {
@@ -222,22 +238,17 @@ class BettingRecommender {
                 enhancedHorse.recommendationLevel = filteredHorse.recommendationLevel;
                 enhancedHorse.isRecommended = filteredHorse.isRecommended;
                 
-                // アンサンブルスコアによる予測値補正
+                // アンサンブルスコア情報の保存（predictionEngineで既に統合済みのため、再適用しない）
                 if (ensembleScore) {
                     enhancedHorse.ensembleEnhanced = true;
-                    enhancedHorse.originalWinProbability = horse.winProbability;
                     
-                    // アンサンブル信頼度による重み付き平均
-                    const ensembleWeight = ensembleScore.confidence || 0.5;
-                    const originalWeight = 1 - ensembleWeight;
-                    
-                    enhancedHorse.winProbability = 
-                        (horse.winProbability * originalWeight + ensembleScore.ensemblePrediction * 100 * ensembleWeight);
-                    
+                    // 既にpredictionEngineでアンサンブル統合済みのwinProbabilityをそのまま使用
+                    // 追加の補正は行わず、情報のみ保存
                     enhancedHorse.ensembleData = {
                         score: ensembleScore.ensemblePrediction,
                         confidence: ensembleScore.confidence,
-                        models: ensembleScore.predictions
+                        models: ensembleScore.predictions,
+                        alreadyIntegrated: true // predictionEngineで統合済みフラグ
                     };
                 }
             }
@@ -339,12 +350,53 @@ class BettingRecommender {
             console.error('パフォーマンス結果保存エラー:', error);
         }
     }
+    
+    // データ一貫性チェックメソッド追加
+    static checkDataConsistency(ensembleData, filteredPredictions, enhancedPredictions) {
+        const issues = [];
+        
+        // アンサンブルデータの基本チェック
+        if (!ensembleData || !ensembleData.predictions) {
+            issues.push('アンサンブルデータが無効または不完全');
+        }
+        
+        // 予測数の一致性チェック
+        if (ensembleData && ensembleData.predictions.length !== enhancedPredictions.length) {
+            issues.push(`予測数不一致: アンサンブル${ensembleData.predictions.length} vs 強化${enhancedPredictions.length}`);
+        }
+        
+        // フィルターデータの整合性チェック
+        if (filteredPredictions && filteredPredictions.length > enhancedPredictions.length) {
+            issues.push(`フィルターデータの数が強化データを上回る: ${filteredPredictions.length} > ${enhancedPredictions.length}`);
+        }
+        
+        // アンサンブルスコアの有効性チェック
+        if (ensembleData && ensembleData.predictions) {
+            const invalidScores = ensembleData.predictions.filter(p => 
+                !p.ensemblePrediction || 
+                p.ensemblePrediction < 0 || 
+                p.ensemblePrediction > 1
+            );
+            
+            if (invalidScores.length > 0) {
+                issues.push(`無効なアンサンブルスコアを検出: ${invalidScores.length}件`);
+            }
+        }
+        
+        return {
+            hasIssues: issues.length > 0,
+            issues: issues
+        };
+    }
 
     static generateRecommendationsFromMarks(marks, getHorseNumber) {
         const recommendations = [];
 
-        // 単勝推奨
+        // 単勝推奨（アンサンブルスコア情報を追加）
         if (marks.honmei) {
+            const ensembleInfo = marks.honmei.enhancedScore ? 
+                `(アンサンブル: ${marks.honmei.enhancedScore.toFixed(1)}%)` : '';
+            
             recommendations.push({
                 category: '単勝',
                 mark: '◎',
@@ -352,6 +404,7 @@ class BettingRecommender {
                 horse: `${marks.honmei.name}（${getHorseNumber(marks.honmei.name)}番）`,
                 odds: `${marks.honmei.odds}倍`,
                 probability: `${marks.honmei.winProbability}%`,
+                ensembleInfo: ensembleInfo,
                 confidence: marks.honmei.winProbability > 15 ? 'high' : 'medium',
                 amount: marks.honmei.winProbability > 15 ? '500-1000円' : '300-600円'
             });
@@ -359,6 +412,9 @@ class BettingRecommender {
 
         if (marks.taikou) {
             const isHighRisk = marks.taikou.winProbability < 5 && marks.taikou.odds > 50;
+            const ensembleInfo = marks.taikou.enhancedScore ? 
+                `(アンサンブル: ${marks.taikou.enhancedScore.toFixed(1)}%)` : '';
+            
             recommendations.push({
                 category: '単勝',
                 mark: '○',
@@ -366,6 +422,7 @@ class BettingRecommender {
                 horse: `${marks.taikou.name}（${getHorseNumber(marks.taikou.name)}番）`,
                 odds: `${marks.taikou.odds}倍`,
                 probability: `${marks.taikou.winProbability}%`,
+                ensembleInfo: ensembleInfo,
                 confidence: isHighRisk ? 'low' : 'medium',
                 amount: isHighRisk ? '200-400円' : '400-700円'
             });
