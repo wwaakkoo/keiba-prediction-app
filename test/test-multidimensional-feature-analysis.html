@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>多次元特徴量分析・自動発見システムテスト</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 1400px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; }
+        .test-section { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 15px; margin: 15px 0; }
+        .btn { background: linear-gradient(45deg, #667eea, #764ba2); color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin: 5px; }
+        .btn:hover { transform: translateY(-1px); }
+        .btn-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin: 15px 0; }
+        .result-card { background: #f8f9fa; border-left: 4px solid #28a745; padding: 15px; margin: 10px 0; border-radius: 5px; }
+        .error-card { background: #f8f9fa; border-left: 4px solid #dc3545; padding: 15px; margin: 10px 0; border-radius: 5px; }
+        .warning-card { background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 10px 0; border-radius: 5px; }
+        .info-card { background: #e3f2fd; border-left: 4px solid #2196f3; padding: 15px; margin: 10px 0; border-radius: 5px; }
+        .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin: 15px 0; }
+        .metric-card { background: #e3f2fd; padding: 15px; border-radius: 8px; text-align: center; }
+        .progress-bar { width: 100%; height: 20px; background: #e0e0e0; border-radius: 10px; overflow: hidden; margin: 10px 0; }
+        .progress-fill { height: 100%; background: linear-gradient(45deg, #28a745, #20c997); transition: width 0.3s; }
+        .feature-list { background: #f1f8e9; border: 1px solid #4caf50; border-radius: 5px; padding: 10px; margin: 5px 0; max-height: 300px; overflow-y: auto; }
+        .feature-item { padding: 5px; border-bottom: 1px solid #ddd; }
+        .feature-importance { display: inline-block; width: 50px; height: 10px; background: #e0e0e0; border-radius: 5px; margin-left: 10px; }
+        .feature-importance-fill { height: 100%; background: linear-gradient(45deg, #ff9800, #f57c00); border-radius: 5px; }
+        .analysis-chart { background: #fafafa; border: 1px solid #ddd; border-radius: 5px; padding: 15px; margin: 10px 0; text-align: center; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 多次元特徴量分析・自動発見システムテスト</h1>
+        
+        <div class="test-section">
+            <h2>🚀 多次元特徴量分析システム概要</h2>
+            <p>機械学習の予測精度向上のために、多次元特徴量分析・自動発見システムをテストします</p>
+            
+            <div class="btn-grid">
+                <button class="btn" onclick="testFullAnalysis()">🔄 完全分析実行</button>
+                <button class="btn" onclick="testBaseFeatureExtraction()">📊 基本特徴量抽出</button>
+                <button class="btn" onclick="testFeatureEngineering()">🔧 特徴量工学</button>
+                <button class="btn" onclick="testDimensionReduction()">📉 次元削減</button>
+            </div>
+            
+            <div id="analysisResults"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>🔍 特徴量自動発見システム</h2>
+            <p>新しい特徴量の自動発見と重要度評価機能をテストします</p>
+            
+            <div class="btn-grid">
+                <button class="btn" onclick="testFeatureDiscovery()">🔍 特徴量発見</button>
+                <button class="btn" onclick="testFeatureSelection()">🎯 特徴量選択</button>
+                <button class="btn" onclick="testFeatureImportance()">📊 重要度評価</button>
+                <button class="btn" onclick="testPerformanceEvaluation()">📈 性能評価</button>
+            </div>
+            
+            <div id="discoveryResults"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>📊 分析結果ダッシュボード</h2>
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <h3>基本特徴量</h3>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="baseFeatureProgress" style="width: 0%"></div>
+                    </div>
+                    <span id="baseFeatureValue">測定中...</span>
+                </div>
+                <div class="metric-card">
+                    <h3>工学特徴量</h3>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="engineeredFeatureProgress" style="width: 0%"></div>
+                    </div>
+                    <span id="engineeredFeatureValue">測定中...</span>
+                </div>
+                <div class="metric-card">
+                    <h3>発見特徴量</h3>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="discoveredFeatureProgress" style="width: 0%"></div>
+                    </div>
+                    <span id="discoveredFeatureValue">測定中...</span>
+                </div>
+                <div class="metric-card">
+                    <h3>性能改善度</h3>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="performanceProgress" style="width: 0%"></div>
+                    </div>
+                    <span id="performanceValue">測定中...</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>🎯 特徴量詳細表示</h2>
+            <div id="featureDetails">
+                <p>特徴量分析実行後、詳細な特徴量リストを表示します</p>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>📈 分析チャート</h2>
+            <div class="analysis-chart" id="analysisChart">
+                <p>特徴量重要度分布チャート（分析実行後に表示）</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 必要なスクリプトをロード -->
+    <script src="../js/config.js"></script>
+    <script src="../js/multiDimensionalFeatureAnalyzer.js"></script>
+
+    <script>
+        // テスト用データ生成
+        function generateTestRaceData() {
+            const horses = [];
+            for (let i = 0; i < 12; i++) {
+                horses.push({
+                    name: `TestHorse${i + 1}`,
+                    odds: Math.random() * 30 + 1,
+                    popularity: i + 1,
+                    age: Math.floor(Math.random() * 6) + 3,
+                    weight: Math.floor(Math.random() * 100) + 400,
+                    jockey: `騎手${i + 1}`,
+                    trainer: `調教師${i + 1}`,
+                    runningStyle: ['逃げ', '先行', '差し', '追込'][Math.floor(Math.random() * 4)],
+                    raceHistory: generateRaceHistory()
+                });
+            }
+            
+            return {
+                horses: horses,
+                distance: 2000,
+                trackCondition: '良',
+                weather: '晴',
+                raceClass: 'G1',
+                venue: '東京'
+            };
+        }
+        
+        function generateRaceHistory() {
+            const history = [];
+            for (let i = 0; i < 8; i++) {
+                history.push({
+                    date: new Date(Date.now() - i * 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                    position: Math.floor(Math.random() * 12) + 1,
+                    distance: Math.floor(Math.random() * 2000) + 1000,
+                    trackCondition: ['良', '稍重', '重'][Math.floor(Math.random() * 3)]
+                });
+            }
+            return history;
+        }
+        
+        function generateHistoricalData() {
+            const historicalData = [];
+            for (let i = 0; i < 50; i++) {
+                historicalData.push({
+                    date: new Date(Date.now() - i * 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                    raceData: generateTestRaceData(),
+                    results: {
+                        first: `TestHorse${Math.floor(Math.random() * 12) + 1}`,
+                        second: `TestHorse${Math.floor(Math.random() * 12) + 1}`,
+                        third: `TestHorse${Math.floor(Math.random() * 12) + 1}`
+                    }
+                });
+            }
+            return historicalData;
+        }
+        
+        // 完全分析実行
+        function testFullAnalysis() {
+            console.log('🔄 完全多次元特徴量分析テスト開始');
+            const results = document.getElementById('analysisResults');
+            results.innerHTML = '<div class="info-card"><h4>完全分析実行中...</h4></div>';
+            
+            if (typeof MultiDimensionalFeatureAnalyzer === 'undefined') {
+                results.innerHTML = '<div class="error-card"><h4>❌ 多次元特徴量分析システムが見つかりません</h4></div>';
+                return;
+            }
+            
+            // テストデータ生成
+            const testRaceData = generateTestRaceData();
+            const historicalData = generateHistoricalData();
+            
+            // 完全分析実行
+            const analysisResult = MultiDimensionalFeatureAnalyzer.performMultiDimensionalAnalysis(testRaceData, historicalData);
+            
+            // 結果表示
+            results.innerHTML = `
+                <div class="result-card">
+                    <h4>🔄 完全多次元特徴量分析結果</h4>
+                    <p><strong>基本特徴量数:</strong> ${analysisResult.baseFeatures.length}個</p>
+                    <p><strong>工学特徴量数:</strong> ${analysisResult.engineeredFeatures.length}個</p>
+                    <p><strong>削減後特徴量数:</strong> ${analysisResult.reducedFeatures.length}個</p>
+                    <p><strong>発見特徴量数:</strong> ${analysisResult.discoveredFeatures.length}個</p>
+                    <p><strong>選択特徴量数:</strong> ${analysisResult.selectedFeatures.length}個</p>
+                    <p><strong>性能改善度:</strong> ${(analysisResult.performanceMetrics.improvement * 100).toFixed(1)}%</p>
+                    <p><strong>削減率:</strong> ${(analysisResult.featureStatistics.reductionRatio * 100).toFixed(1)}%</p>
+                </div>
+            `;
+            
+            // メトリクス更新
+            updateProgressBar('baseFeatureProgress', 'baseFeatureValue', analysisResult.baseFeatures.length, '個');
+            updateProgressBar('engineeredFeatureProgress', 'engineeredFeatureValue', analysisResult.engineeredFeatures.length, '個');
+            updateProgressBar('discoveredFeatureProgress', 'discoveredFeatureValue', analysisResult.discoveredFeatures.length, '個');
+            updateProgressBar('performanceProgress', 'performanceValue', analysisResult.performanceMetrics.improvement * 100, '%');
+            
+            // 特徴量詳細表示
+            displayFeatureDetails(analysisResult);
+            
+            // チャート更新
+            updateAnalysisChart(analysisResult);
+        }
+        
+        // 基本特徴量抽出テスト
+        function testBaseFeatureExtraction() {
+            console.log('📊 基本特徴量抽出テスト');
+            const results = document.getElementById('analysisResults');
+            
+            const testRaceData = generateTestRaceData();
+            const baseFeatures = MultiDimensionalFeatureAnalyzer.extractBaseFeatures(testRaceData);
+            
+            results.innerHTML += `
+                <div class="result-card">
+                    <h4>📊 基本特徴量抽出結果</h4>
+                    <p><strong>抽出特徴量数:</strong> ${baseFeatures.length}個</p>
+                    <p><strong>カテゴリ別内訳:</strong></p>
+                    <ul>
+                        <li>基本統計: ${baseFeatures.filter(f => f.category === 'basic').length}個</li>
+                        <li>履歴ベース: ${baseFeatures.filter(f => f.category === 'historical').length}個</li>
+                        <li>コンテキスト: ${baseFeatures.filter(f => f.category === 'contextual').length}個</li>
+                        <li>環境: ${baseFeatures.filter(f => f.category === 'environment').length}個</li>
+                    </ul>
+                </div>
+            `;
+            
+            updateProgressBar('baseFeatureProgress', 'baseFeatureValue', baseFeatures.length, '個');
+        }
+        
+        // 特徴量工学テスト
+        function testFeatureEngineering() {
+            console.log('🔧 特徴量工学テスト');
+            const results = document.getElementById('analysisResults');
+            
+            const testRaceData = generateTestRaceData();
+            const historicalData = generateHistoricalData();
+            const baseFeatures = MultiDimensionalFeatureAnalyzer.extractBaseFeatures(testRaceData);
+            const engineeredFeatures = MultiDimensionalFeatureAnalyzer.applyFeatureEngineering(baseFeatures, historicalData);
+            
+            results.innerHTML += `
+                <div class="result-card">
+                    <h4>🔧 特徴量工学実行結果</h4>
+                    <p><strong>元特徴量数:</strong> ${baseFeatures.length}個</p>
+                    <p><strong>工学後特徴量数:</strong> ${engineeredFeatures.length}個</p>
+                    <p><strong>増加特徴量数:</strong> ${engineeredFeatures.length - baseFeatures.length}個</p>
+                    <p><strong>カテゴリ別内訳:</strong></p>
+                    <ul>
+                        <li>多項式: ${engineeredFeatures.filter(f => f.category === 'polynomial').length}個</li>
+                        <li>相互作用: ${engineeredFeatures.filter(f => f.category === 'interaction').length}個</li>
+                        <li>変換: ${engineeredFeatures.filter(f => f.category === 'transformation').length}個</li>
+                        <li>ビニング: ${engineeredFeatures.filter(f => f.category === 'binning').length}個</li>
+                    </ul>
+                </div>
+            `;
+            
+            updateProgressBar('engineeredFeatureProgress', 'engineeredFeatureValue', engineeredFeatures.length, '個');
+        }
+        
+        // 次元削減テスト
+        function testDimensionReduction() {
+            console.log('📉 次元削減テスト');
+            const results = document.getElementById('analysisResults');
+            
+            const testRaceData = generateTestRaceData();
+            const historicalData = generateHistoricalData();
+            const baseFeatures = MultiDimensionalFeatureAnalyzer.extractBaseFeatures(testRaceData);
+            const engineeredFeatures = MultiDimensionalFeatureAnalyzer.applyFeatureEngineering(baseFeatures, historicalData);
+            const reducedFeatures = MultiDimensionalFeatureAnalyzer.performDimensionReduction(engineeredFeatures);
+            
+            results.innerHTML += `
+                <div class="result-card">
+                    <h4>📉 次元削減実行結果</h4>
+                    <p><strong>削減前特徴量数:</strong> ${engineeredFeatures.length}個</p>
+                    <p><strong>削減後特徴量数:</strong> ${reducedFeatures.length}個</p>
+                    <p><strong>削減率:</strong> ${((engineeredFeatures.length - reducedFeatures.length) / engineeredFeatures.length * 100).toFixed(1)}%</p>
+                    <p><strong>次元削減手法:</strong> 相関除去 + 分散選択 + PCA</p>
+                </div>
+            `;
+        }
+        
+        // 特徴量発見テスト
+        function testFeatureDiscovery() {
+            console.log('🔍 特徴量発見テスト');
+            const results = document.getElementById('discoveryResults');
+            
+            const testRaceData = generateTestRaceData();
+            const historicalData = generateHistoricalData();
+            const baseFeatures = MultiDimensionalFeatureAnalyzer.extractBaseFeatures(testRaceData);
+            const engineeredFeatures = MultiDimensionalFeatureAnalyzer.applyFeatureEngineering(baseFeatures, historicalData);
+            const reducedFeatures = MultiDimensionalFeatureAnalyzer.performDimensionReduction(engineeredFeatures);
+            const discoveredFeatures = MultiDimensionalFeatureAnalyzer.discoverNewFeatures(reducedFeatures, historicalData);
+            
+            results.innerHTML = `
+                <div class="result-card">
+                    <h4>🔍 特徴量自動発見結果</h4>
+                    <p><strong>発見特徴量数:</strong> ${discoveredFeatures.length}個</p>
+                    <p><strong>平均重要度:</strong> ${(discoveredFeatures.reduce((sum, f) => sum + f.importance, 0) / discoveredFeatures.length).toFixed(3)}</p>
+                    <p><strong>発見カテゴリ:</strong> パターン、統計、組み合わせ</p>
+                    <p><strong>フィルタリング:</strong> 重要度 ≥ 0.05</p>
+                </div>
+            `;
+            
+            updateProgressBar('discoveredFeatureProgress', 'discoveredFeatureValue', discoveredFeatures.length, '個');
+        }
+        
+        // 特徴量選択テスト
+        function testFeatureSelection() {
+            console.log('🎯 特徴量選択テスト');
+            const results = document.getElementById('discoveryResults');
+            
+            // 簡易テスト用特徴量生成
+            const testFeatures = [];
+            for (let i = 0; i < 25; i++) {
+                testFeatures.push({
+                    name: `test_feature_${i}`,
+                    value: Math.random(),
+                    importance: Math.random(),
+                    category: 'test'
+                });
+            }
+            
+            const selectedFeatures = MultiDimensionalFeatureAnalyzer.optimizeFeatureSelection(testFeatures);
+            
+            results.innerHTML += `
+                <div class="result-card">
+                    <h4>🎯 特徴量選択最適化結果</h4>
+                    <p><strong>候補特徴量数:</strong> ${testFeatures.length}個</p>
+                    <p><strong>選択特徴量数:</strong> ${selectedFeatures.length}個</p>
+                    <p><strong>選択率:</strong> ${(selectedFeatures.length / testFeatures.length * 100).toFixed(1)}%</p>
+                    <p><strong>選択手法:</strong> アンサンブル選択 + 安定性評価</p>
+                </div>
+            `;
+        }
+        
+        // 特徴量重要度テスト
+        function testFeatureImportance() {
+            console.log('📊 特徴量重要度テスト');
+            const results = document.getElementById('discoveryResults');
+            
+            // 簡易テスト実行
+            const testFeatures = [];
+            for (let i = 0; i < 10; i++) {
+                testFeatures.push({
+                    name: `feature_${i}`,
+                    value: Math.random(),
+                    importance: Math.random(),
+                    category: 'test'
+                });
+            }
+            
+            const importanceScores = MultiDimensionalFeatureAnalyzer.evaluateFeatureImportance(testFeatures);
+            
+            results.innerHTML += `
+                <div class="result-card">
+                    <h4>📊 特徴量重要度評価結果</h4>
+                    <p><strong>評価特徴量数:</strong> ${importanceScores.length}個</p>
+                    <p><strong>最高重要度:</strong> ${Math.max(...importanceScores.map(s => s.importance)).toFixed(3)}</p>
+                    <p><strong>最低重要度:</strong> ${Math.min(...importanceScores.map(s => s.importance)).toFixed(3)}</p>
+                    <p><strong>平均重要度:</strong> ${(importanceScores.reduce((sum, s) => sum + s.importance, 0) / importanceScores.length).toFixed(3)}</p>
+                </div>
+            `;
+        }
+        
+        // 性能評価テスト
+        function testPerformanceEvaluation() {
+            console.log('📈 性能評価テスト');
+            const results = document.getElementById('discoveryResults');
+            
+            // 簡易テスト実行
+            const testFeatures = [];
+            for (let i = 0; i < 15; i++) {
+                testFeatures.push({
+                    name: `feature_${i}`,
+                    value: Math.random(),
+                    importance: Math.random(),
+                    category: 'test'
+                });
+            }
+            
+            const performanceMetrics = MultiDimensionalFeatureAnalyzer.evaluateFeaturePerformance(testFeatures);
+            
+            results.innerHTML += `
+                <div class="result-card">
+                    <h4>📈 特徴量性能評価結果</h4>
+                    <p><strong>交差検証精度:</strong> ${(performanceMetrics.crossValidation.accuracy * 100).toFixed(1)}%</p>
+                    <p><strong>予測精度:</strong> ${(performanceMetrics.prediction.accuracy * 100).toFixed(1)}%</p>
+                    <p><strong>精密度:</strong> ${(performanceMetrics.prediction.precision * 100).toFixed(1)}%</p>
+                    <p><strong>再現率:</strong> ${(performanceMetrics.prediction.recall * 100).toFixed(1)}%</p>
+                    <p><strong>総合改善度:</strong> ${(performanceMetrics.improvement * 100).toFixed(1)}%</p>
+                </div>
+            `;
+            
+            updateProgressBar('performanceProgress', 'performanceValue', performanceMetrics.improvement * 100, '%');
+        }
+        
+        // 特徴量詳細表示
+        function displayFeatureDetails(analysisResult) {
+            const details = document.getElementById('featureDetails');
+            
+            const topFeatures = analysisResult.selectedFeatures.slice(0, 20);
+            
+            let featureListHTML = '<div class="feature-list">';
+            topFeatures.forEach((feature, index) => {
+                const importanceWidth = (feature.importance * 100).toFixed(0);
+                featureListHTML += `
+                    <div class="feature-item">
+                        <strong>${index + 1}. ${feature.name}</strong>
+                        <span class="feature-importance">
+                            <div class="feature-importance-fill" style="width: ${importanceWidth}%"></div>
+                        </span>
+                        <span>(${feature.importance.toFixed(3)})</span>
+                    </div>
+                `;
+            });
+            featureListHTML += '</div>';
+            
+            details.innerHTML = `
+                <div class="info-card">
+                    <h4>🎯 上位特徴量一覧 (Top 20)</h4>
+                    ${featureListHTML}
+                </div>
+            `;
+        }
+        
+        // 分析チャート更新
+        function updateAnalysisChart(analysisResult) {
+            const chart = document.getElementById('analysisChart');
+            
+            // 簡易チャート表示
+            const categories = ['基本', '工学', '発見', '選択'];
+            const values = [
+                analysisResult.baseFeatures.length,
+                analysisResult.engineeredFeatures.length - analysisResult.baseFeatures.length,
+                analysisResult.discoveredFeatures.length,
+                analysisResult.selectedFeatures.length
+            ];
+            
+            let chartHTML = '<h4>📊 特徴量分析結果チャート</h4>';
+            chartHTML += '<div style="display: flex; align-items: end; height: 200px; gap: 10px;">';
+            
+            categories.forEach((category, index) => {
+                const height = Math.max(20, (values[index] / Math.max(...values)) * 180);
+                chartHTML += `
+                    <div style="flex: 1; display: flex; flex-direction: column; align-items: center;">
+                        <div style="width: 60px; height: ${height}px; background: linear-gradient(45deg, #667eea, #764ba2); border-radius: 5px 5px 0 0; margin-bottom: 5px;"></div>
+                        <div style="font-size: 12px; text-align: center;">${category}</div>
+                        <div style="font-size: 14px; font-weight: bold;">${values[index]}</div>
+                    </div>
+                `;
+            });
+            
+            chartHTML += '</div>';
+            chart.innerHTML = chartHTML;
+        }
+        
+        // プログレスバー更新
+        function updateProgressBar(progressId, valueId, percentage, suffix) {
+            const normalizedPercentage = Math.min(100, Math.max(0, percentage));
+            document.getElementById(progressId).style.width = normalizedPercentage + '%';
+            document.getElementById(valueId).textContent = percentage.toFixed(1) + suffix;
+        }
+        
+        // 初期化
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🔍 多次元特徴量分析・自動発見システムテスト初期化完了');
+        });
+    </script>
+</body>
+</html>

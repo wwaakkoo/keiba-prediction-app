@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phase 3懸念事項対応後統合テスト</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f8f9fa;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            padding: 20px;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #007bff;
+        }
+        .test-section h2 {
+            color: #007bff;
+            margin-bottom: 15px;
+        }
+        .test-result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .test-success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .test-warning {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        .test-error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .btn {
+            background: linear-gradient(45deg, #007bff, #0056b3);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .btn:hover {
+            background: linear-gradient(45deg, #0056b3, #004494);
+        }
+        .data-display {
+            background: #f1f3f4;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .stat-item {
+            background: white;
+            padding: 15px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #007bff;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+        .console-output {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Phase 3懸念事項対応後統合テスト</h1>
+        
+        <div class="test-section">
+            <h2>🎯 1. アンサンブルスコア統合テスト</h2>
+            <button class="btn" onclick="testEnsembleIntegration()">アンサンブル統合テスト実行</button>
+            <div id="ensembleTestResult" class="test-result"></div>
+            <div id="ensembleData" class="data-display"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>📊 2. ログレベル制御システムテスト</h2>
+            <button class="btn" onclick="testLogLevelControl()">ログ制御テスト実行</button>
+            <button class="btn" onclick="setProductionMode()">本番モード設定</button>
+            <button class="btn" onclick="setDevelopmentMode()">開発モード設定</button>
+            <div id="logTestResult" class="test-result"></div>
+            <div id="logStats" class="data-display"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>🏃 3. 3連複・3連単推奨統合テスト</h2>
+            <button class="btn" onclick="testTripleRecommendations()">3連複・3連単テスト実行</button>
+            <div id="tripleTestResult" class="test-result"></div>
+            <div id="tripleData" class="data-display"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>🔄 4. Phase 1-3統合システムテスト</h2>
+            <button class="btn" onclick="testFullSystemIntegration()">全システム統合テスト実行</button>
+            <div id="fullTestResult" class="test-result"></div>
+            <div class="stats-grid" id="systemStats"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>🎯 5. 実際のレースデータテスト</h2>
+            <button class="btn" onclick="loadSampleRaceData()">サンプルレースデータ読み込み</button>
+            <button class="btn" onclick="testRealRaceData()">実レースデータテスト実行</button>
+            <div id="raceTestResult" class="test-result"></div>
+            <div id="raceData" class="data-display"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>📈 6. パフォーマンス監視テスト</h2>
+            <button class="btn" onclick="testPerformanceMonitoring()">パフォーマンステスト実行</button>
+            <div id="performanceTestResult" class="test-result"></div>
+            <div id="performanceData" class="data-display"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>🖥️ コンソール出力監視</h2>
+            <button class="btn" onclick="clearConsoleOutput()">コンソールクリア</button>
+            <div id="consoleOutput" class="console-output"></div>
+        </div>
+    </div>
+
+    <!-- 必要なJavaScriptファイルを読み込み -->
+    <script src="../js/logLevelController.js"></script>
+    <script src="../js/config.js"></script>
+    <script src="../js/pedigreeDatabase.js"></script>
+    <script src="../js/dataConverter.js"></script>
+    <script src="../js/horseManager.js"></script>
+    <script src="../js/dataManager.js"></script>
+    <script src="../js/raceAnalysisEngine.js"></script>
+    <script src="../js/predictionEngine.js"></script>
+    <script src="../js/bettingRecommender.js"></script>
+    <script src="../js/learningSystem.js"></script>
+    <script src="../js/hybridLearningSystem.js"></script>
+    <script src="../js/enhancedLearningSystem.js"></script>
+    <script src="../js/learningDataMigration.js"></script>
+    <script src="../js/enhancedVisualizationSystem.js"></script>
+    <script src="../js/aiRecommendationService.js"></script>
+    <script src="../js/profitabilityMetrics.js"></script>
+    <script src="../js/investmentEfficiencyCalculator.js"></script>
+    <script src="../js/underdogDiscoveryAlgorithm.js"></script>
+    <script src="../js/riskReturnAnalyzer.js"></script>
+    <script src="../js/profitabilityVisualizationSystem.js"></script>
+    <script src="../js/errorHandlingSystem.js"></script>
+    <script src="../js/systemIntegration.js"></script>
+    <script src="../js/mobileInteractionHandler.js"></script>
+    <script src="../js/investmentStrategy.js"></script>
+    <script src="../js/enhancedRecommendationSystem.js"></script>
+    <!-- Phase 1 -->
+    <script src="../js/hitCriteriaSystem.js"></script>
+    <script src="../js/reliabilityFilter.js"></script>
+    <script src="../js/dynamicRecommendationAdjuster.js"></script>
+    <!-- Phase 2 -->
+    <script src="../js/riskManagementInvestmentSystem.js"></script>
+    <script src="../js/kellyBettingSystem.js"></script>
+    <script src="../js/profitabilityPatternAnalyzer.js"></script>
+    <script src="../js/betTypeOptimizationSystem.js"></script>
+    <script src="../js/drawdownControlSystem.js"></script>
+    <!-- Phase 3 -->
+    <script src="../js/realtimeLearningEngine.js"></script>
+    <script src="../js/marketAdaptationSystem.js"></script>
+    <script src="../js/multiDimensionalFeatureAnalyzer.js"></script>
+    <script src="../js/abTestingSystem.js"></script>
+    <script src="../js/raceSpecificAdaptationSystem.js"></script>
+
+    <script>
+        // コンソール出力監視
+        let consoleOutput = document.getElementById('consoleOutput');
+        let originalConsoleLog = console.log;
+        let originalConsoleError = console.error;
+        let originalConsoleWarn = console.warn;
+        let originalConsoleInfo = console.info;
+
+        function interceptConsole() {
+            console.log = function(...args) {
+                originalConsoleLog.apply(console, args);
+                consoleOutput.textContent += `[LOG] ${args.join(' ')}\n`;
+                consoleOutput.scrollTop = consoleOutput.scrollHeight;
+            };
+
+            console.error = function(...args) {
+                originalConsoleError.apply(console, args);
+                consoleOutput.textContent += `[ERROR] ${args.join(' ')}\n`;
+                consoleOutput.scrollTop = consoleOutput.scrollHeight;
+            };
+
+            console.warn = function(...args) {
+                originalConsoleWarn.apply(console, args);
+                consoleOutput.textContent += `[WARN] ${args.join(' ')}\n`;
+                consoleOutput.scrollTop = consoleOutput.scrollHeight;
+            };
+
+            console.info = function(...args) {
+                originalConsoleInfo.apply(console, args);
+                consoleOutput.textContent += `[INFO] ${args.join(' ')}\n`;
+                consoleOutput.scrollTop = consoleOutput.scrollHeight;
+            };
+        }
+
+        function clearConsoleOutput() {
+            consoleOutput.textContent = '';
+        }
+
+        // 1. アンサンブルスコア統合テスト
+        function testEnsembleIntegration() {
+            const result = document.getElementById('ensembleTestResult');
+            const data = document.getElementById('ensembleData');
+            
+            try {
+                console.log('🎯 アンサンブルスコア統合テスト開始');
+                
+                // サンプルデータ作成
+                const sampleHorses = [
+                    { name: 'サンプル1', odds: 2.5, popularity: 1, age: 4, weight: 460, jockey: 'A騎手', runningStyle: '逃げ' },
+                    { name: 'サンプル2', odds: 4.2, popularity: 2, age: 5, weight: 470, jockey: 'B騎手', runningStyle: '先行' },
+                    { name: 'サンプル3', odds: 8.1, popularity: 3, age: 3, weight: 450, jockey: 'C騎手', runningStyle: '差し' },
+                    { name: 'サンプル4', odds: 12.3, popularity: 4, age: 6, weight: 480, jockey: 'D騎手', runningStyle: '追込' },
+                    { name: 'サンプル5', odds: 15.7, popularity: 5, age: 4, weight: 465, jockey: 'E騎手', runningStyle: '差し' }
+                ];
+                
+                // 予測実行
+                const engine = new PredictionEngine();
+                const predictions = engine.predict(sampleHorses);
+                
+                // アンサンブルデータの検証
+                const ensembleData = window.lastEnsembleResult;
+                
+                if (ensembleData) {
+                    console.log('✅ アンサンブルデータ取得成功');
+                    
+                    // データ整合性チェック
+                    if (ensembleData.predictions.length === predictions.length) {
+                        console.log('✅ 予測数一致');
+                        
+                        // 各予測の統合状況チェック
+                        let integrationSuccess = true;
+                        predictions.forEach((pred, index) => {
+                            if (pred.enhancedScore && pred.ensembleConfidence) {
+                                console.log(`✅ ${pred.name}: 統合完了 (強化スコア: ${pred.enhancedScore.toFixed(1)}, 信頼度: ${pred.ensembleConfidence.toFixed(3)})`);
+                            } else {
+                                console.warn(`⚠️ ${pred.name}: 統合不完全`);
+                                integrationSuccess = false;
+                            }
+                        });
+                        
+                        if (integrationSuccess) {
+                            result.className = 'test-result test-success';
+                            result.textContent = '✅ アンサンブルスコア統合テスト: 成功';
+                        } else {
+                            result.className = 'test-result test-warning';
+                            result.textContent = '⚠️ アンサンブルスコア統合テスト: 部分的成功';
+                        }
+                    } else {
+                        result.className = 'test-result test-error';
+                        result.textContent = '❌ アンサンブルスコア統合テスト: 予測数不一致';
+                    }
+                } else {
+                    result.className = 'test-result test-error';
+                    result.textContent = '❌ アンサンブルスコア統合テスト: アンサンブルデータ取得失敗';
+                }
+                
+                // 結果表示
+                data.textContent = JSON.stringify({
+                    predictions: predictions.map(p => ({
+                        name: p.name,
+                        winProbability: p.winProbability,
+                        enhancedScore: p.enhancedScore,
+                        ensembleConfidence: p.ensembleConfidence
+                    })),
+                    ensembleData: ensembleData
+                }, null, 2);
+                
+            } catch (error) {
+                console.error('❌ アンサンブル統合テストエラー:', error);
+                result.className = 'test-result test-error';
+                result.textContent = '❌ アンサンブルスコア統合テスト: エラー発生';
+                data.textContent = error.message;
+            }
+        }
+
+        // 2. ログレベル制御システムテスト
+        function testLogLevelControl() {
+            const result = document.getElementById('logTestResult');
+            const stats = document.getElementById('logStats');
+            
+            try {
+                console.log('📊 ログレベル制御システムテスト開始');
+                
+                // ログレベル制御システムの存在確認
+                if (typeof LogLevelController !== 'undefined') {
+                    console.log('✅ ログレベル制御システム読み込み成功');
+                    
+                    // 各レベルのテスト
+                    LogLevelController.setLogLevel('DEBUG');
+                    LogLevelController.debug('testSystem', 'デバッグログテスト');
+                    
+                    LogLevelController.setLogLevel('INFO');
+                    LogLevelController.info('testSystem', '情報ログテスト');
+                    
+                    LogLevelController.setLogLevel('WARN');
+                    LogLevelController.warn('testSystem', '警告ログテスト');
+                    
+                    LogLevelController.setLogLevel('ERROR');
+                    LogLevelController.error('testSystem', 'エラーログテスト');
+                    
+                    // 統計情報取得
+                    const logStats = LogLevelController.getLogStats();
+                    console.log('✅ ログ統計情報取得成功');
+                    
+                    result.className = 'test-result test-success';
+                    result.textContent = '✅ ログレベル制御システムテスト: 成功';
+                    
+                    stats.textContent = JSON.stringify(logStats, null, 2);
+                } else {
+                    result.className = 'test-result test-error';
+                    result.textContent = '❌ ログレベル制御システムテスト: システム未読み込み';
+                }
+                
+            } catch (error) {
+                console.error('❌ ログレベル制御テストエラー:', error);
+                result.className = 'test-result test-error';
+                result.textContent = '❌ ログレベル制御システムテスト: エラー発生';
+                stats.textContent = error.message;
+            }
+        }
+
+        // 3. 3連複・3連単推奨統合テスト
+        function testTripleRecommendations() {
+            const result = document.getElementById('tripleTestResult');
+            const data = document.getElementById('tripleData');
+            
+            try {
+                console.log('🏃 3連複・3連単推奨統合テスト開始');
+                
+                // サンプルデータ
+                const sampleHorses = [
+                    { name: 'テスト1', odds: 2.1, popularity: 1, age: 4, weight: 460 },
+                    { name: 'テスト2', odds: 3.5, popularity: 2, age: 5, weight: 470 },
+                    { name: 'テスト3', odds: 7.2, popularity: 3, age: 3, weight: 450 },
+                    { name: 'テスト4', odds: 12.8, popularity: 4, age: 6, weight: 480 },
+                    { name: 'テスト5', odds: 18.3, popularity: 5, age: 4, weight: 465 }
+                ];
+                
+                // 予測実行
+                const engine = new PredictionEngine();
+                const predictions = engine.predict(sampleHorses);
+                
+                // 推奨生成
+                BettingRecommender.generateBettingRecommendations(predictions);
+                
+                // 3連複・3連単推奨の存在確認
+                const recommendations = window.lastBettingRecommendations;
+                if (recommendations) {
+                    const tripleBoxRecs = recommendations.filter(r => r.category === '3連複');
+                    const tripleExactRecs = recommendations.filter(r => r.category === '3連単');
+                    
+                    console.log(`✅ 3連複推奨: ${tripleBoxRecs.length}件`);
+                    console.log(`✅ 3連単推奨: ${tripleExactRecs.length}件`);
+                    
+                    if (tripleBoxRecs.length > 0 && tripleExactRecs.length > 0) {
+                        result.className = 'test-result test-success';
+                        result.textContent = '✅ 3連複・3連単推奨統合テスト: 成功';
+                        
+                        data.textContent = JSON.stringify({
+                            tripleBox: tripleBoxRecs,
+                            tripleExact: tripleExactRecs
+                        }, null, 2);
+                    } else {
+                        result.className = 'test-result test-warning';
+                        result.textContent = '⚠️ 3連複・3連単推奨統合テスト: 推奨生成不完全';
+                    }
+                } else {
+                    result.className = 'test-result test-error';
+                    result.textContent = '❌ 3連複・3連単推奨統合テスト: 推奨データ取得失敗';
+                }
+                
+            } catch (error) {
+                console.error('❌ 3連複・3連単テストエラー:', error);
+                result.className = 'test-result test-error';
+                result.textContent = '❌ 3連複・3連単推奨統合テスト: エラー発生';
+                data.textContent = error.message;
+            }
+        }
+
+        // 4. Phase 1-3統合システムテスト
+        function testFullSystemIntegration() {
+            const result = document.getElementById('fullTestResult');
+            const statsContainer = document.getElementById('systemStats');
+            
+            try {
+                console.log('🔄 Phase 1-3統合システムテスト開始');
+                
+                // 各Phaseシステムの存在確認
+                const phase1Systems = [
+                    { name: 'HitCriteriaSystem', check: () => typeof HitCriteriaSystem !== 'undefined' },
+                    { name: 'ReliabilityFilter', check: () => typeof ReliabilityFilter !== 'undefined' },
+                    { name: 'DynamicRecommendationAdjuster', check: () => typeof DynamicRecommendationAdjuster !== 'undefined' }
+                ];
+                
+                const phase2Systems = [
+                    { name: 'RiskManagementInvestmentSystem', check: () => typeof RiskManagementInvestmentSystem !== 'undefined' },
+                    { name: 'KellyBettingSystem', check: () => typeof KellyBettingSystem !== 'undefined' },
+                    { name: 'ProfitabilityPatternAnalyzer', check: () => typeof ProfitabilityPatternAnalyzer !== 'undefined' }
+                ];
+                
+                const phase3Systems = [
+                    { name: 'RealtimeLearningEngine', check: () => typeof RealtimeLearningEngine !== 'undefined' },
+                    { name: 'MarketAdaptationSystem', check: () => typeof MarketAdaptationSystem !== 'undefined' },
+                    { name: 'MultiDimensionalFeatureAnalyzer', check: () => typeof MultiDimensionalFeatureAnalyzer !== 'undefined' }
+                ];
+                
+                // システム統合テスト実行
+                const testResults = {
+                    phase1: phase1Systems.map(s => ({ name: s.name, available: s.check() })),
+                    phase2: phase2Systems.map(s => ({ name: s.name, available: s.check() })),
+                    phase3: phase3Systems.map(s => ({ name: s.name, available: s.check() }))
+                };
+                
+                // 統計表示
+                statsContainer.innerHTML = '';
+                Object.keys(testResults).forEach(phase => {
+                    const phaseResults = testResults[phase];
+                    const available = phaseResults.filter(r => r.available).length;
+                    const total = phaseResults.length;
+                    
+                    const statItem = document.createElement('div');
+                    statItem.className = 'stat-item';
+                    statItem.innerHTML = `
+                        <div class="stat-value">${available}/${total}</div>
+                        <div class="stat-label">${phase.toUpperCase()} システム</div>
+                    `;
+                    statsContainer.appendChild(statItem);
+                });
+                
+                // 総合判定
+                const totalAvailable = Object.values(testResults).flat().filter(r => r.available).length;
+                const totalSystems = Object.values(testResults).flat().length;
+                
+                if (totalAvailable === totalSystems) {
+                    result.className = 'test-result test-success';
+                    result.textContent = '✅ Phase 1-3統合システムテスト: 全システム正常';
+                } else if (totalAvailable > totalSystems * 0.8) {
+                    result.className = 'test-result test-warning';
+                    result.textContent = '⚠️ Phase 1-3統合システムテスト: 一部システム不完全';
+                } else {
+                    result.className = 'test-result test-error';
+                    result.textContent = '❌ Phase 1-3統合システムテスト: 重要システム不足';
+                }
+                
+            } catch (error) {
+                console.error('❌ 統合システムテストエラー:', error);
+                result.className = 'test-result test-error';
+                result.textContent = '❌ Phase 1-3統合システムテスト: エラー発生';
+            }
+        }
+
+        // サンプルレースデータ読み込み
+        function loadSampleRaceData() {
+            const data = document.getElementById('raceData');
+            
+            const sampleRaceData = [
+                { name: '実戦テスト1', odds: 1.8, popularity: 1, age: 4, weight: 460, jockey: 'M.デムーロ', runningStyle: '逃げ' },
+                { name: '実戦テスト2', odds: 3.2, popularity: 2, age: 5, weight: 470, jockey: 'C.ルメール', runningStyle: '先行' },
+                { name: '実戦テスト3', odds: 5.8, popularity: 3, age: 3, weight: 450, jockey: '武豊', runningStyle: '差し' },
+                { name: '実戦テスト4', odds: 8.9, popularity: 4, age: 6, weight: 480, jockey: '福永祐一', runningStyle: '追込' },
+                { name: '実戦テスト5', odds: 13.2, popularity: 5, age: 4, weight: 465, jockey: '戸崎圭太', runningStyle: '差し' },
+                { name: '実戦テスト6', odds: 21.7, popularity: 6, age: 5, weight: 475, jockey: '川田将雅', runningStyle: '追込' },
+                { name: '実戦テスト7', odds: 34.1, popularity: 7, age: 3, weight: 455, jockey: '岩田康誠', runningStyle: '先行' },
+                { name: '実戦テスト8', odds: 67.3, popularity: 8, age: 7, weight: 485, jockey: '池添謙一', runningStyle: '追込' }
+            ];
+            
+            window.testRaceData = sampleRaceData;
+            data.textContent = JSON.stringify(sampleRaceData, null, 2);
+            console.log('✅ サンプルレースデータ読み込み完了');
+        }
+
+        // 実レースデータテスト
+        function testRealRaceData() {
+            const result = document.getElementById('raceTestResult');
+            const data = document.getElementById('raceData');
+            
+            try {
+                console.log('🎯 実レースデータテスト開始');
+                
+                if (!window.testRaceData) {
+                    loadSampleRaceData();
+                }
+                
+                // 予測実行
+                const engine = new PredictionEngine();
+                const predictions = engine.predict(window.testRaceData);
+                
+                // 推奨生成
+                BettingRecommender.generateBettingRecommendations(predictions);
+                
+                // 結果検証
+                const recommendations = window.lastBettingRecommendations;
+                if (recommendations && recommendations.length > 0) {
+                    const categories = [...new Set(recommendations.map(r => r.category))];
+                    console.log(`✅ 推奨カテゴリ: ${categories.join(', ')}`);
+                    
+                    result.className = 'test-result test-success';
+                    result.textContent = `✅ 実レースデータテスト: 成功 (${recommendations.length}件推奨)`;
+                    
+                    data.textContent = JSON.stringify({
+                        predictions: predictions.map(p => ({
+                            name: p.name,
+                            winProbability: p.winProbability,
+                            enhancedScore: p.enhancedScore
+                        })),
+                        recommendations: recommendations.map(r => ({
+                            category: r.category,
+                            type: r.type,
+                            confidence: r.confidence
+                        }))
+                    }, null, 2);
+                } else {
+                    result.className = 'test-result test-error';
+                    result.textContent = '❌ 実レースデータテスト: 推奨生成失敗';
+                }
+                
+            } catch (error) {
+                console.error('❌ 実レースデータテストエラー:', error);
+                result.className = 'test-result test-error';
+                result.textContent = '❌ 実レースデータテスト: エラー発生';
+                data.textContent = error.message;
+            }
+        }
+
+        // パフォーマンス監視テスト
+        function testPerformanceMonitoring() {
+            const result = document.getElementById('performanceTestResult');
+            const data = document.getElementById('performanceData');
+            
+            try {
+                console.log('📈 パフォーマンス監視テスト開始');
+                
+                const startTime = performance.now();
+                
+                // 複数回の予測実行でパフォーマンス測定
+                const iterations = 10;
+                const times = [];
+                
+                for (let i = 0; i < iterations; i++) {
+                    const iterationStart = performance.now();
+                    
+                    const sampleHorses = Array.from({length: 8}, (_, index) => ({
+                        name: `パフォーマンステスト${index + 1}`,
+                        odds: Math.random() * 20 + 1,
+                        popularity: index + 1,
+                        age: Math.floor(Math.random() * 5) + 3,
+                        weight: Math.floor(Math.random() * 50) + 450
+                    }));
+                    
+                    const engine = new PredictionEngine();
+                    const predictions = engine.predict(sampleHorses);
+                    BettingRecommender.generateBettingRecommendations(predictions);
+                    
+                    const iterationEnd = performance.now();
+                    times.push(iterationEnd - iterationStart);
+                }
+                
+                const totalTime = performance.now() - startTime;
+                const avgTime = times.reduce((a, b) => a + b, 0) / times.length;
+                const maxTime = Math.max(...times);
+                const minTime = Math.min(...times);
+                
+                const performanceStats = {
+                    iterations: iterations,
+                    totalTime: `${totalTime.toFixed(2)}ms`,
+                    averageTime: `${avgTime.toFixed(2)}ms`,
+                    maxTime: `${maxTime.toFixed(2)}ms`,
+                    minTime: `${minTime.toFixed(2)}ms`,
+                    throughput: `${(iterations / (totalTime / 1000)).toFixed(2)} predictions/sec`
+                };
+                
+                if (avgTime < 100) {
+                    result.className = 'test-result test-success';
+                    result.textContent = '✅ パフォーマンス監視テスト: 良好';
+                } else if (avgTime < 200) {
+                    result.className = 'test-result test-warning';
+                    result.textContent = '⚠️ パフォーマンス監視テスト: 注意';
+                } else {
+                    result.className = 'test-result test-error';
+                    result.textContent = '❌ パフォーマンス監視テスト: 要改善';
+                }
+                
+                data.textContent = JSON.stringify(performanceStats, null, 2);
+                
+            } catch (error) {
+                console.error('❌ パフォーマンス監視テストエラー:', error);
+                result.className = 'test-result test-error';
+                result.textContent = '❌ パフォーマンス監視テスト: エラー発生';
+                data.textContent = error.message;
+            }
+        }
+
+        // ログモード設定
+        function setProductionMode() {
+            if (typeof LogLevelController !== 'undefined') {
+                LogLevelController.setProductionMode();
+                console.log('🏭 本番モードに設定しました');
+            }
+        }
+
+        function setDevelopmentMode() {
+            if (typeof LogLevelController !== 'undefined') {
+                LogLevelController.setDevelopmentMode();
+                console.log('🔧 開発モードに設定しました');
+            }
+        }
+
+        // 初期化
+        window.onload = function() {
+            console.log('🔍 Phase 3懸念事項対応後統合テストページ読み込み完了');
+            interceptConsole();
+            
+            // ログレベル制御システムの初期化確認
+            if (typeof LogLevelController !== 'undefined') {
+                console.log('✅ ログレベル制御システム利用可能');
+                LogLevelController.setPerformanceMode();
+            }
+        };
+    </script>
+</body>
+</html>
