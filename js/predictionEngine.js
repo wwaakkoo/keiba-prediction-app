@@ -771,6 +771,10 @@ class PredictionEngine {
                 sortedPredictions = [...this.currentPredictions].sort((a, b) => (b.efficiencyScore || 0) - (a.efficiencyScore || 0));
                 sortTitle = '💎 投資効率順';
                 break;
+            case 'ensembleScore':
+                sortedPredictions = [...this.currentPredictions].sort((a, b) => (b.enhancedScore || b.score) - (a.enhancedScore || a.score));
+                sortTitle = '🎯 アンサンブルスコア順';
+                break;
             case 'underdog':
                 sortedPredictions = [...this.currentPredictions].sort((a, b) => {
                     // 1. 穴馬判定による優先順位
@@ -814,6 +818,11 @@ class PredictionEngine {
         // 投資効率順の場合は説明を追加
         if (sortBy === 'efficiency') {
             html += '<p style="color: #2196f3; font-weight: bold; margin-bottom: 15px;">💎 投資効率スコア順表示（効率重視選択）</p>';
+        }
+        
+        // アンサンブルスコア順の場合は説明を追加
+        if (sortBy === 'ensembleScore') {
+            html += '<p style="color: #9c27b0; font-weight: bold; margin-bottom: 15px;">🎯 アンサンブルスコア順表示（AIによる総合評価）</p>';
         }
         
         sortedPredictions.forEach((horse, index) => {
