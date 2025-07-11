@@ -565,82 +565,73 @@ class LearningSystem {
                                     patternHits++;
                                 }
                             } else if (bet.type === '複勝') {
-                                // 馬番での照合も追加
+                                // 複勝的中判定の改善版
                                 const betNumber = parseInt(bet.combination.replace(/[^\d]/g, ''));
+                                
+                                // 馬名の正規化（全角・半角、スペース除去）
+                                const normalizeName = (name) => {
+                                    return name.replace(/[\s　]/g, '').toLowerCase();
+                                };
+                                
                                 const hitHorse = actualTop3.find(h => {
+                                    // 直接的な馬名マッチング（部分一致）
                                     if (bet.combination.includes(h.name)) return true;
+                                    
+                                    // 正規化した馬名でのマッチング
+                                    const normalizedHorseName = normalizeName(h.name);
+                                    const normalizedCombination = normalizeName(bet.combination);
+                                    if (normalizedCombination.includes(normalizedHorseName)) return true;
+                                    
+                                    // 馬番での照合
                                     if (!isNaN(betNumber)) {
                                         if (h.name === betNumber.toString()) return true;
                                         if (h.horseNumber === betNumber) return true;
+                                        // 馬番が文字列の場合も考慮
+                                        if (h.horseNumber && h.horseNumber.toString() === betNumber.toString()) return true;
                                     }
+                                    
                                     return false;
                                 });
+                                
                                 if (hitHorse) {
                                     hitStatus = '✅';
                                     const hitPos = actualTop3.findIndex(h => h.name === hitHorse.name) + 1;
                                     details = `「${hitHorse.name}」が${hitPos}着で的中`;
                                     patternHits++;
+                                } else {
+                                    // デバッグ用ログ
+                                    console.log('複勝的中判定 - 外れ:', {
+                                        betCombination: bet.combination,
+                                        actualTop3Names: actualTop3.map(h => h.name),
+                                        betNumber: betNumber
+                                    });
                                 }
                             } else if (bet.type === 'ワイド' || bet.type.includes('ワイド')) {
-                                // ワイド的中判定（馬番対応版）
-                                const wideHorses = bet.combination.split('-');
-                                if (wideHorses.length >= 2) {
-                                    // 馬番から馬名を取得するための関数
-                                    const getHorseNameFromNumber = (horseNumberStr) => {
-                                        const horseNumber = parseInt(horseNumberStr.replace(/[^\d]/g, ''));
-                                        if (isNaN(horseNumber)) return horseNumberStr;
-                                        
-                                        // HorseManagerから馬データを取得
-                                        let horses = [];
-                                        try {
-                                            if (typeof HorseManager !== 'undefined' && HorseManager.getAllHorses) {
-                                                horses = HorseManager.getAllHorses();
-                                            } else if (typeof PredictionEngine !== 'undefined' && PredictionEngine.getAllHorses) {
-                                                horses = PredictionEngine.getAllHorses();
-                                            }
-                                        } catch (e) {
-                                            console.warn('馬データ取得エラー:', e);
-                                        }
-                                        
-                                        // 馬番に対応する馬名を検索
-                                        const foundHorse = horses.find(h => {
-                                            // horseNumberプロパティがある場合
-                                            if (h.horseNumber === horseNumber) return true;
-                                            // 馬名に番号が含まれている場合の簡易チェック
-                                            if (h.name && h.name.includes(horseNumber.toString())) return true;
-                                            return false;
-                                        });
-                                        
-                                        return foundHorse ? foundHorse.name : horseNumberStr;
-                                    };
-                                    
-                                    // 馬番を馬名に変換
-                                    const horseNames = wideHorses.map(getHorseNameFromNumber);
-                                    
-                                    // 両方の馬が3着以内にいるかチェック（馬番・馬名両対応）
-                                    const bothIn = wideHorses.every(horseRef => {
-                                        const horseNumber = parseInt(horseRef.replace(/[^\d]/g, ''));
-                                        return actualTop3.some(h => {
-                                            // 馬名での照合
-                                            if (h.name === horseRef || horseRef.includes(h.name) || h.name.includes(horseRef)) return true;
-                                            // 馬番での照合（着順入力が馬番の場合）
-                                            if (!isNaN(horseNumber)) {
-                                                // h.nameが馬番の場合（例：「11」「9」「8」）
-                                                if (h.name === horseNumber.toString()) return true;
-                                                // h.horseNumberがある場合
-                                                if (h.horseNumber === horseNumber) return true;
-                                                // 馬名に馬番が含まれている場合
-                                                if (h.name && h.name.includes(horseNumber.toString())) return true;
-                                            }
-                                            return false;
-                                        });
-                                    });
-                                    
-                                    if (bothIn) {
-                                        hitStatus = '✅';
-                                        const hitPositions = wideHorses.map(horseRef => {
+                                // ワイド的中判定（複数組み合わせ対応版）
+                                
+                                // 複数の組み合わせがある場合（例：「1-3, 1-6」）
+                                const combinations = bet.combination.split(', ');
+                                let wideHit = false;
+                                let hitDetails = [];
+                                
+                                combinations.forEach(combination => {
+                                    const wideHorses = combination.trim().split('-');
+                                    if (wideHorses.length >= 2) {
+                                        // 馬番から実際の馬を特定する関数
+                                        const findHorseByNumber = (horseRef) => {
                                             const horseNumber = parseInt(horseRef.replace(/[^\d]/g, ''));
-                                            const foundHorse = actualTop3.find(h => {
+                                            
+                                            // 現在の予測データから馬番に対応する馬名を取得
+                                            const currentPredictions = PredictionEngine.getCurrentPredictions();
+                                            if (currentPredictions && currentPredictions.length > 0) {
+                                                if (!isNaN(horseNumber) && horseNumber >= 1 && horseNumber <= currentPredictions.length) {
+                                                    const targetHorse = currentPredictions[horseNumber - 1];
+                                                    return actualTop3.find(h => h.name === targetHorse.name);
+                                                }
+                                            }
+                                            
+                                            // 馬名での直接照合
+                                            return actualTop3.find(h => {
                                                 if (h.name === horseRef || horseRef.includes(h.name) || h.name.includes(horseRef)) return true;
                                                 if (!isNaN(horseNumber)) {
                                                     if (h.name === horseNumber.toString()) return true;
@@ -649,37 +640,91 @@ class LearningSystem {
                                                 }
                                                 return false;
                                             });
-                                            const pos = actualTop3.indexOf(foundHorse) + 1;
-                                            const displayName = foundHorse ? foundHorse.name : horseRef;
-                                            return `${displayName}(${pos}着)`;
-                                        }).join('・');
-                                        details = `ワイド的中: ${hitPositions}`;
-                                        patternHits++;
+                                        };
+                                        
+                                        // 両方の馬が3着以内にいるかチェック
+                                        const bothIn = wideHorses.every(horseRef => {
+                                            const foundHorse = findHorseByNumber(horseRef);
+                                            return foundHorse !== undefined;
+                                        });
+                                        
+                                        if (bothIn) {
+                                            wideHit = true;
+                                            const hitPositions = wideHorses.map(horseRef => {
+                                                const foundHorse = findHorseByNumber(horseRef);
+                                                const pos = actualTop3.indexOf(foundHorse) + 1;
+                                                const displayName = foundHorse ? foundHorse.name : horseRef;
+                                                return `${displayName}(${pos}着)`;
+                                            }).join('・');
+                                            hitDetails.push(`${combination}: ${hitPositions}`);
+                                        }
                                     }
+                                });
+                                
+                                if (wideHit) {
+                                    hitStatus = '✅';
+                                    details = `ワイド的中: ${hitDetails.join('、')}`;
+                                    patternHits++;
                                 }
                             } else if (bet.type.includes('連複') || bet.type.includes('連単')) {
-                                // 3連複・3連単等の的中判定（馬番対応版）
-                                const horses = bet.combination.split('-');
-                                if (horses.length >= 3) {
-                                    const allIn = horses.every(horseRef => {
-                                        const horseNumber = parseInt(horseRef.replace(/[^\d]/g, ''));
-                                        return actualTop3.some(h => {
-                                            // 馬名での照合
-                                            if (h.name === horseRef || horseRef.includes(h.name) || h.name.includes(horseRef)) return true;
-                                            // 馬番での照合
-                                            if (!isNaN(horseNumber)) {
-                                                if (h.name === horseNumber.toString()) return true;
-                                                if (h.horseNumber === horseNumber) return true;
-                                                if (h.name && h.name.includes(horseNumber.toString())) return true;
+                                // 3連複・3連単等の的中判定（複数組み合わせ対応版）
+                                
+                                // 複数の組み合わせがある場合（例：「1-3-6, 1-4-6, 1-5-6」）
+                                const combinations = bet.combination.split(', ');
+                                let complexHit = false;
+                                let hitDetails = [];
+                                
+                                combinations.forEach(combination => {
+                                    const horses = combination.trim().split('-');
+                                    if (horses.length >= 3) {
+                                        // 馬番から実際の馬を特定する関数
+                                        const findHorseByNumber = (horseRef) => {
+                                            const horseNumber = parseInt(horseRef.replace(/[^\d]/g, ''));
+                                            
+                                            // 現在の予測データから馬番に対応する馬名を取得
+                                            const currentPredictions = PredictionEngine.getCurrentPredictions();
+                                            if (currentPredictions && currentPredictions.length > 0) {
+                                                if (!isNaN(horseNumber) && horseNumber >= 1 && horseNumber <= currentPredictions.length) {
+                                                    const targetHorse = currentPredictions[horseNumber - 1];
+                                                    return actualTop3.find(h => h.name === targetHorse.name);
+                                                }
                                             }
-                                            return false;
+                                            
+                                            // 馬名での直接照合
+                                            return actualTop3.find(h => {
+                                                if (h.name === horseRef || horseRef.includes(h.name) || h.name.includes(horseRef)) return true;
+                                                if (!isNaN(horseNumber)) {
+                                                    if (h.name === horseNumber.toString()) return true;
+                                                    if (h.horseNumber === horseNumber) return true;
+                                                    if (h.name && h.name.includes(horseNumber.toString())) return true;
+                                                }
+                                                return false;
+                                            });
+                                        };
+                                        
+                                        // 全ての馬が3着以内にいるかチェック
+                                        const allIn = horses.every(horseRef => {
+                                            const foundHorse = findHorseByNumber(horseRef);
+                                            return foundHorse !== undefined;
                                         });
-                                    });
-                                    if (allIn) {
-                                        hitStatus = '✅';
-                                        details = '全ての馬が3着以内で的中';
-                                        patternHits++;
+                                        
+                                        if (allIn) {
+                                            complexHit = true;
+                                            const hitPositions = horses.map(horseRef => {
+                                                const foundHorse = findHorseByNumber(horseRef);
+                                                const pos = actualTop3.indexOf(foundHorse) + 1;
+                                                const displayName = foundHorse ? foundHorse.name : horseRef;
+                                                return `${displayName}(${pos}着)`;
+                                            }).join('・');
+                                            hitDetails.push(`${combination}: ${hitPositions}`);
+                                        }
                                     }
+                                });
+                                
+                                if (complexHit) {
+                                    hitStatus = '✅';
+                                    details = `${bet.type}的中: ${hitDetails.join('、')}`;
+                                    patternHits++;
                                 }
                             }
                             

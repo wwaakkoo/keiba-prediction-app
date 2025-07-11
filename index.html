@@ -494,9 +494,22 @@
                 </div>
             </div>
             
-            <!-- 買い目推奨セクション -->
-            <div id="bettingRecommendations" class="section" style="background: #fff8e1; border-left: 4px solid #ff9800; margin-top: 20px;">
-                <h3 style="color: #f57c00;">🎯 買い目おすすめ</h3>
+            <!-- 統合買い目推奨システム -->
+            <div id="integratedBettingRecommendations" class="section" style="background: linear-gradient(135deg, #e8f5e8 0%, #f1f8e9 100%); border-left: 4px solid #4caf50; margin-top: 20px;">
+                <h3 style="color: #2e7d32;">🎯 統合買い目推奨システム</h3>
+                <p style="color: #2e7d32; font-size: 0.9em; margin-bottom: 15px;">
+                    📊 期待値計算 + フィルタリング + 従来分析を統合した科学的買い目推奨
+                </p>
+                <div id="integratedBettingContainer"></div>
+            </div>
+            
+            <!-- 期待値ベース推奨（統合システム用） -->
+            <div id="expectedValueBettingRecommendations" class="section" style="display: none;">
+                <div id="expectedValueBettingContainer"></div>
+            </div>
+            
+            <!-- 従来の買い目推奨（統合システム用） -->
+            <div id="bettingRecommendations" class="section" style="display: none;">
                 <div id="bettingContainer"></div>
             </div>
         </div>
@@ -543,6 +556,8 @@
     <script src="js/performanceOptimizer.js"></script>
     <!-- 期待値ベース買い目システム -->
     <script src="js/expectedValueCalculator.js"></script>
+    <script src="js/bettingFilter.js"></script>
+    <script src="js/raceSkipDecisionSystem.js"></script>
     <script src="js/main.js"></script>
 </body>
 </html> 

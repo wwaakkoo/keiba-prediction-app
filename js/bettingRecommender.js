@@ -10,7 +10,17 @@ class BettingRecommender {
     };
 
     static generateBettingRecommendations(predictions) {
+        console.log('🎯 従来の買い目推奨生成開始', {
+            predictionsCount: predictions.length,
+            predictionsNames: predictions.map(p => p.name)
+        });
+        
         const container = document.getElementById('bettingContainer');
+        
+        if (!container) {
+            console.error('❌ bettingContainer が見つかりません');
+            return;
+        }
         
         // 学習データを取得して閾値を調整
         this.adjustThresholdsFromLearning();
@@ -419,10 +429,21 @@ class BettingRecommender {
 
 
     static displayBettingRecommendations(recommendations, horseMarks) {
+        console.log('🎯 従来の買い目推奨表示開始', {
+            recommendationsCount: recommendations.length,
+            horseMarks: horseMarks
+        });
+        
         const container = document.getElementById('bettingContainer');
+        
+        if (!container) {
+            console.error('❌ bettingContainer が見つかりません');
+            return;
+        }
         
         if (recommendations.length === 0) {
             container.innerHTML = '<p style="text-align: center; color: #666;">推奨できる買い目がありません。</p>';
+            console.log('⚠️ 推奨買い目がありません');
             return;
         }
 
@@ -527,6 +548,10 @@ class BettingRecommender {
         `;
 
         container.innerHTML = marksHtml + html;
+        console.log('✅ 従来の買い目推奨表示完了', {
+            totalHtml: (marksHtml + html).length,
+            containerFound: !!container
+        });
     }
 
     // 買い目推奨の結果を学習システムに送信

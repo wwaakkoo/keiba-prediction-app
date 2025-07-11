@@ -738,8 +738,8 @@ class PredictionEngine {
         
         resultsDiv.classList.remove('hidden');
         
-        // 期待値分析を実行・表示
-        this.displayRaceExpectedValueAnalysis(predictions);
+        // 統合買い目推奨システムを実行・表示
+        this.displayIntegratedBettingRecommendations(predictions);
         sortControls.style.display = 'block';
         
         // デフォルトはスコア順で表示
@@ -802,11 +802,11 @@ class PredictionEngine {
                 break;
             case 'expectedValue':
                 sortedPredictions = [...this.currentPredictions].sort((a, b) => {
-                    // 期待値計算（複勝）
+                    // 現実的な期待値計算（複勝）
                     const aExpectedValue = window.ExpectedValueCalculator ? 
-                        ExpectedValueCalculator.calculateHorseExpectedValue(a, 'place').expectedValue : 0;
+                        ExpectedValueCalculator.calculateHorseExpectedValue(a, 'place').realisticExpectedValue : 0;
                     const bExpectedValue = window.ExpectedValueCalculator ? 
-                        ExpectedValueCalculator.calculateHorseExpectedValue(b, 'place').expectedValue : 0;
+                        ExpectedValueCalculator.calculateHorseExpectedValue(b, 'place').realisticExpectedValue : 0;
                     return bExpectedValue - aExpectedValue;
                 });
                 sortTitle = '🎯 期待値順';
@@ -1079,7 +1079,7 @@ class PredictionEngine {
             const placeColor = this.getExpectedValueColor(placeAnalysis.expectedValue);
             const winColor = this.getExpectedValueColor(winAnalysis.expectedValue);
             
-            html += `<div style="font-weight: bold; color: ${placeColor};">🎯 期待値: 複勝${placeAnalysis.expectedValue.toFixed(2)} / 単勝${winAnalysis.expectedValue.toFixed(2)}</div>`;
+            html += `<div style="font-weight: bold; color: ${placeColor};">🎯 期待値: 複勝${placeAnalysis.realisticExpectedValue.toFixed(2)} / 単勝${winAnalysis.realisticExpectedValue.toFixed(2)}</div>`;
             html += `<div style="font-size: 0.9em; color: ${placeColor};">推奨: ${this.getRecommendationDisplay(placeAnalysis.recommendation)} (信頼度: ${(placeAnalysis.confidence * 100).toFixed(0)}%)</div>`;
             
             // 人気層とアドバイス
@@ -1156,21 +1156,339 @@ class PredictionEngine {
             const bettingRecommendations = ExpectedValueCalculator.generateBettingRecommendations(raceAnalysis, 1000);
             this.displayBettingRecommendations(bettingRecommendations);
             
+            // 買い目フィルタリングも実行
+            this.displayBettingFilterAnalysis(predictions, raceAnalysis.analyzedHorses);
+            
         } catch (error) {
             console.error('レース期待値分析エラー:', error);
         }
     }
     
+    // 買い目フィルタリング分析表示
+    static displayBettingFilterAnalysis(predictions, expectedValueAnalyses) {
+        try {
+            if (!window.BettingFilter) {
+                return;
+            }
+            
+            // 買い目フィルタリング実行
+            const filteredResults = BettingFilter.filterRaceBetting(predictions, expectedValueAnalyses);
+            
+            // フィルタリング結果を表示
+            BettingFilter.displayFilteredResults(filteredResults);
+            
+        } catch (error) {
+            console.error('買い目フィルタリングエラー:', error);
+        }
+    }
+    
+    // 統合買い目推奨システムの表示
+    static displayIntegratedBettingRecommendations(predictions) {
+        const container = document.getElementById('integratedBettingContainer');
+        if (!container) return;
+        
+        let html = '';
+        
+        try {
+            // 1. 期待値分析を実行
+            const raceAnalysis = ExpectedValueCalculator.analyzeRaceExpectedValue(predictions, 'place');
+            const bettingRecommendations = ExpectedValueCalculator.generateBettingRecommendations(raceAnalysis, 1000);
+            
+            // 2. フィルタリング結果を取得
+            let filteredResults = null;
+            if (window.BettingFilter) {
+                filteredResults = BettingFilter.filterRaceBetting(predictions, raceAnalysis.analyzedHorses);
+            }
+            
+            // 3. Phase 3: 見送り判定を実行
+            let skipAnalysis = null;
+            if (window.RaceSkipDecisionSystem) {
+                skipAnalysis = RaceSkipDecisionSystem.evaluateRaceSkip(predictions, raceAnalysis, bettingRecommendations);
+                RaceSkipDecisionSystem.recordSkipDecision(skipAnalysis, predictions);
+            }
+            
+            // 4. 見送り判定結果の表示
+            if (skipAnalysis) {
+                html += this.generateSkipAnalysisDisplay(skipAnalysis);
+            }
+            
+            // 5. 統合表示の生成（見送りでない場合のみ詳細表示）
+            if (!skipAnalysis || !skipAnalysis.shouldSkip) {
+                html += '<div style="background: white; border-radius: 10px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">';
+                html += '<h4 style="color: #2e7d32; margin-bottom: 15px;">🎯 統合推奨買い目</h4>';
+            } else {
+                html += '<div style="background: white; border-radius: 10px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); opacity: 0.6;">';
+                html += '<h4 style="color: #757575; margin-bottom: 15px;">📋 参考情報（見送り推奨のため）</h4>';
+            }
+            
+            // 期待値推奨の表示
+            if (bettingRecommendations && bettingRecommendations.length > 0) {
+                html += '<div style="margin-bottom: 20px;">';
+                html += '<h5 style="color: #388e3c; margin-bottom: 10px;">📊 期待値ベース推奨</h5>';
+                
+                bettingRecommendations.forEach(rec => {
+                    // データ構造の正規化
+                    const betType = rec.type || '複勝';
+                    const horseName = rec.horse?.name || rec.horseName || '不明';
+                    const horseNumber = rec.horse?.horseNumber || rec.horseNumber || '?';
+                    const expectedValue = rec.expectedValue || rec.realisticExpectedValue || 0;
+                    const amount = rec.amount || rec.recommendedAmount || 300;
+                    const confidence = Math.round((rec.confidence || 0) * 100);
+                    const estimatedPayout = Math.round(amount * expectedValue);
+                    
+                    html += `
+                        <div style="padding: 12px; margin-bottom: 8px; background: #f1f8e9; border-radius: 8px; border-left: 4px solid #4caf50;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <strong>${betType}</strong>: ${horseName} 
+                                    <span style="color: #666;">(${horseNumber}番)</span>
+                                </div>
+                                <div style="text-align: right;">
+                                    <span style="color: #2e7d32; font-weight: bold;">期待値 ${expectedValue.toFixed(2)}</span>
+                                </div>
+                            </div>
+                            <div style="margin-top: 8px; font-size: 0.9em; color: #666;">
+                                投資額: ${amount}円 | 
+                                推定配当: ${estimatedPayout}円 | 
+                                信頼度: ${confidence}%
+                            </div>
+                            ${rec.reason ? `<div style="margin-top: 5px; font-size: 0.85em; color: #888;">理由: ${rec.reason}</div>` : ''}
+                        </div>
+                    `;
+                });
+                
+                html += '</div>';
+            }
+            
+            // フィルタリング結果の表示
+            if (filteredResults && filteredResults.recommendedBets.length > 0) {
+                html += '<div style="margin-bottom: 20px;">';
+                html += '<h5 style="color: #388e3c; margin-bottom: 10px;">🔍 フィルタリング済み推奨</h5>';
+                
+                filteredResults.recommendedBets.forEach(bet => {
+                    html += `
+                        <div style="padding: 12px; margin-bottom: 8px; background: #e8f5e8; border-radius: 8px; border-left: 4px solid #66bb6a;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <strong>${bet.betType}</strong>: ${bet.horseName}
+                                </div>
+                                <div style="text-align: right;">
+                                    <span style="color: #2e7d32;">${bet.recommendation}</span>
+                                </div>
+                            </div>
+                            <div style="margin-top: 8px; font-size: 0.9em; color: #666;">
+                                ${bet.reason}
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                html += '</div>';
+            }
+            
+            // 推奨がない場合
+            if ((!bettingRecommendations || bettingRecommendations.length === 0) && 
+                (!filteredResults || filteredResults.recommendedBets.length === 0)) {
+                html += '<div style="text-align: center; color: #666; padding: 20px;">';
+                html += '⚠️ 推奨基準を満たす買い目がありません。レース見送りを推奨します。';
+                html += '</div>';
+            }
+            
+            html += '</div>';
+            
+            // 分析データの表示
+            if (raceAnalysis && raceAnalysis.analyzedHorses.length > 0) {
+                html += '<div style="background: white; border-radius: 10px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">';
+                html += '<h4 style="color: #2e7d32; margin-bottom: 15px;">📊 期待値分析データ</h4>';
+                html += '<div style="overflow-x: auto;">';
+                html += '<table style="width: 100%; border-collapse: collapse; font-size: 0.9em;">';
+                html += '<tr style="background: #f1f8e9; color: #2e7d32;">';
+                html += '<th style="padding: 10px; border: 1px solid #ddd;">馬名</th>';
+                html += '<th style="padding: 10px; border: 1px solid #ddd;">人気層</th>';
+                html += '<th style="padding: 10px; border: 1px solid #ddd;">期待値</th>';
+                html += '<th style="padding: 10px; border: 1px solid #ddd;">推定確率</th>';
+                html += '<th style="padding: 10px; border: 1px solid #ddd;">推定配当</th>';
+                html += '<th style="padding: 10px; border: 1px solid #ddd;">推奨</th>';
+                html += '</tr>';
+                
+                raceAnalysis.analyzedHorses.forEach(analysis => {
+                    // データ構造の正規化
+                    const horseName = analysis.horse?.name || analysis.horseName || '不明';
+                    const horseNumber = analysis.horse?.horseNumber || analysis.horseNumber || '?';
+                    const popularityTier = analysis.popularity || analysis.popularityTier || 'unknown';
+                    const expectedValue = analysis.expectedValue || analysis.realisticExpectedValue || 0;
+                    const estimatedProbability = (analysis.estimatedProbability || 0) * 100;
+                    const estimatedPayout = analysis.estimatedOdds || analysis.estimatedPayout || 0;
+                    
+                    const recommendationIcon = expectedValue >= 1.3 ? '🚀 優良' : 
+                                              expectedValue >= 1.1 ? '⚖️ 良好' : 
+                                              expectedValue >= 0.9 ? '🤔 許容' : '❌ 見送り';
+                    
+                    html += '<tr>';
+                    html += `<td style="padding: 8px; border: 1px solid #ddd;">${horseName} (${horseNumber}番)</td>`;
+                    html += `<td style="padding: 8px; border: 1px solid #ddd;">${popularityTier}</td>`;
+                    html += `<td style="padding: 8px; border: 1px solid #ddd;">${expectedValue.toFixed(2)}</td>`;
+                    html += `<td style="padding: 8px; border: 1px solid #ddd;">${estimatedProbability.toFixed(1)}%</td>`;
+                    html += `<td style="padding: 8px; border: 1px solid #ddd;">${estimatedPayout}円</td>`;
+                    html += `<td style="padding: 8px; border: 1px solid #ddd;">${recommendationIcon}</td>`;
+                    html += '</tr>';
+                });
+                
+                html += '</table>';
+                html += '</div>';
+                html += '</div>';
+            }
+            
+        } catch (error) {
+            console.error('統合買い目推奨システムエラー:', error);
+            html = '<div style="text-align: center; color: #666; padding: 20px;">統合推奨システムの処理中にエラーが発生しました。</div>';
+        }
+        
+        container.innerHTML = html;
+    }
+    
+    // 見送り判定結果の表示生成
+    static generateSkipAnalysisDisplay(skipAnalysis) {
+        let html = '';
+        
+        if (skipAnalysis.shouldSkip) {
+            html += `
+                <div style="background: linear-gradient(135deg, #ffebee 0%, #fce4ec 100%); border: 2px solid #f44336; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+                    <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                        <span style="font-size: 2em; margin-right: 15px;">⚠️</span>
+                        <div>
+                            <h3 style="margin: 0; color: #c62828;">レース見送り推奨</h3>
+                            <p style="margin: 5px 0 0 0; color: #d32f2f;">信頼度: ${skipAnalysis.confidence.toFixed(1)}%</p>
+                        </div>
+                    </div>
+            `;
+        } else {
+            html += `
+                <div style="background: linear-gradient(135deg, #e8f5e8 0%, #f1f8e9 100%); border: 2px solid #4caf50; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+                    <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                        <span style="font-size: 2em; margin-right: 15px;">✅</span>
+                        <div>
+                            <h3 style="margin: 0; color: #2e7d32;">投資推奨レース</h3>
+                            <p style="margin: 5px 0 0 0; color: #388e3c;">投資効率: ${skipAnalysis.investmentEfficiency.toFixed(1)}%</p>
+                        </div>
+                    </div>
+            `;
+        }
+        
+        // 見送り理由または推奨理由
+        if (skipAnalysis.reasons && skipAnalysis.reasons.length > 0) {
+            html += '<div style="margin-bottom: 15px;">';
+            html += `<h4 style="color: ${skipAnalysis.shouldSkip ? '#c62828' : '#2e7d32'}; margin-bottom: 10px;">判定理由:</h4>`;
+            html += '<ul style="margin: 0; padding-left: 20px;">';
+            skipAnalysis.reasons.slice(0, 5).forEach(reason => {
+                html += `<li style="margin-bottom: 5px; color: #666;">${reason}</li>`;
+            });
+            html += '</ul>';
+            html += '</div>';
+        } else if (!skipAnalysis.shouldSkip) {
+            // 投資推奨の場合の理由表示
+            html += '<div style="margin-bottom: 15px;">';
+            html += '<h4 style="color: #2e7d32; margin-bottom: 10px;">投資推奨理由:</h4>';
+            html += '<ul style="margin: 0; padding-left: 20px;">';
+            html += `<li style="margin-bottom: 5px; color: #666;">投資効率${skipAnalysis.investmentEfficiency.toFixed(1)}%が良好</li>`;
+            html += '<li style="margin-bottom: 5px; color: #666;">期待値・リスク分析で投資適格と判定</li>';
+            html += '</ul>';
+            html += '</div>';
+        }
+        
+        // 代替戦略の表示
+        if (skipAnalysis.alternativeStrategy) {
+            const strategy = skipAnalysis.alternativeStrategy;
+            html += `
+                <div style="background: rgba(255,193,7,0.1); border-left: 4px solid #ffc107; padding: 15px; margin-bottom: 15px; border-radius: 4px;">
+                    <h4 style="color: #f57c00; margin: 0 0 8px 0;">💡 代替戦略: ${strategy.type}</h4>
+                    <p style="margin: 0; color: #666;">${strategy.description}</p>
+                    ${strategy.recommendedAmount > 0 ? 
+                        `<p style="margin: 8px 0 0 0; color: #f57c00; font-weight: bold;">推奨投資額: ${strategy.recommendedAmount}円</p>` : 
+                        '<p style="margin: 8px 0 0 0; color: #f57c00; font-weight: bold;">投資見送り</p>'}
+                </div>
+            `;
+        }
+        
+        // 詳細分析データ（折りたたみ形式）
+        html += `
+            <details style="margin-top: 15px;">
+                <summary style="cursor: pointer; color: #666; font-weight: bold;">📊 詳細分析データを表示</summary>
+                <div style="margin-top: 10px; padding: 15px; background: #f9f9f9; border-radius: 8px;">
+        `;
+        
+        const analyses = skipAnalysis.detailedAnalysis;
+        
+        // 期待値分析
+        if (analyses.expectedValue) {
+            const ev = analyses.expectedValue;
+            html += `
+                <div style="margin-bottom: 15px;">
+                    <h5 style="color: #1976d2; margin-bottom: 8px;">📈 期待値分析</h5>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; font-size: 0.9em;">
+                        <div>最高期待値: ${ev.maxExpectedValue.toFixed(2)}</div>
+                        <div>平均期待値: ${ev.avgExpectedValue.toFixed(2)}</div>
+                        <div>推奨買い目数: ${ev.recommendedCount}点</div>
+                        <div>見送りスコア: ${ev.skipScore.toFixed(1)}/100</div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // 投資効率分析
+        if (analyses.efficiency) {
+            const eff = analyses.efficiency;
+            html += `
+                <div style="margin-bottom: 15px;">
+                    <h5 style="color: #388e3c; margin-bottom: 8px;">💰 投資効率分析</h5>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; font-size: 0.9em;">
+                        <div>総投資額: ${eff.totalInvestment}円</div>
+                        <div>期待リターン: ${eff.estimatedReturn.toFixed(0)}円</div>
+                        <div>投資効率: ${eff.overallEfficiency.toFixed(1)}%</div>
+                        <div>見送りスコア: ${eff.skipScore.toFixed(1)}/100</div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // リスク分析
+        if (analyses.risk) {
+            const risk = analyses.risk;
+            html += `
+                <div style="margin-bottom: 15px;">
+                    <h5 style="color: #f44336; margin-bottom: 8px;">⚠️ リスク分析</h5>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; font-size: 0.9em;">
+                        <div>高リスク買い目: ${risk.highRiskBetsCount}点</div>
+                        <div>平均信頼度: ${risk.avgConfidence.toFixed(1)}%</div>
+                        <div>リスク分布: 高${risk.riskDistribution.high}/中${risk.riskDistribution.medium}/低${risk.riskDistribution.low}</div>
+                        <div>見送りスコア: ${risk.skipScore.toFixed(1)}/100</div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        html += `
+                </div>
+            </details>
+        </div>
+        `;
+        
+        return html;
+    }
+    
     // 期待値ベース買い目推奨の表示
     static displayBettingRecommendations(recommendations) {
-        const container = document.getElementById('bettingContainer');
+        const container = document.getElementById('expectedValueBettingContainer');
         if (!container) return;
         
         let html = `
             <div style="background: linear-gradient(135deg, #4caf50 0%, #2e7d32 100%); color: white; padding: 20px; border-radius: 12px; margin-bottom: 20px;">
                 <h3 style="margin: 0 0 15px 0; text-align: center;">🎯 期待値ベース買い目推奨</h3>
                 <div style="font-size: 0.9em; text-align: center; opacity: 0.9;">
-                    科学的根拠に基づく投資判断
+                    科学的根拠に基づく投資判断（トリガミ対策済み）
+                </div>
+                <div style="font-size: 0.85em; text-align: center; opacity: 0.8; margin-top: 10px;">
+                    期待値1.3以上を推奨 | 市場効率性・胴元優位性考慮済み
                 </div>
             </div>
         `;
@@ -1189,32 +1507,49 @@ class PredictionEngine {
                         <div style="background: #ffebee; color: #c62828; padding: 15px; border-radius: 8px; margin: 10px 0;">
                             <strong>❌ 見送り推奨</strong><br>
                             <small>${rec.reason}</small><br>
-                            <small>平均期待値: ${rec.expectedValue.toFixed(2)}</small>
+                            <small>${rec.detail || `平均期待値: ${rec.expectedValue.toFixed(2)}`}</small>
                         </div>
                     `;
                 } else {
                     const confidenceColor = rec.confidence >= 0.7 ? '#2e7d32' : rec.confidence >= 0.5 ? '#f57c00' : '#d32f2f';
+                    const popularityDisplay = this.getPopularityDisplay(rec.popularity);
                     
                     html += `
-                        <div style="background: white; border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; margin: 10px 0;">
+                        <div style="background: white; border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; margin: 10px 0; border-left: 4px solid ${this.getExpectedValueColor(rec.expectedValue)};">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                                <strong>${rec.type === 'place' ? '複勝' : rec.type === 'wide' ? 'ワイド' : rec.type}</strong>
+                                <strong style="font-size: 1.1em;">${rec.type === 'place' ? '複勝' : rec.type === 'wide' ? 'ワイド' : rec.type}</strong>
                                 <span style="background: ${confidenceColor}; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8em;">
                                     信頼度: ${(rec.confidence * 100).toFixed(0)}%
                                 </span>
                             </div>
-                            <div style="color: #666; font-size: 0.9em;">
+                            <div style="color: #333; font-size: 1em; font-weight: bold; margin-bottom: 8px;">
                                 ${rec.horses ? 
                                     `${rec.horses.map(h => `${h.name || '馬' + h.number}(${h.number}番)`).join(' × ')}` : 
                                     `${rec.horse.name || '馬' + rec.horse.number}(${rec.horse.number}番)`
                                 }
                             </div>
-                            <div style="display: flex; justify-content: space-between; margin-top: 10px;">
-                                <span>投資額: <strong>${rec.amount}円</strong></span>
-                                <span>期待値: <strong style="color: ${this.getExpectedValueColor(rec.expectedValue)};">${rec.expectedValue.toFixed(2)}</strong></span>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
+                                <div>
+                                    <span style="font-size: 0.9em; color: #666;">投資額</span><br>
+                                    <strong style="color: #2e7d32;">${rec.amount}円</strong>
+                                </div>
+                                <div>
+                                    <span style="font-size: 0.9em; color: #666;">期待値</span><br>
+                                    <strong style="color: ${this.getExpectedValueColor(rec.expectedValue)};">${rec.expectedValue.toFixed(2)}</strong>
+                                </div>
                             </div>
-                            <div style="font-size: 0.8em; color: #666; margin-top: 5px;">
-                                ${rec.reason}
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px;">
+                                <div>
+                                    <span style="font-size: 0.9em; color: #666;">人気層</span><br>
+                                    <span style="font-size: 0.9em;">${popularityDisplay}</span>
+                                </div>
+                                <div>
+                                    <span style="font-size: 0.9em; color: #666;">推定配当</span><br>
+                                    <span style="font-size: 0.9em;">${rec.estimatedOdds ? Math.round(rec.estimatedOdds) + '円' : '未計算'}</span>
+                                </div>
+                            </div>
+                            <div style="font-size: 0.85em; color: #666; margin-top: 10px; padding-top: 8px; border-top: 1px solid #eee;">
+                                💡 ${rec.reason}
                             </div>
                         </div>
                     `;
