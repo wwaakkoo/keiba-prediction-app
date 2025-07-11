@@ -737,6 +737,9 @@ class PredictionEngine {
         const sortControls = document.getElementById('sortControls');
         
         resultsDiv.classList.remove('hidden');
+        
+        // 期待値分析を実行・表示
+        this.displayRaceExpectedValueAnalysis(predictions);
         sortControls.style.display = 'block';
         
         // デフォルトはスコア順で表示
@@ -796,6 +799,17 @@ class PredictionEngine {
                     return (b.efficiencyScore || 0) - (a.efficiencyScore || 0);
                 });
                 sortTitle = '🐎 穴馬候補順';
+                break;
+            case 'expectedValue':
+                sortedPredictions = [...this.currentPredictions].sort((a, b) => {
+                    // 期待値計算（複勝）
+                    const aExpectedValue = window.ExpectedValueCalculator ? 
+                        ExpectedValueCalculator.calculateHorseExpectedValue(a, 'place').expectedValue : 0;
+                    const bExpectedValue = window.ExpectedValueCalculator ? 
+                        ExpectedValueCalculator.calculateHorseExpectedValue(b, 'place').expectedValue : 0;
+                    return bExpectedValue - aExpectedValue;
+                });
+                sortTitle = '🎯 期待値順';
                 break;
             default:
                 sortedPredictions = [...this.currentPredictions].sort((a, b) => b.score - a.score);
@@ -929,6 +943,7 @@ class PredictionEngine {
                     <div>複勝率: ${horse.placeProbability}%</div>
                     <div>オッズ: ${horse.odds}倍</div>
                     ${this.generateInvestmentEfficiencyDisplay(horse)}
+                    ${this.generateExpectedValueDisplay(horse)}
                     ${enhancedLearningInfo}
                     ${pedigreeInfo}
                 </div>
@@ -1045,6 +1060,71 @@ class PredictionEngine {
         }
     }
     
+    // 期待値表示HTML生成
+    static generateExpectedValueDisplay(horse) {
+        try {
+            if (!window.ExpectedValueCalculator) {
+                return '';
+            }
+            
+            // 期待値計算（複勝）
+            const placeAnalysis = ExpectedValueCalculator.calculateHorseExpectedValue(horse, 'place');
+            
+            // 期待値計算（単勝）
+            const winAnalysis = ExpectedValueCalculator.calculateHorseExpectedValue(horse, 'win');
+            
+            let html = '<div class="expected-value" style="background: rgba(102, 126, 234, 0.1); padding: 8px; margin: 5px 0; border-radius: 5px; border-left: 4px solid #667eea;">';
+            
+            // 期待値と推奨度
+            const placeColor = this.getExpectedValueColor(placeAnalysis.expectedValue);
+            const winColor = this.getExpectedValueColor(winAnalysis.expectedValue);
+            
+            html += `<div style="font-weight: bold; color: ${placeColor};">🎯 期待値: 複勝${placeAnalysis.expectedValue.toFixed(2)} / 単勝${winAnalysis.expectedValue.toFixed(2)}</div>`;
+            html += `<div style="font-size: 0.9em; color: ${placeColor};">推奨: ${this.getRecommendationDisplay(placeAnalysis.recommendation)} (信頼度: ${(placeAnalysis.confidence * 100).toFixed(0)}%)</div>`;
+            
+            // 人気層とアドバイス
+            const popularityDisplay = this.getPopularityDisplay(placeAnalysis.popularity);
+            html += `<div style="font-size: 0.85em; color: #666;">人気層: ${popularityDisplay}</div>`;
+            
+            html += '</div>';
+            return html;
+        } catch (error) {
+            console.error('期待値表示生成エラー:', error);
+            return '';
+        }
+    }
+    
+    // 期待値に応じた色を取得
+    static getExpectedValueColor(expectedValue) {
+        if (expectedValue >= 1.5) return '#2e7d32'; // 濃い緑
+        if (expectedValue >= 1.3) return '#388e3c'; // 緑
+        if (expectedValue >= 1.1) return '#f57c00'; // オレンジ
+        if (expectedValue >= 1.0) return '#fbc02d'; // 黄色
+        return '#d32f2f'; // 赤
+    }
+    
+    // 推奨レベルの表示文字取得
+    static getRecommendationDisplay(recommendation) {
+        switch (recommendation) {
+            case 'excellent': return '🚀 優良';
+            case 'good': return '✅ 良好';
+            case 'acceptable': return '⚠️ 許容';
+            case 'break_even': return '➖ 損益分岐';
+            case 'skip': return '❌ 見送り';
+            default: return '❓ 不明';
+        }
+    }
+    
+    // 人気層の表示文字取得
+    static getPopularityDisplay(popularity) {
+        switch (popularity) {
+            case 'favorite': return '👑 人気馬';
+            case 'midrange': return '🎯 中人気';
+            case 'outsider': return '💎 穴馬';
+            default: return '❓ 不明';
+        }
+    }
+    
     // 投資グレードに応じた色を取得
     static getInvestmentGradeColor(grade) {
         switch(grade) {
@@ -1057,6 +1137,92 @@ class PredictionEngine {
             case 'CCC': case 'CC': case 'C': return '#6c757d'; // グレー
             default: return '#6c757d'; // デフォルトグレー
         }
+    }
+    
+    // レース全体の期待値分析表示
+    static displayRaceExpectedValueAnalysis(predictions) {
+        try {
+            if (!window.ExpectedValueCalculator) {
+                return;
+            }
+            
+            // レース全体の期待値分析
+            const raceAnalysis = ExpectedValueCalculator.analyzeRaceExpectedValue(predictions, 'place');
+            
+            // 分析結果を表示
+            ExpectedValueCalculator.displayExpectedValueAnalysis(raceAnalysis);
+            
+            // 買い目推奨も生成・表示
+            const bettingRecommendations = ExpectedValueCalculator.generateBettingRecommendations(raceAnalysis, 1000);
+            this.displayBettingRecommendations(bettingRecommendations);
+            
+        } catch (error) {
+            console.error('レース期待値分析エラー:', error);
+        }
+    }
+    
+    // 期待値ベース買い目推奨の表示
+    static displayBettingRecommendations(recommendations) {
+        const container = document.getElementById('bettingContainer');
+        if (!container) return;
+        
+        let html = `
+            <div style="background: linear-gradient(135deg, #4caf50 0%, #2e7d32 100%); color: white; padding: 20px; border-radius: 12px; margin-bottom: 20px;">
+                <h3 style="margin: 0 0 15px 0; text-align: center;">🎯 期待値ベース買い目推奨</h3>
+                <div style="font-size: 0.9em; text-align: center; opacity: 0.9;">
+                    科学的根拠に基づく投資判断
+                </div>
+            </div>
+        `;
+        
+        if (recommendations.length === 0) {
+            html += `
+                <div style="background: #ffebee; color: #c62828; padding: 15px; border-radius: 8px; text-align: center;">
+                    <strong>📊 本日は見送りをお勧めします</strong><br>
+                    <small>期待値の高い馬券が見つかりませんでした</small>
+                </div>
+            `;
+        } else {
+            recommendations.forEach(rec => {
+                if (rec.type === 'skip') {
+                    html += `
+                        <div style="background: #ffebee; color: #c62828; padding: 15px; border-radius: 8px; margin: 10px 0;">
+                            <strong>❌ 見送り推奨</strong><br>
+                            <small>${rec.reason}</small><br>
+                            <small>平均期待値: ${rec.expectedValue.toFixed(2)}</small>
+                        </div>
+                    `;
+                } else {
+                    const confidenceColor = rec.confidence >= 0.7 ? '#2e7d32' : rec.confidence >= 0.5 ? '#f57c00' : '#d32f2f';
+                    
+                    html += `
+                        <div style="background: white; border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; margin: 10px 0;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                <strong>${rec.type === 'place' ? '複勝' : rec.type === 'wide' ? 'ワイド' : rec.type}</strong>
+                                <span style="background: ${confidenceColor}; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8em;">
+                                    信頼度: ${(rec.confidence * 100).toFixed(0)}%
+                                </span>
+                            </div>
+                            <div style="color: #666; font-size: 0.9em;">
+                                ${rec.horses ? 
+                                    `${rec.horses.map(h => `${h.name || '馬' + h.number}(${h.number}番)`).join(' × ')}` : 
+                                    `${rec.horse.name || '馬' + rec.horse.number}(${rec.horse.number}番)`
+                                }
+                            </div>
+                            <div style="display: flex; justify-content: space-between; margin-top: 10px;">
+                                <span>投資額: <strong>${rec.amount}円</strong></span>
+                                <span>期待値: <strong style="color: ${this.getExpectedValueColor(rec.expectedValue)};">${rec.expectedValue.toFixed(2)}</strong></span>
+                            </div>
+                            <div style="font-size: 0.8em; color: #666; margin-top: 5px;">
+                                ${rec.reason}
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+        }
+        
+        container.innerHTML = html;
     }
 
     // 血統グレードに応じた色を取得
