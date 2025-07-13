@@ -1,5 +1,14 @@
 // 買い目フィルタリングシステム - Phase 2
 class BettingFilter {
+    
+    /**
+     * オッズから人気層を判定するヘルパー関数
+     */
+    static determinePopularityFromOdds(odds) {
+        if (odds <= 3.0) return 'favorite';     // 1-3倍は人気馬
+        if (odds <= 7.0) return 'midrange';     // 4-7倍は中人気
+        return 'outsider';                      // 8倍以上は人気薄
+    }
     static CONFIG = {
         // 人気層×スコアフィルター設定
         POPULARITY_SCORE_FILTER: {
@@ -100,12 +109,17 @@ class BettingFilter {
      * @returns {Object} フィルター結果
      */
     static applyPopularityScoreFilter(horse, expectedValueAnalysis) {
-        const popularity = expectedValueAnalysis.popularity;
+        // 安全なpopularityアクセス
+        const popularity = expectedValueAnalysis?.popularity || 
+                          horse?.popularity || 
+                          this.determinePopularityFromOdds(horse?.odds || 5.0);
+        
         const score = horse.placeProbability || horse.score || 0;
         const config = this.CONFIG.POPULARITY_SCORE_FILTER[popularity];
         
         if (!config) {
-            return { passed: false, reason: '人気層判定エラー' };
+            console.warn('人気層判定エラー:', { popularity, horse, expectedValueAnalysis });
+            return { passed: false, reason: `人気層判定エラー: ${popularity}` };
         }
         
         const passed = score >= config.minScore;

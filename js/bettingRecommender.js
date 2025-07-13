@@ -662,6 +662,12 @@ class BettingRecommender {
             // 学習された効率閾値を取得
             const learningThresholds = LearningSystem.getComplexBettingThresholds();
             
+            // 連複・3連単機能は削除済みのためスキップ
+            if (!learningThresholds) {
+                console.log('🎯 連複・3連単機能は削除済みです');
+                return tripleRecommendations;
+            }
+            
             // メイン3連複（上位3頭）
             const topThree = markedHorses.slice(0, 3);
             const mainTripleBox = this.calculateTripleBoxExpectedValue(topThree, predictions);
@@ -823,6 +829,12 @@ class BettingRecommender {
             
             // 学習された効率閾値を取得
             const learningThresholds = LearningSystem.getComplexBettingThresholds();
+            
+            // 連複・3連単機能は削除済みのためスキップ
+            if (!learningThresholds) {
+                console.log('🎯 連複・3連単機能は削除済みです');
+                return tripleExactRecommendations;
+            }
             
             // 本命軸メイン3連単（着順重要）
             if (marks.honmei && marks.taikou && marks.tanana) {
