@@ -429,6 +429,8 @@
                     <button class="btn" style="background: linear-gradient(45deg, #ff5722, #d84315);" onclick="showInvestmentStrategy()">💡 投資戦略アドバイス</button>
                     <button class="btn" style="background: linear-gradient(45deg, #2e8b57, #228b22);" onclick="showProfitabilityDashboardDirect()">💰 収益性分析</button>
                     <button class="btn" style="background: linear-gradient(45deg, #ff9800, #f57c00);" onclick="AIRecommendationService.showLearningGraphs()">📈 AI分析グラフ</button>
+                    <button class="btn" style="background: linear-gradient(45deg, #ff9800, #e65100);" onclick="showPhase4DynamicStrategy()" title="レース特性分析・動的投資額調整・パフォーマンス追跡による高度な投資戦略">🎯 高度戦略分析</button>
+                    <button class="btn" style="background: linear-gradient(45deg, #9c27b0, #7b1fa2);" onclick="showPhase5CalibrationReport()">🔬 Phase 5精度分析</button>
                     <button class="btn" style="background: linear-gradient(45deg, #f44336, #d32f2f); font-size: 0.9em;" onclick="resetAllLearningData()">🔄 全学習データリセット</button>
                 </div>
                 
@@ -494,12 +496,15 @@
                 </div>
             </div>
             
-            <!-- 統合買い目推奨システム -->
+            <!-- 統合買い目推奨システム（基本推奨） -->
             <div id="integratedBettingRecommendations" class="section" style="background: linear-gradient(135deg, #e8f5e8 0%, #f1f8e9 100%); border-left: 4px solid #4caf50; margin-top: 20px;">
-                <h3 style="color: #2e7d32;">🎯 統合買い目推奨システム</h3>
+                <h3 style="color: #2e7d32;">🎯 基本買い目推奨</h3>
                 <p style="color: #2e7d32; font-size: 0.9em; margin-bottom: 15px;">
-                    📊 期待値計算 + フィルタリング + 従来分析を統合した科学的買い目推奨
+                    📊 期待値ベースの標準的な買い目推奨（日常使い）
                 </p>
+                <div style="background: #c8e6c9; padding: 8px; border-radius: 4px; margin-bottom: 10px; font-size: 0.85em;">
+                    💡 <strong>使い方</strong>: 手軽に買い目を決めたい時の基本推奨です。より詳細な戦略は下の「🎯 Phase 4動的戦略」ボタンをお試しください。
+                </div>
                 <div id="integratedBettingContainer"></div>
             </div>
             
@@ -508,10 +513,44 @@
                 <div id="expectedValueBettingContainer"></div>
             </div>
             
-            <!-- 従来の買い目推奨（統合システム用） -->
-            <div id="bettingRecommendations" class="section" style="display: none;">
+            <!-- 従来の買い目推奨 -->
+            <div id="bettingRecommendations" class="section" style="background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%); border-left: 4px solid #2196f3; margin-top: 15px;">
+                <h3 style="color: #1976d2;">📈 従来システム推奨</h3>
+                <p style="color: #1976d2; font-size: 0.9em; margin-bottom: 15px;">
+                    🏆 従来の学習システムによる推奨（的中実績重視・参考用）
+                </p>
+                <div style="background: #bbdefb; padding: 8px; border-radius: 4px; margin-bottom: 10px; font-size: 0.85em;">
+                    📝 <strong>参考情報</strong>: 過去の的中実績を重視した従来の推奨です。上の「基本買い目推奨」と比較検討にご活用ください。
+                </div>
                 <div id="bettingContainer"></div>
             </div>
+        </div>
+
+        <!-- Phase 4: 動的投資戦略システム -->
+        <div id="phase4DynamicStrategy" class="section" style="background: linear-gradient(135deg, #fff3e0 0%, #fce4ec 100%); border-left: 4px solid #ff9800; margin-top: 20px; display: none;">
+            <h3 style="color: #e65100;">🎯 Phase 4: 高度な投資戦略分析</h3>
+            <div style="background: #ffe0b2; padding: 10px; border-radius: 6px; margin-bottom: 15px; font-size: 0.9em;">
+                <strong>🔬 高度分析機能</strong><br>
+                • <strong>レース特性分析</strong>: 混戦度・競争度を分析して最適戦略を提案<br>
+                • <strong>動的投資額調整</strong>: ケリー基準による科学的な投資額計算<br>
+                • <strong>パフォーマンス追跡</strong>: 過去の成績を分析して継続的改善<br>
+                • <strong>リスク管理</strong>: レース状況に応じた1点集中 ↔ 分散投資の自動切り替え
+            </div>
+            
+            <!-- レース戦略分析結果 -->
+            <div id="raceStrategyAnalysis" style="margin-bottom: 15px;"></div>
+            
+            <!-- 動的投資額調整結果 -->
+            <div id="dynamicBettingResults" style="margin-bottom: 15px;"></div>
+            
+            <!-- パフォーマンス追跡結果 -->
+            <div id="performanceTrackingResults"></div>
+        </div>
+
+        <!-- Phase 5: キャリブレーション精度分析システム -->
+        <div id="phase5CalibrationReport" class="section" style="background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%); border-left: 4px solid #9c27b0; margin-top: 20px; display: none;">
+            <h3 style="color: #7b1fa2;">🔬 Phase 5: キャリブレーション精度分析</h3>
+            <!-- レポート内容はJavaScriptで動的生成 -->
         </div>
     </div>
 
@@ -558,6 +597,16 @@
     <script src="js/expectedValueCalculator.js"></script>
     <script src="js/bettingFilter.js"></script>
     <script src="js/raceSkipDecisionSystem.js"></script>
+    <!-- Phase 4: 動的買い方変更機能 -->
+    <script src="js/dynamicBettingManager.js"></script>
+    <script src="js/performanceTracker.js"></script>
+    <script src="js/raceStrategyManager.js"></script>
+    <script src="js/strategyEnhancement.js"></script>
+    <!-- Phase 5: キャリブレーション機能 -->
+    <script src="js/calibrationSystem.js"></script>
+    <script src="js/enhancedPredictionEngine.js"></script>
+    <script src="js/debugUtils.js"></script>
+    <script src="js/phase4Integration.js"></script>
     <script src="js/main.js"></script>
 </body>
 </html> 

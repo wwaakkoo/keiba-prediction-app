@@ -200,6 +200,167 @@ function processUnifiedRaceResult() {
         }
     }
 
+    // 4. Phase 5キャリブレーション学習
+    console.log('🔍 Phase 5学習セクション到達確認');
+    console.log('🔍 EnhancedPredictionEngine利用可能:', typeof EnhancedPredictionEngine !== 'undefined');
+    console.log('🔍 CalibrationSystem利用可能:', typeof CalibrationSystem !== 'undefined');
+    
+    if (typeof EnhancedPredictionEngine !== 'undefined' && typeof CalibrationSystem !== 'undefined') {
+        try {
+            console.log('📊 Phase 5キャリブレーション学習開始');
+            
+            const enhancedEngine = new EnhancedPredictionEngine();
+            
+            // 予測データを取得（正しいデータ源を使用）
+            let predictions = [];
+            
+            // 方法1: PredictionEngineから現在の予測結果を取得
+            const currentPredictions = PredictionEngine.getCurrentPredictions();
+            if (currentPredictions && currentPredictions.length > 0) {
+                predictions = currentPredictions.map(horse => {
+                    const expectedValueAnalysis = typeof ExpectedValueCalculator !== 'undefined' ? 
+                        ExpectedValueCalculator.calculateHorseExpectedValue(horse, 'place') : null;
+                    
+                    return {
+                        horse: horse,
+                        score: horse.score || horse.placeProbability || horse.winProbability || 50,
+                        probability: expectedValueAnalysis?.estimatedProbability || 0.5,
+                        expectedValue: expectedValueAnalysis?.expectedValue || 1.0
+                    };
+                });
+                console.log('✅ Phase 5学習用データを予測結果から取得:', predictions.length, '頭');
+            }
+            
+            // 方法2: フォールバック - window.horsesから取得
+            if (predictions.length === 0 && window.horses) {
+                predictions = window.horses.map(horse => {
+                    const expectedValueAnalysis = typeof ExpectedValueCalculator !== 'undefined' ? 
+                        ExpectedValueCalculator.calculateHorseExpectedValue(horse, 'place') : null;
+                    
+                    return {
+                        horse: horse,
+                        score: horse.score || horse.placeProbability || 50,
+                        probability: expectedValueAnalysis?.estimatedProbability || 0.5,
+                        expectedValue: expectedValueAnalysis?.expectedValue || 1.0
+                    };
+                });
+                console.log('🔄 Phase 5学習用データをwindow.horsesから取得:', predictions.length, '頭');
+            }
+            
+            // 方法3: HorseManagerから取得（追加のフォールバック）
+            if (predictions.length === 0 && typeof HorseManager !== 'undefined' && HorseManager.getAllHorses) {
+                const allHorses = HorseManager.getAllHorses();
+                if (allHorses && allHorses.length > 0) {
+                    predictions = allHorses.map((horse, index) => {
+                        const expectedValueAnalysis = typeof ExpectedValueCalculator !== 'undefined' ? 
+                            ExpectedValueCalculator.calculateHorseExpectedValue(horse, 'place') : null;
+                        
+                        return {
+                            horse: horse,
+                            score: horse.score || horse.placeProbability || horse.winProbability || 50,
+                            probability: expectedValueAnalysis?.estimatedProbability || 0.5,
+                            expectedValue: expectedValueAnalysis?.expectedValue || 1.0
+                        };
+                    });
+                    console.log('🔄 Phase 5学習用データをHorseManagerから取得:', predictions.length, '頭');
+                }
+            }
+            
+            if (predictions.length === 0) {
+                console.warn('❌ Phase 5学習用の予測データが見つかりません');
+                console.log('🔍 利用可能なデータ源確認:', {
+                    currentPredictions: PredictionEngine.getCurrentPredictions().length,
+                    windowHorses: window.horses ? window.horses.length : 'undefined',
+                    horseManager: HorseManager.getAllHorses ? HorseManager.getAllHorses().length : 'undefined'
+                });
+                showMessage('⚠️ Phase 5学習をスキップ: 予測データが見つかりません', 'warning', 3000);
+            } else if (predictions.length > 0) {
+                // レースデータ構築
+                const raceData = {
+                    raceId: `race_${Date.now()}`,
+                    course: 'unknown',
+                    date: new Date().toISOString()
+                };
+                
+                console.log('📊 Phase 5学習用予測データ確認:', {
+                    totalPredictions: predictions.length,
+                    sampleHorse: predictions[0]?.horse?.name || 'データなし',
+                    hasHorseObject: !!predictions[0]?.horse,
+                    horseKeys: predictions[0]?.horse ? Object.keys(predictions[0].horse) : []
+                });
+                
+                // Phase 5用のactualResults形式に変換
+                const phase5ActualResults = {
+                    positions: {},
+                    finishing_order: {}
+                };
+                
+                // 着順情報を設定（馬名と配列インデックスの両方を考慮）
+                if (firstHorse) {
+                    const firstIndex = predictions.findIndex(p => p.horse && p.horse.name === firstHorse.name);
+                    if (firstIndex >= 0) {
+                        const horseNumber = firstIndex + 1; // 配列インデックス+1を馬番号として使用
+                        phase5ActualResults.positions[horseNumber] = 1;
+                        phase5ActualResults.finishing_order[horseNumber] = 1;
+                        console.log('✅ 1着馬設定:', { name: firstHorse.name, index: firstIndex, number: horseNumber });
+                    } else {
+                        console.warn('⚠️ 1着馬が予測データに見つかりません:', firstHorse.name);
+                    }
+                }
+                if (secondHorse) {
+                    const secondIndex = predictions.findIndex(p => p.horse && p.horse.name === secondHorse.name);
+                    if (secondIndex >= 0) {
+                        const horseNumber = secondIndex + 1;
+                        phase5ActualResults.positions[horseNumber] = 2;
+                        phase5ActualResults.finishing_order[horseNumber] = 2;
+                        console.log('✅ 2着馬設定:', { name: secondHorse.name, index: secondIndex, number: horseNumber });
+                    } else {
+                        console.warn('⚠️ 2着馬が予測データに見つかりません:', secondHorse?.name);
+                    }
+                }
+                if (thirdHorse) {
+                    const thirdIndex = predictions.findIndex(p => p.horse && p.horse.name === thirdHorse.name);
+                    if (thirdIndex >= 0) {
+                        const horseNumber = thirdIndex + 1;
+                        phase5ActualResults.positions[horseNumber] = 3;
+                        phase5ActualResults.finishing_order[horseNumber] = 3;
+                        console.log('✅ 3着馬設定:', { name: thirdHorse.name, index: thirdIndex, number: horseNumber });
+                    } else {
+                        console.warn('⚠️ 3着馬が予測データに見つかりません:', thirdHorse?.name);
+                    }
+                }
+                
+                // 学習実行
+                console.log('🔍 Phase 5学習データ:', { 
+                    raceData, 
+                    predictions: predictions.length, 
+                    actualResults: phase5ActualResults,
+                    firstHorse: firstHorse.name,
+                    secondHorse: secondHorse?.name,
+                    thirdHorse: thirdHorse?.name
+                });
+                const learningRecord = enhancedEngine.learnFromRaceResult(raceData, predictions, phase5ActualResults);
+                console.log('✅ Phase 5キャリブレーション学習完了:', learningRecord);
+                
+                // データ保存確認
+                const calibrationSystem = enhancedEngine.calibrationSystem;
+                console.log('💾 キャリブレーションデータ保存状況:', {
+                    calibrationDataKeys: Object.keys(calibrationSystem.calibrationData),
+                    totalSamples: Object.values(calibrationSystem.calibrationData).reduce((sum, bucket) => sum + (bucket.totalPredictions || 0), 0)
+                });
+                
+                showMessage('🔬 Phase 5予測精度学習を更新しました', 'success');
+            } else {
+                console.warn('⚠️ Phase 5学習: 予測データが見つかりません。まず予測を実行してください。');
+                showMessage('Phase 5学習: 予測データが不足しています', 'warning', 3000);
+            }
+            
+        } catch (error) {
+            console.error('Phase 5学習エラー:', error);
+            showMessage('Phase 5学習でエラーが発生しましたが、基本学習は継続します', 'warning', 3000);
+        }
+    }
+
     // 3. 収益性学習システムに反映
     if (typeof ProfitabilityMetrics !== 'undefined') {
         console.log('=== 収益性学習システム統合開始 ===');

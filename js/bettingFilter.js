@@ -128,7 +128,7 @@ class BettingFilter {
      * @returns {Object} フィルター結果
      */
     static applyExpectedValueFilter(expectedValueAnalysis) {
-        const ev = expectedValueAnalysis.realisticExpectedValue || expectedValueAnalysis.expectedValue;
+        const ev = expectedValueAnalysis.expectedValue || 0;
         const config = this.CONFIG.EXPECTED_VALUE_FILTER;
         
         let level = 'skip';

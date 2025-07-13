@@ -804,9 +804,9 @@ class PredictionEngine {
                 sortedPredictions = [...this.currentPredictions].sort((a, b) => {
                     // 現実的な期待値計算（複勝）
                     const aExpectedValue = window.ExpectedValueCalculator ? 
-                        ExpectedValueCalculator.calculateHorseExpectedValue(a, 'place').realisticExpectedValue : 0;
+                        ExpectedValueCalculator.calculateHorseExpectedValue(a, 'place').expectedValue : 0;
                     const bExpectedValue = window.ExpectedValueCalculator ? 
-                        ExpectedValueCalculator.calculateHorseExpectedValue(b, 'place').realisticExpectedValue : 0;
+                        ExpectedValueCalculator.calculateHorseExpectedValue(b, 'place').expectedValue : 0;
                     return bExpectedValue - aExpectedValue;
                 });
                 sortTitle = '🎯 期待値順';
@@ -1079,8 +1079,8 @@ class PredictionEngine {
             const placeColor = this.getExpectedValueColor(placeAnalysis.expectedValue);
             const winColor = this.getExpectedValueColor(winAnalysis.expectedValue);
             
-            html += `<div style="font-weight: bold; color: ${placeColor};">🎯 期待値: 複勝${placeAnalysis.realisticExpectedValue.toFixed(2)} / 単勝${winAnalysis.realisticExpectedValue.toFixed(2)}</div>`;
-            html += `<div style="font-size: 0.9em; color: ${placeColor};">推奨: ${this.getRecommendationDisplay(placeAnalysis.recommendation)} (信頼度: ${(placeAnalysis.confidence * 100).toFixed(0)}%)</div>`;
+            html += `<div style="font-weight: bold; color: ${placeColor};">🎯 期待値: 複勝${(placeAnalysis.expectedValue || 0).toFixed(2)} / 単勝${(winAnalysis.expectedValue || 0).toFixed(2)}</div>`;
+            html += `<div style="font-size: 0.9em; color: ${placeColor};">推奨: ${this.getRecommendationDisplay(placeAnalysis.recommendation)} (信頼度: ${((placeAnalysis.confidence || 0) * 100).toFixed(0)}%)</div>`;
             
             // 人気層とアドバイス
             const popularityDisplay = this.getPopularityDisplay(placeAnalysis.popularity);
@@ -1228,10 +1228,25 @@ class PredictionEngine {
                 
                 bettingRecommendations.forEach(rec => {
                     // データ構造の正規化
-                    const betType = rec.type || '複勝';
-                    const horseName = rec.horse?.name || rec.horseName || '不明';
-                    const horseNumber = rec.horse?.horseNumber || rec.horseNumber || '?';
-                    const expectedValue = rec.expectedValue || rec.realisticExpectedValue || 0;
+                    const betType = this.getBetTypeDisplayName(rec.type) || '複勝';
+                    
+                    // 馬名情報を正しく取得（複数馬の場合も対応）
+                    let horseDisplayInfo = '';
+                    if (rec.horses && rec.horses.length > 0) {
+                        // ワイドなど複数馬の場合
+                        horseDisplayInfo = rec.horses.map(h => 
+                            `${h.name || '不明'}(${h.horseNumber || h.number || '?'}番)`
+                        ).join(' × ');
+                    } else if (rec.horse) {
+                        // 単一馬の場合
+                        const horseName = rec.horse.name || rec.horseName || '不明';
+                        const horseNumber = rec.horse.horseNumber || rec.horseNumber || '?';
+                        horseDisplayInfo = `${horseName} <span style="color: #666;">(${horseNumber}番)</span>`;
+                    } else {
+                        horseDisplayInfo = '不明';
+                    }
+                    
+                    const expectedValue = rec.expectedValue || rec.expectedValue || 0;
                     const amount = rec.amount || rec.recommendedAmount || 300;
                     const confidence = Math.round((rec.confidence || 0) * 100);
                     const estimatedPayout = Math.round(amount * expectedValue);
@@ -1240,8 +1255,7 @@ class PredictionEngine {
                         <div style="padding: 12px; margin-bottom: 8px; background: #f1f8e9; border-radius: 8px; border-left: 4px solid #4caf50;">
                             <div style="display: flex; justify-content: space-between; align-items: center;">
                                 <div>
-                                    <strong>${betType}</strong>: ${horseName} 
-                                    <span style="color: #666;">(${horseNumber}番)</span>
+                                    <strong>${betType}</strong>: ${horseDisplayInfo}
                                 </div>
                                 <div style="text-align: right;">
                                     <span style="color: #2e7d32; font-weight: bold;">期待値 ${expectedValue.toFixed(2)}</span>
@@ -1266,11 +1280,16 @@ class PredictionEngine {
                 html += '<h5 style="color: #388e3c; margin-bottom: 10px;">🔍 フィルタリング済み推奨</h5>';
                 
                 filteredResults.recommendedBets.forEach(bet => {
+                    // 馬名情報を正しく取得
+                    const horseNames = bet.horses ? 
+                        bet.horses.map(h => h.name).join(' × ') : 
+                        (bet.horse?.name || bet.horseName || '不明');
+                    
                     html += `
                         <div style="padding: 12px; margin-bottom: 8px; background: #e8f5e8; border-radius: 8px; border-left: 4px solid #66bb6a;">
                             <div style="display: flex; justify-content: space-between; align-items: center;">
                                 <div>
-                                    <strong>${bet.betType}</strong>: ${bet.horseName}
+                                    <strong>${this.getBetTypeDisplayName(bet.betType || bet.type) || '複勝'}</strong>: ${horseNames}
                                 </div>
                                 <div style="text-align: right;">
                                     <span style="color: #2e7d32;">${bet.recommendation}</span>
@@ -1316,7 +1335,7 @@ class PredictionEngine {
                     const horseName = analysis.horse?.name || analysis.horseName || '不明';
                     const horseNumber = analysis.horse?.horseNumber || analysis.horseNumber || '?';
                     const popularityTier = analysis.popularity || analysis.popularityTier || 'unknown';
-                    const expectedValue = analysis.expectedValue || analysis.realisticExpectedValue || 0;
+                    const expectedValue = analysis.expectedValue || analysis.expectedValue || 0;
                     const estimatedProbability = (analysis.estimatedProbability || 0) * 100;
                     const estimatedPayout = analysis.estimatedOdds || analysis.estimatedPayout || 0;
                     
@@ -1345,6 +1364,22 @@ class PredictionEngine {
         }
         
         container.innerHTML = html;
+    }
+    
+    // 券種の英語名を日本語表示名に変換
+    static getBetTypeDisplayName(betType) {
+        const betTypeMap = {
+            'place': '複勝',
+            'wide': 'ワイド', 
+            'win': '単勝',
+            'quinella': '馬連',
+            'exacta': '馬単',
+            'trio': '3連複',
+            'trifecta': '3連単',
+            'skip': '見送り'
+        };
+        
+        return betTypeMap[betType] || betType;
     }
     
     // 見送り判定結果の表示生成

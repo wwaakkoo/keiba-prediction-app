@@ -1,10 +1,10 @@
 // 期待値ベース買い目システム - 期待値計算エンジン
 class ExpectedValueCalculator {
     static CONFIG = {
-        // 期待値閾値
-        EXCELLENT_THRESHOLD: 1.5,     // 優良馬券（積極的購入）
-        GOOD_THRESHOLD: 1.3,          // 良好馬券（推奨購入）
-        ACCEPTABLE_THRESHOLD: 1.1,    // 許容馬券（条件付購入）
+        // 期待値閾値（新方式に最適化）
+        EXCELLENT_THRESHOLD: 1.15,    // 優良馬券（積極的購入）
+        GOOD_THRESHOLD: 1.08,         // 良好馬券（推奨購入）
+        ACCEPTABLE_THRESHOLD: 1.02,   // 許容馬券（条件付購入）
         BREAK_EVEN_THRESHOLD: 1.0,    // 損益分岐点
         
         // 人気層別オッズ係数（複勝想定）- より現実的な値に修正
@@ -34,7 +34,7 @@ class ExpectedValueCalculator {
     };
     
     /**
-     * 馬の期待値を計算
+     * 馬の期待値を計算（新方式：オッズ × 確率 × 信頼度）
      * @param {Object} horse - 馬データ
      * @param {string} betType - 馬券種別 ('place', 'win', 'wide')
      * @returns {Object} 期待値分析結果
@@ -49,7 +49,7 @@ class ExpectedValueCalculator {
             expectedValue: 0,
             recommendation: 'skip',
             confidence: 0,
-            realisticExpectedValue: 0  // 現実的な期待値
+            confidenceScore: 0  // 信頼度スコア
         };
         
         // 人気層判定
@@ -62,52 +62,76 @@ class ExpectedValueCalculator {
             analysis.popularity
         );
         
-        // 推定オッズ計算
+        // オッズ取得
         analysis.estimatedOdds = this.estimateOdds(horse.odds, betType, analysis.popularity);
         
-        // 基本期待値計算
-        analysis.expectedValue = analysis.estimatedProbability * (analysis.estimatedOdds / 100);
+        // 信頼度スコア計算
+        analysis.confidenceScore = this.calculateConfidenceScore(horse, analysis);
         
-        // 現実的な期待値計算（オッズと確率の逆相関を考慮）
-        analysis.realisticExpectedValue = this.calculateRealisticExpectedValue(
-            horse, analysis.estimatedProbability, analysis.estimatedOdds, betType
-        );
+        // 新方式期待値計算：オッズ × 確率 × 信頼度
+        analysis.expectedValue = (analysis.estimatedOdds / 100) * analysis.estimatedProbability * analysis.confidenceScore;
         
-        // 推奨判定（現実的な期待値を使用）
-        analysis.recommendation = this.determineRecommendation(analysis.realisticExpectedValue);
+        // 推奨判定
+        analysis.recommendation = this.determineRecommendation(analysis.expectedValue);
         
-        // 信頼度計算
+        // 従来の信頼度計算（表示用）
         analysis.confidence = this.calculateConfidence(horse, analysis);
         
         return analysis;
     }
     
     /**
-     * 現実的な期待値計算（オッズと確率の逆相関を考慮）
+     * 信頼度スコア計算（新方式の核心部分）
      * @param {Object} horse - 馬データ
-     * @param {number} estimatedProbability - 推定的中確率
-     * @param {number} estimatedOdds - 推定オッズ
-     * @param {string} betType - 馬券種別
-     * @returns {number} 現実的な期待値
+     * @param {Object} analysis - 分析データ
+     * @returns {number} 信頼度スコア（0.5〜1.5の範囲）
      */
-    static calculateRealisticExpectedValue(horse, estimatedProbability, estimatedOdds, betType) {
-        // オッズから逆算した市場確率
-        const marketProbability = 100 / (horse.odds * 100); // 単勝オッズから市場確率を計算
+    static calculateConfidenceScore(horse, analysis) {
+        let confidence = 1.0; // 基準値
         
-        // 複勝の場合、市場確率を調整
-        let adjustedMarketProbability = marketProbability;
-        if (betType === 'place') {
-            adjustedMarketProbability = Math.min(0.6, marketProbability * 2.5); // 複勝は単勝の2.5倍程度の確率
+        // 1. スコアによる信頼度補正
+        const score = horse.placeProbability || horse.score || 0;
+        if (score >= 90) confidence *= 1.3;       // 超高スコア
+        else if (score >= 80) confidence *= 1.2;  // 高スコア
+        else if (score >= 70) confidence *= 1.1;  // 良スコア
+        else if (score >= 60) confidence *= 1.0;  // 標準
+        else if (score >= 50) confidence *= 0.9;  // やや低
+        else if (score >= 40) confidence *= 0.8;  // 低スコア
+        else confidence *= 0.7;                   // 超低スコア
+        
+        // 2. 人気による信頼度補正
+        const popularity = horse.popularity || analysis.popularity;
+        if (typeof popularity === 'string') {
+            // 人気層文字列の場合
+            switch (popularity) {
+                case 'favorite': confidence *= 1.15; break;  // 人気馬は安定
+                case 'midrange': confidence *= 1.0; break;   // 中人気は標準
+                case 'outsider': confidence *= 0.85; break;  // 人気薄は不安定
+            }
+        } else if (typeof popularity === 'number') {
+            // 人気順数値の場合
+            if (popularity <= 3) confidence *= 1.15;         // 1-3番人気
+            else if (popularity <= 6) confidence *= 1.0;     // 4-6番人気
+            else if (popularity <= 9) confidence *= 0.9;     // 7-9番人気
+            else confidence *= 0.8;                          // 10番人気以下
         }
         
-        // 予想確率と市場確率の加重平均（市場確率を重視）
-        const weightedProbability = (estimatedProbability * 0.3) + (adjustedMarketProbability * 0.7);
+        // 3. オッズによる現実性補正
+        const odds = horse.odds || 1.0;
+        if (odds < 1.5) confidence *= 0.9;        // 極端な低オッズは疑問
+        else if (odds <= 3.0) confidence *= 1.1;  // 人気馬
+        else if (odds <= 7.0) confidence *= 1.0;  // 中人気
+        else if (odds <= 15.0) confidence *= 0.95; // やや人気薄
+        else if (odds <= 30.0) confidence *= 0.85; // 人気薄
+        else confidence *= 0.7;                    // 極端な穴馬
         
-        // 現実的な期待値計算
-        const realisticExpectedValue = weightedProbability * (estimatedOdds / 100);
+        // 4. 確率とオッズの整合性チェック
+        const theoreticalOdds = 1 / analysis.estimatedProbability;
+        const oddsRatio = Math.abs(odds - theoreticalOdds) / theoreticalOdds;
+        if (oddsRatio > 0.5) confidence *= 0.9;   // 整合性が低い場合は減点
         
-        // さらに保守的な調整（胴元の優位性を考慮）
-        return realisticExpectedValue * 0.85; // 15%の安全マージン
+        // 5. 最終調整（0.5〜1.5の範囲に制限）
+        return Math.max(0.5, Math.min(1.5, confidence));
     }
     
     /**
@@ -246,7 +270,7 @@ class ExpectedValueCalculator {
                 excellent: [],
                 good: [],
                 acceptable: [],
-                breakEven: [],
+                break_even: [],
                 skip: []
             },
             raceRecommendation: 'skip',
@@ -261,8 +285,14 @@ class ExpectedValueCalculator {
             const analysis = this.calculateHorseExpectedValue(horse, betType);
             raceAnalysis.analyzedHorses.push(analysis);
             
-            // 推奨レベル別分類
-            raceAnalysis.summary[analysis.recommendation].push(analysis);
+            // 推奨レベル別分類（undefinedチェック追加）
+            if (analysis.recommendation && raceAnalysis.summary[analysis.recommendation]) {
+                raceAnalysis.summary[analysis.recommendation].push(analysis);
+            } else {
+                // デフォルトでskipに分類
+                raceAnalysis.summary.skip.push(analysis);
+                console.warn('⚠️ 推奨レベル不明のため skip に分類:', horse.name, analysis.recommendation);
+            }
             
             // 最良馬の特定
             if (!raceAnalysis.bestHorse || analysis.expectedValue > raceAnalysis.bestHorse.expectedValue) {
@@ -335,70 +365,22 @@ class ExpectedValueCalculator {
         
         // 現実的な期待値を使用
         const sortedByRealisticValue = raceAnalysis.analyzedHorses
-            .filter(analysis => analysis.realisticExpectedValue >= 1.0)
-            .sort((a, b) => b.realisticExpectedValue - a.realisticExpectedValue);
+            .filter(analysis => analysis.expectedValue >= 1.0)
+            .sort((a, b) => b.expectedValue - a.expectedValue);
         
-        // 優良馬の複勝買い（期待値1.3以上）
-        const excellentHorses = sortedByRealisticValue.filter(analysis => analysis.realisticExpectedValue >= 1.3);
-        excellentHorses.forEach((analysis, index) => {
-            if (index < 2) { // 最大2頭まで
-                const betAmount = Math.floor(remainingBudget * 0.35);
-                if (betAmount >= 100) {
-                    recommendations.push({
-                        type: 'place',
-                        horse: analysis.horse,
-                        amount: betAmount,
-                        expectedValue: analysis.realisticExpectedValue,
-                        confidence: analysis.confidence,
-                        reason: `優良期待値馬券（期待値${analysis.realisticExpectedValue.toFixed(2)}）`,
-                        popularity: analysis.popularity,
-                        estimatedOdds: analysis.estimatedOdds
-                    });
-                    remainingBudget -= betAmount;
-                }
-            }
+        // 動的複勝買い戦略（1点/2点切り替え）
+        const placeRecommendations = ExpectedValueCalculator.generateDynamicPlaceStrategy(sortedByRealisticValue, remainingBudget);
+        placeRecommendations.forEach(rec => {
+            recommendations.push(rec);
+            remainingBudget -= rec.amount;
         });
         
-        // 良好馬の複勝買い（期待値1.1以上）
-        const goodHorses = sortedByRealisticValue.filter(analysis => 
-            analysis.realisticExpectedValue >= 1.1 && analysis.realisticExpectedValue < 1.3
-        );
-        goodHorses.forEach((analysis, index) => {
-            if (index < 1) { // 最大1頭まで
-                const betAmount = Math.floor(remainingBudget * 0.25);
-                if (betAmount >= 100) {
-                    recommendations.push({
-                        type: 'place',
-                        horse: analysis.horse,
-                        amount: betAmount,
-                        expectedValue: analysis.realisticExpectedValue,
-                        confidence: analysis.confidence,
-                        reason: `良好期待値馬券（期待値${analysis.realisticExpectedValue.toFixed(2)}）`,
-                        popularity: analysis.popularity,
-                        estimatedOdds: analysis.estimatedOdds
-                    });
-                    remainingBudget -= betAmount;
-                }
-            }
+        // 最適化ワイド組み合わせ
+        const wideRecommendations = ExpectedValueCalculator.generateOptimizedWideStrategy(sortedByRealisticValue, remainingBudget);
+        wideRecommendations.forEach(rec => {
+            recommendations.push(rec);
+            remainingBudget -= rec.amount;
         });
-        
-        // ワイド組み合わせ（上位2頭）
-        if (excellentHorses.length >= 2) {
-            const betAmount = Math.floor(remainingBudget * 0.4);
-            if (betAmount >= 100) {
-                const avgExpectedValue = (excellentHorses[0].realisticExpectedValue + excellentHorses[1].realisticExpectedValue) / 2;
-                recommendations.push({
-                    type: 'wide',
-                    horses: [excellentHorses[0].horse, excellentHorses[1].horse],
-                    amount: betAmount,
-                    expectedValue: avgExpectedValue,
-                    confidence: Math.min(excellentHorses[0].confidence, excellentHorses[1].confidence),
-                    reason: `優良馬同士のワイド（期待値${avgExpectedValue.toFixed(2)}）`,
-                    popularity: `${excellentHorses[0].popularity}×${excellentHorses[1].popularity}`
-                });
-                remainingBudget -= betAmount;
-            }
-        }
         
         // 推奨が全くない場合の処理
         if (recommendations.length === 0) {
@@ -552,6 +534,288 @@ class ExpectedValueCalculator {
             case 'skip': return '❌ 見送り';
             default: return '❓ 不明';
         }
+    }
+
+    /**
+     * 動的複勝戦略生成
+     * レース特性・期待値分布・信頼度を総合的に評価して1点/2点を自動切り替え
+     */
+    static generateDynamicPlaceStrategy(analyzedHorses, budget) {
+        const recommendations = [];
+        
+        // 優良馬の抽出（期待値1.3以上）
+        const excellentHorses = analyzedHorses.filter(analysis => analysis.expectedValue >= 1.3);
+        
+        // 良好馬の抽出（期待値1.1以上）
+        const goodHorses = analyzedHorses.filter(analysis => 
+            analysis.expectedValue >= 1.1 && analysis.expectedValue < 1.3
+        );
+        
+        // レース特性分析
+        const raceCharacteristics = ExpectedValueCalculator.analyzeRaceCharacteristics(analyzedHorses);
+        
+        // 戦略決定：1点集中 vs 2点分散
+        const strategy = ExpectedValueCalculator.decidePlaceStrategy(excellentHorses, goodHorses, raceCharacteristics);
+        
+        if (strategy.type === 'single_focus') {
+            // 1点集中戦略（高期待値馬1頭に集中投資）
+            const targetHorse = strategy.target;
+            const betAmount = Math.floor(budget * strategy.allocation);
+            
+            if (betAmount >= 100) {
+                recommendations.push({
+                    type: 'place',
+                    horse: targetHorse.horse,
+                    amount: betAmount,
+                    expectedValue: targetHorse.expectedValue,
+                    confidence: targetHorse.confidence,
+                    reason: `集中投資戦略（期待値${targetHorse.expectedValue.toFixed(2)}・信頼度${targetHorse.confidence.toFixed(1)}%）`,
+                    popularity: targetHorse.popularity,
+                    estimatedOdds: targetHorse.estimatedOdds,
+                    strategy: 'single_focus'
+                });
+            }
+        } else if (strategy.type === 'dual_hedge') {
+            // 2点分散戦略（リスクヘッジ重視）
+            strategy.targets.forEach((target, index) => {
+                const betAmount = Math.floor(budget * target.allocation);
+                
+                if (betAmount >= 100) {
+                    recommendations.push({
+                        type: 'place',
+                        horse: target.horse.horse,
+                        amount: betAmount,
+                        expectedValue: target.horse.expectedValue,
+                        confidence: target.horse.confidence,
+                        reason: `分散投資戦略${index + 1}（期待値${target.horse.expectedValue.toFixed(2)}・リスクヘッジ）`,
+                        popularity: target.horse.popularity,
+                        estimatedOdds: target.horse.estimatedOdds,
+                        strategy: 'dual_hedge'
+                    });
+                }
+            });
+        }
+        
+        return recommendations;
+    }
+
+    /**
+     * レース特性分析
+     */
+    static analyzeRaceCharacteristics(analyzedHorses) {
+        const totalHorses = analyzedHorses.length;
+        const highValueHorses = analyzedHorses.filter(h => h.expectedValue >= 1.3).length;
+        const mediumValueHorses = analyzedHorses.filter(h => h.expectedValue >= 1.1 && h.expectedValue < 1.3).length;
+        
+        // 期待値分散度
+        const expectedValues = analyzedHorses.map(h => h.expectedValue);
+        const avgExpectedValue = expectedValues.reduce((sum, val) => sum + val, 0) / expectedValues.length;
+        const variance = expectedValues.reduce((sum, val) => sum + Math.pow(val - avgExpectedValue, 2), 0) / expectedValues.length;
+        
+        // 信頼度分析
+        const confidences = analyzedHorses.map(h => h.confidence);
+        const avgConfidence = confidences.reduce((sum, val) => sum + val, 0) / confidences.length;
+        const maxConfidence = Math.max(...confidences);
+        
+        return {
+            totalHorses,
+            highValueHorses,
+            mediumValueHorses,
+            expectedValueSpread: variance,
+            averageConfidence: avgConfidence,
+            maxConfidence,
+            competitiveness: highValueHorses / totalHorses // 競争激しさ指標
+        };
+    }
+
+    /**
+     * 複勝戦略決定
+     */
+    static decidePlaceStrategy(excellentHorses, goodHorses, characteristics) {
+        // 1点集中の条件
+        const singleFocusConditions = [
+            excellentHorses.length === 1, // 優良馬が1頭のみ
+            excellentHorses[0]?.confidence >= 85, // 高信頼度
+            excellentHorses[0]?.expectedValue >= 1.5, // 超高期待値
+            characteristics.competitiveness < 0.3 // 低競争度
+        ];
+        
+        const singleFocusScore = singleFocusConditions.filter(Boolean).length;
+        
+        // 2点分散の条件
+        const dualHedgeConditions = [
+            excellentHorses.length >= 2, // 優良馬が複数
+            characteristics.expectedValueSpread > 0.1, // 期待値のばらつき
+            characteristics.competitiveness >= 0.3, // 高競争度
+            characteristics.averageConfidence < 80 // 予想の不確実性
+        ];
+        
+        const dualHedgeScore = dualHedgeConditions.filter(Boolean).length;
+        
+        if (singleFocusScore >= 2 && excellentHorses.length > 0) {
+            // 1点集中戦略
+            return {
+                type: 'single_focus',
+                target: excellentHorses[0],
+                allocation: 0.6, // 60%集中投資
+                reason: '高信頼度・高期待値による集中投資'
+            };
+        } else if (dualHedgeScore >= 2) {
+            // 2点分散戦略
+            const targets = [];
+            
+            if (excellentHorses.length >= 2) {
+                targets.push(
+                    { horse: excellentHorses[0], allocation: 0.35 },
+                    { horse: excellentHorses[1], allocation: 0.25 }
+                );
+            } else if (excellentHorses.length === 1 && goodHorses.length >= 1) {
+                targets.push(
+                    { horse: excellentHorses[0], allocation: 0.4 },
+                    { horse: goodHorses[0], allocation: 0.2 }
+                );
+            }
+            
+            return {
+                type: 'dual_hedge',
+                targets,
+                reason: 'リスク分散による安定投資'
+            };
+        } else {
+            // デフォルト：従来戦略
+            return {
+                type: 'single_focus',
+                target: excellentHorses[0] || goodHorses[0],
+                allocation: 0.35,
+                reason: 'デフォルト戦略'
+            };
+        }
+    }
+
+    /**
+     * 最適化ワイド戦略生成
+     * 全組み合わせの期待値を計算し、最適な組み合わせを選択
+     */
+    static generateOptimizedWideStrategy(analyzedHorses, budget) {
+        const recommendations = [];
+        
+        // ワイド対象馬の抽出（期待値1.1以上）
+        const wideTargets = analyzedHorses.filter(analysis => analysis.expectedValue >= 1.1);
+        
+        if (wideTargets.length < 2) return recommendations;
+        
+        // 全ワイド組み合わせの期待値計算
+        const wideCombinations = ExpectedValueCalculator.calculateAllWideCombinations(wideTargets);
+        
+        // 最適組み合わせの選択
+        const optimalCombinations = ExpectedValueCalculator.selectOptimalWideCombinations(wideCombinations, budget);
+        
+        optimalCombinations.forEach(combination => {
+            const betAmount = combination.allocation;
+            
+            if (betAmount >= 100) {
+                // 馬データの正規化
+                const horse1Data = combination.horse1.horse || combination.horse1;
+                const horse2Data = combination.horse2.horse || combination.horse2;
+                
+                recommendations.push({
+                    type: 'wide',
+                    horses: [horse1Data, horse2Data],
+                    amount: betAmount,
+                    expectedValue: combination.expectedValue,
+                    confidence: combination.confidence,
+                    reason: `最適化ワイド（期待値${combination.expectedValue.toFixed(2)}・効率${combination.efficiency.toFixed(1)}%）`,
+                    popularity: `${combination.horse1.popularity}×${combination.horse2.popularity}`,
+                    efficiency: combination.efficiency
+                });
+            }
+        });
+        
+        return recommendations;
+    }
+
+    /**
+     * 全ワイド組み合わせの期待値計算
+     */
+    static calculateAllWideCombinations(horses) {
+        const combinations = [];
+        
+        for (let i = 0; i < horses.length; i++) {
+            for (let j = i + 1; j < horses.length; j++) {
+                const horse1 = horses[i];
+                const horse2 = horses[j];
+                
+                // ワイド期待値の計算（簡略化：両馬の期待値平均）
+                const wideExpectedValue = (horse1.expectedValue + horse2.expectedValue) / 2;
+                
+                // 信頼度の計算（最小値採用）
+                const confidence = Math.min(horse1.confidence, horse2.confidence);
+                
+                // 効率性の計算（期待値×信頼度）
+                const efficiency = wideExpectedValue * confidence;
+                
+                combinations.push({
+                    horse1,
+                    horse2,
+                    expectedValue: wideExpectedValue,
+                    confidence,
+                    efficiency,
+                    popularitySum: horse1.popularity + horse2.popularity,
+                    // デバッグ用: 馬名を記録
+                    debugInfo: `${horse1.horse?.name || '不明1'} × ${horse2.horse?.name || '不明2'}`
+                });
+            }
+        }
+        
+        return combinations.sort((a, b) => b.efficiency - a.efficiency);
+    }
+
+    /**
+     * 最適ワイド組み合わせ選択
+     */
+    static selectOptimalWideCombinations(combinations, budget) {
+        const selected = [];
+        const usedHorses = new Set();
+        
+        // 効率順にソート済みの組み合わせから選択
+        for (const combination of combinations) {
+            // 期待値閾値チェック
+            if (combination.expectedValue < 1.2) break;
+            
+            // 既に使用された馬はスキップ（重複回避）
+            if (usedHorses.has(combination.horse1.horse.number) || 
+                usedHorses.has(combination.horse2.horse.number)) {
+                continue;
+            }
+            
+            // 人気バランスチェック（両方人気薄は避ける）
+            if (combination.popularitySum > 14) continue;
+            
+            // 投資額配分
+            let allocation;
+            if (combination.expectedValue >= 1.4) {
+                allocation = Math.floor(budget * 0.4); // 40%配分
+            } else if (combination.expectedValue >= 1.3) {
+                allocation = Math.floor(budget * 0.3); // 30%配分
+            } else {
+                allocation = Math.floor(budget * 0.2); // 20%配分
+            }
+            
+            combination.allocation = allocation;
+            selected.push(combination);
+            
+            // 使用馬を記録
+            usedHorses.add(combination.horse1.horse.number);
+            usedHorses.add(combination.horse2.horse.number);
+            
+            // 予算更新
+            budget -= allocation;
+            
+            // 最大2組み合わせまで
+            if (selected.length >= 2) break;
+        }
+        
+        return selected;
     }
 }
 
