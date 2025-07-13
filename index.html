@@ -421,7 +421,7 @@
                     </p>
                 </div>
                 <div class="btn-grid">
-                    <button class="btn" style="background: linear-gradient(45deg, #2196f3, #667eea);" onclick="processUnifiedRaceResult()">🧠 統合学習に反映</button>
+                    <button class="btn" style="background: linear-gradient(45deg, #2196f3, #667eea);" onclick="processUnifiedRaceResult()">🚀 統合学習実行（Phase 4-6自動分析+学習記録）</button>
                     <button class="btn" style="background: linear-gradient(45deg, #4caf50, #2e7d32);" onclick="showLearningStats()">📈 統計学習状況</button>
                     <button class="btn" style="background: linear-gradient(45deg, #667eea, #764ba2);" onclick="AIRecommendationService.showLearningStats()">📊 AI判断分析</button>
                     <button class="btn" style="background: linear-gradient(45deg, #e67e22, #d35400);" onclick="LearningSystem.showSleeperStats()">💎 穴馬学習統計</button>
@@ -524,6 +524,45 @@
                 </div>
                 <div id="bettingContainer"></div>
             </div>
+            
+            <!-- 高度分析システム -->
+            <div class="section" style="background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%); border-left: 4px solid #ff9800; margin-top: 20px;">
+                <h3 style="color: #e65100;">🚀 高度分析システム</h3>
+                <div style="background: #ffcc02; padding: 10px; border-radius: 6px; margin-bottom: 15px; font-size: 0.9em; color: #e65100;">
+                    <strong>🔬 Phase 4-6統合分析</strong><br>
+                    • <strong>Phase 4</strong>: 動的戦略分析・リスク管理・パフォーマンス追跡<br>
+                    • <strong>Phase 5</strong>: キャリブレーション・確率校正・精度向上<br>
+                    • <strong>Phase 6</strong>: ケリー基準・科学的資金管理・ポートフォリオ最適化
+                </div>
+                
+                <div class="btn-grid">
+                    <button class="btn" style="background: linear-gradient(45deg, #ff9800, #f57c00);" onclick="showPhase4DynamicStrategy()">
+                        🎯 Phase 4: 動的戦略分析
+                    </button>
+                    <button class="btn" style="background: linear-gradient(45deg, #9c27b0, #7b1fa2);" onclick="showPhase5CalibrationReport()">
+                        🔬 Phase 5: キャリブレーション分析
+                    </button>
+                    <button class="btn" style="background: linear-gradient(45deg, #4caf50, #2e7d32);" onclick="showPhase6KellyCapitalAnalysis()">
+                        💰 Phase 6: ケリー基準資金管理
+                    </button>
+                </div>
+                
+                <!-- パフォーマンス統計表示ボタン -->
+                <div style="margin-top: 15px; padding: 10px; background: #f5f5f5; border-radius: 8px;">
+                    <h4 style="color: #333; margin: 0 0 10px 0; font-size: 0.9em;">📊 パフォーマンス統計</h4>
+                    <div class="btn-grid">
+                        <button class="btn" style="background: linear-gradient(45deg, #ff9800, #f57c00); font-size: 0.8em;" onclick="showPhase4PerformanceStats()">
+                            📈 Phase 4 統計
+                        </button>
+                        <button class="btn" style="background: linear-gradient(45deg, #9c27b0, #7b1fa2); font-size: 0.8em;" onclick="checkPhase5Data()">
+                            📋 Phase 5 データ状況
+                        </button>
+                        <button class="btn" style="background: linear-gradient(45deg, #4caf50, #2e7d32); font-size: 0.8em;" onclick="showPhase6PerformanceStats()">
+                            📊 Phase 6 統計
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Phase 4: 動的投資戦略システム -->
@@ -551,6 +590,30 @@
         <div id="phase5CalibrationReport" class="section" style="background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%); border-left: 4px solid #9c27b0; margin-top: 20px; display: none;">
             <h3 style="color: #7b1fa2;">🔬 Phase 5: キャリブレーション精度分析</h3>
             <!-- レポート内容はJavaScriptで動的生成 -->
+        </div>
+
+        <!-- Phase 6: ケリー基準資金管理システム -->
+        <div id="phase6KellyCapitalManagement" class="section" style="background: linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%); border-left: 4px solid #4caf50; margin-top: 20px; display: none;">
+            <h3 style="color: #2e7d32;">💰 Phase 6: ケリー基準資金管理システム</h3>
+            <div style="background: #dcedc8; padding: 10px; border-radius: 6px; margin-bottom: 15px; font-size: 0.9em;">
+                <strong>🧮 科学的資金管理機能</strong><br>
+                • <strong>ケリー基準計算</strong>: 勝率・オッズから最適投資比率を科学的算出<br>
+                • <strong>動的リスク調整</strong>: 成績に応じてリスクレベルを自動調整<br>
+                • <strong>ドローダウン制御</strong>: 連敗時の資金保護機能<br>
+                • <strong>ポートフォリオ最適化</strong>: 複数馬券の最適配分計算
+            </div>
+            
+            <!-- 資金管理ダッシュボード -->
+            <div id="capitalDashboard" style="margin-bottom: 15px;"></div>
+            
+            <!-- ケリー基準投資推奨 -->
+            <div id="kellyBettingRecommendations" style="margin-bottom: 15px;"></div>
+            
+            <!-- ポートフォリオ分析 -->
+            <div id="portfolioAnalysis" style="margin-bottom: 15px;"></div>
+            
+            <!-- パフォーマンス分析 -->
+            <div id="capitalPerformanceAnalysis"></div>
         </div>
     </div>
 
@@ -607,6 +670,9 @@
     <script src="js/enhancedPredictionEngine.js"></script>
     <script src="js/debugUtils.js"></script>
     <script src="js/phase4Integration.js"></script>
+    <!-- Phase 6: ケリー基準資金管理 -->
+    <script src="js/kellyCapitalManager.js"></script>
+    <script src="js/phase6Integration.js"></script>
     <script src="js/main.js"></script>
 </body>
 </html> 

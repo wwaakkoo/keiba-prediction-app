@@ -225,6 +225,155 @@ window.tracePhase5Learning = function() {
     };
 };
 
+// Phase 6デバッグ機能
+function simplePhase6Check() {
+    console.log('💰 === Phase 6 ケリー基準システム簡易確認 ===');
+    
+    try {
+        // Phase 6システム初期化確認
+        const manager = new KellyCapitalManager();
+        console.log('✅ KellyCapitalManager初期化成功');
+        
+        // 基本情報表示
+        const report = manager.generateCapitalReport();
+        console.log('📊 現在資金:', report.capitalStatus.currentCapital.toLocaleString() + '円');
+        console.log('📈 収益率:', report.capitalStatus.totalReturnRate.toFixed(1) + '%');
+        console.log('⚠️ ドローダウン:', (report.capitalStatus.currentDrawdown * 100).toFixed(1) + '%');
+        console.log('🎯 リスクレベル:', report.riskManagement.riskLevel);
+        
+        // ケリー基準テスト
+        const testKelly = manager.calculateKellyRatio(0.4, 3.0, 0.8);
+        console.log('🧮 テストケリー比率(勝率40%, オッズ3.0):', (testKelly * 100).toFixed(2) + '%');
+        
+        // 投資額計算テスト
+        const testBet = manager.calculateOptimalBetAmount(1.2, 0.4, 3.0, 0.8);
+        console.log('💰 テスト投資額:', testBet.amount + '円', '推奨:', testBet.recommendation);
+        
+        console.log('✅ Phase 6システム正常稼働中');
+        return true;
+        
+    } catch (error) {
+        console.error('❌ Phase 6エラー:', error);
+        return false;
+    }
+}
+
+function checkPhase6Data() {
+    console.log('💰 === Phase 6 データ詳細確認 ===');
+    
+    try {
+        const saved = localStorage.getItem('kelly_capital_data');
+        
+        if (!saved) {
+            console.log('❌ Phase 6データが見つかりません（初期状態）');
+            return {
+                hasData: false,
+                message: 'データなし - 初期状態'
+            };
+        }
+        
+        const data = JSON.parse(saved);
+        
+        console.log('✅ データ保存状況: 正常');
+        console.log('💰 現在資金:', data.currentCapital?.toLocaleString() || '不明');
+        console.log('📈 資金ピーク:', data.capitalPeak?.toLocaleString() || '不明');
+        console.log('🎯 リスクレベル:', data.riskLevel || '不明');
+        console.log('📊 パフォーマンス履歴:', (data.performanceHistory?.length || 0) + '件');
+        console.log('🕒 最終更新:', data.lastUpdated || '不明');
+        
+        if (data.performanceHistory && data.performanceHistory.length > 0) {
+            const recent = data.performanceHistory.slice(-5);
+            console.log('\n📋 直近5件の履歴:');
+            recent.forEach((record, index) => {
+                console.log(`  ${index + 1}: 投資${record.investment}円 → 回収${record.return}円 (ROI: ${record.roi?.toFixed(1) || 'N/A'}%)`);
+            });
+        }
+        
+        return {
+            hasData: true,
+            dataSize: data.performanceHistory?.length || 0,
+            details: data
+        };
+        
+    } catch (error) {
+        console.error('❌ Phase 6データ確認エラー:', error);
+        return {
+            hasData: false,
+            error: error.message
+        };
+    }
+}
+
+function createPhase6TestData() {
+    console.log('🧪 Phase 6テストデータを作成します...');
+    
+    try {
+        const manager = new KellyCapitalManager();
+        
+        // テストレース結果を作成
+        const testResults = [
+            { bets: [{ amount: 1000 }], returns: [{ amount: 1500 }] },  // 50%利益
+            { bets: [{ amount: 800 }], returns: [{ amount: 0 }] },      // 全損
+            { bets: [{ amount: 1200 }], returns: [{ amount: 2400 }] },  // 100%利益
+            { bets: [{ amount: 600 }], returns: [{ amount: 900 }] },    // 50%利益
+            { bets: [{ amount: 1000 }], returns: [{ amount: 0 }] }      // 全損
+        ];
+        
+        testResults.forEach((result, index) => {
+            const update = manager.updateCapital(result);
+            console.log(`テスト${index + 1}: ${update.netResult >= 0 ? '利益' : '損失'}${Math.abs(update.netResult)}円`);
+        });
+        
+        console.log('✅ Phase 6テストデータ作成完了');
+        checkPhase6Data();
+        
+        return manager;
+        
+    } catch (error) {
+        console.error('❌ Phase 6テストデータ作成エラー:', error);
+        return null;
+    }
+}
+
+function debugPhase6System() {
+    console.log('🔧 === Phase 6 システム包括診断 ===');
+    
+    const results = {
+        basicCheck: simplePhase6Check(),
+        dataCheck: checkPhase6Data(),
+        timestamp: new Date().toISOString()
+    };
+    
+    // 総合診断
+    console.log('\n📋 === 総合診断結果 ===');
+    if (results.basicCheck && results.dataCheck.hasData) {
+        console.log('✅ Phase 6システム: 完全稼働中');
+    } else if (results.basicCheck) {
+        console.log('🔶 Phase 6システム: 基本機能OK、データ蓄積待ち');
+    } else {
+        console.log('❌ Phase 6システム: 問題あり');
+    }
+    
+    // 推奨アクション
+    console.log('\n💡 === 推奨アクション ===');
+    if (!results.dataCheck.hasData) {
+        console.log('• createPhase6TestData() でテストデータを作成');
+        console.log('• 実際の投資結果を記録してデータ蓄積');
+    }
+    if (results.basicCheck) {
+        console.log('• simulateKellyBet(勝率, オッズ) でケリー計算テスト');
+        console.log('• 実際のレース予測でPhase 6分析を実行');
+    }
+    
+    return results;
+}
+
+// Phase 6デバッグ関数をグローバルに公開
+window.simplePhase6Check = simplePhase6Check;
+window.checkPhase6Data = checkPhase6Data;
+window.createPhase6TestData = createPhase6TestData;
+window.debugPhase6System = debugPhase6System;
+
 // Phase 5学習を手動で実行（テスト用）
 window.manualPhase5Test = function(testFirstHorse = '1番馬', testSecondHorse = null, testThirdHorse = null) {
     console.log('🧪 Phase 5学習手動テスト開始');

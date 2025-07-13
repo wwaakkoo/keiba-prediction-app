@@ -118,8 +118,35 @@ function showPhase4DynamicStrategy() {
  */
 function executePhase4Analysis(horses, predictions) {
     try {
+        console.log('🔄 Phase 4分析開始:', {
+            horses: horses ? horses.length : 0,
+            predictions: predictions ? predictions.length : 0
+        });
+        
         // 期待値分析の実行
         const expectedValueAnalysis = ExpectedValueCalculator.analyzeRaceExpectedValue(predictions);
+        console.log('📊 期待値分析結果:', expectedValueAnalysis);
+        
+        // analyzedHorsesの期待値をチェック
+        if (expectedValueAnalysis.analyzedHorses) {
+            console.log('🏇 分析済み馬の期待値一覧:');
+            expectedValueAnalysis.analyzedHorses.forEach((horse, index) => {
+                // 馬番を複数のソースから取得
+                const horseNumber = horse.horse?.number || 
+                                  horse.horse?.horseNumber || 
+                                  horse.number || 
+                                  horse.horseNumber || 
+                                  (index + 1); // フォールバック: インデックス+1
+                console.log(`${index + 1}. 馬番:${horseNumber} 期待値:${horse.expectedValue || 'undefined'} オッズ:${horse.horse?.odds || horse.estimatedOdds || 'undefined'}`);
+            });
+        }
+        
+        // 期待値1.0超えの馬がない場合の状況確認（データ操作は行わない）
+        const hasValidBets = expectedValueAnalysis.analyzedHorses?.some(h => (h.expectedValue || 0) > 1.0);
+        if (!hasValidBets) {
+            console.info('ℹ️ 期待値1.0超えの馬がありません。このレースは見送り推奨となります。');
+            console.info('📊 最高期待値:', Math.max(...(expectedValueAnalysis.analyzedHorses?.map(h => h.expectedValue || 0) || [0])).toFixed(3));
+        }
         
         // レース戦略分析（期待値データを渡す）
         const marketConditions = {
@@ -135,6 +162,10 @@ function executePhase4Analysis(horses, predictions) {
         
         // 動的投資額調整
         const bettingResult = dynamicBettingManager.calculateDynamicBetting(expectedValueAnalysis);
+        console.log('💰 動的投資額調整結果:', bettingResult);
+        
+        // 統合学習用にグローバル変数に保存
+        window.lastDynamicBettingResult = bettingResult;
         
         // パフォーマンス統計取得
         const performanceStats = performanceTracker.getOverallStats();
@@ -412,10 +443,15 @@ function getBetTypeLabel(type) {
 function getHorseDisplayName(rec) {
     if (rec.horses && rec.horses.length > 1) {
         // ワイドの場合：馬名と馬番を表示
-        return rec.horses.map(h => `${h.name} (${h.number}番)`).join(' - ');
+        return rec.horses.map(h => {
+            const number = h.number || h.horseNumber || '?';
+            return `${h.name || '馬名不明'} (${number}番)`;
+        }).join(' - ');
     } else if (rec.horse) {
         // 単一馬の場合：馬名と馬番を表示
-        return `${rec.horse.name} (${rec.horse.number}番)`;
+        const number = rec.horse.number || rec.horse.horseNumber || '?';
+        const name = rec.horse.name || '馬名不明';
+        return `${name} (${number}番)`;
     }
     return '不明';
 }
@@ -755,6 +791,81 @@ function getQualityColor(quality) {
     if (quality > 0.5) return '#f57c00';
     return '#d32f2f';
 }
+
+/**
+ * Phase 4パフォーマンス統計表示
+ */
+function showPhase4PerformanceStats() {
+    try {
+        console.log('📊 Phase 4パフォーマンス統計表示開始');
+        
+        // PerformanceTrackerの初期化
+        if (typeof PerformanceTracker === 'undefined') {
+            showMessage('Phase 4パフォーマンストラッカーが利用できません', 'error');
+            return;
+        }
+        
+        const performanceTracker = new PerformanceTracker();
+        const overallStats = performanceTracker.getOverallStats();
+        
+        // 表示エリアを確認・作成
+        let displayArea = document.getElementById('phase4PerformanceDisplay');
+        if (!displayArea) {
+            displayArea = document.createElement('div');
+            displayArea.id = 'phase4PerformanceDisplay';
+            displayArea.style.cssText = 'margin-top: 20px; padding: 20px; background: white; border-radius: 8px; border: 1px solid #ddd;';
+            document.body.appendChild(displayArea);
+        }
+        
+        // パフォーマンス統計の表示
+        if (!overallStats || overallStats.totalRaces === 0) {
+            displayArea.innerHTML = `
+                <div style="background: white; border-radius: 8px; padding: 20px; border: 1px solid #ddd;">
+                    <h3 style="color: #e65100; margin-bottom: 15px;">📊 Phase 4パフォーマンス統計</h3>
+                    <div style="text-align: center; color: #666; padding: 30px;">
+                        📝 まだレース履歴がありません<br>
+                        <small>統合学習でレース結果を記録すると成績分析が表示されます</small>
+                    </div>
+                </div>
+            `;
+        } else {
+            displayArea.innerHTML = `
+                <div style="background: white; border-radius: 8px; padding: 20px; border: 1px solid #ddd;">
+                    <h3 style="color: #e65100; margin-bottom: 15px;">📊 Phase 4パフォーマンス統計</h3>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 20px;">
+                        <div style="background: #e8f5e8; padding: 15px; border-radius: 8px; text-align: center;">
+                            <div style="font-weight: bold; color: #2e7d32;">総レース数</div>
+                            <div style="font-size: 1.4em; margin-top: 5px;">${overallStats.totalRaces}</div>
+                        </div>
+                        <div style="background: ${overallStats.overallROI >= 0 ? '#e8f5e8' : '#ffebee'}; padding: 15px; border-radius: 8px; text-align: center;">
+                            <div style="font-weight: bold; color: ${overallStats.overallROI >= 0 ? '#2e7d32' : '#d32f2f'};">総合ROI</div>
+                            <div style="font-size: 1.4em; margin-top: 5px; color: ${overallStats.overallROI >= 0 ? '#1b5e20' : '#c62828'};">${overallStats.overallROI.toFixed(1)}%</div>
+                        </div>
+                        <div style="background: #e3f2fd; padding: 15px; border-radius: 8px; text-align: center;">
+                            <div style="font-weight: bold; color: #1976d2;">平均的中率</div>
+                            <div style="font-size: 1.4em; margin-top: 5px;">${overallStats.averageHitRate.toFixed(1)}%</div>
+                        </div>
+                        <div style="background: #f3e5f5; padding: 15px; border-radius: 8px; text-align: center;">
+                            <div style="font-weight: bold; color: #7b1fa2;">純利益</div>
+                            <div style="font-size: 1.4em; margin-top: 5px; color: ${overallStats.netProfit >= 0 ? '#2e7d32' : '#d32f2f'};">${overallStats.netProfit?.toLocaleString() || 0}円</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        displayArea.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        showMessage('Phase 4パフォーマンス統計を表示しました', 'success');
+        
+    } catch (error) {
+        console.error('Phase 4パフォーマンス統計エラー:', error);
+        showMessage('Phase 4パフォーマンス統計の表示でエラーが発生しました: ' + error.message, 'error');
+    }
+}
+
+// グローバル変数として公開
+window.showPhase4PerformanceStats = showPhase4PerformanceStats;
 
 // ページ読み込み時にPhase 4システムを初期化
 document.addEventListener('DOMContentLoaded', function() {

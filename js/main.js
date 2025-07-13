@@ -96,6 +96,47 @@ function processUnifiedRaceResult() {
         return;
     }
 
+    // 🚀 Phase 4-6自動実行: レース結果入力前に分析を自動実行
+    console.log('🚀 統合学習開始: Phase 4-6自動分析を実行中...');
+    showMessage('🚀 統合学習開始: Phase 4-6の分析を自動実行しています...', 'info');
+    
+    try {
+        // Phase 4: 動的戦略分析の自動実行
+        if (typeof showPhase4DynamicStrategy === 'function') {
+            console.log('📊 Phase 4動的戦略分析を自動実行中...');
+            showPhase4DynamicStrategy();
+            console.log('✅ Phase 4分析完了');
+        }
+        
+        // Phase 6: ケリー基準資金管理の自動実行  
+        if (typeof showPhase6KellyCapitalAnalysis === 'function') {
+            console.log('💰 Phase 6ケリー資金管理分析を自動実行中...');
+            showPhase6KellyCapitalAnalysis();
+            console.log('✅ Phase 6分析完了');
+        }
+        
+        console.log('🎯 Phase 4-6自動分析が完了しました');
+        showMessage('✅ Phase 4-6分析完了。統合学習を続行します...', 'success');
+        
+        // 分析完了後に少し待機してからデータを処理
+        setTimeout(() => {
+            processUnifiedLearningWithAnalysisData(firstHorse, secondHorse, thirdHorse, currentPredictions);
+        }, 500);
+        
+    } catch (error) {
+        console.error('❌ Phase 4-6自動分析エラー:', error);
+        showMessage('⚠️ Phase 4-6自動分析でエラーが発生しましたが、フォールバック処理で続行します', 'warning');
+        // エラーが発生してもフォールバック処理で続行
+        processUnifiedLearningWithAnalysisData(firstHorse, secondHorse, thirdHorse, currentPredictions);
+    }
+}
+
+/**
+ * 統合学習処理（Phase 4-6分析データを含む）
+ */
+function processUnifiedLearningWithAnalysisData(firstHorse, secondHorse, thirdHorse, currentPredictions) {
+    console.log('🎓 統合学習データ処理開始');
+    
     // Phase 1: 的中判定システムによる詳細判定
     const actualResult = {
         first: firstHorse.name,
@@ -434,13 +475,197 @@ function processUnifiedRaceResult() {
         console.warn('収益性システムが利用できません');
     }
 
-    // 統合処理完了メッセージ
-    showMessage('🧠 統合学習に結果を反映しました（統計・AI・収益性）', 'success');
+    // 5. Phase 4パフォーマンス記録（動的投資額調整）
+    if (typeof PerformanceTracker !== 'undefined') {
+        try {
+            console.log('📊 Phase 4パフォーマンス記録開始');
+            
+            const performanceTracker = new PerformanceTracker();
+            
+            // 実際の投資結果を構築
+            const actualResults = {
+                finishing_order: {},
+                payouts: { place: {} }
+            };
+            
+            // 着順設定（安全なプロパティアクセス）
+            if (firstHorse) {
+                const firstIndex = currentPredictions.findIndex(p => p.name === firstHorse.name);
+                if (firstIndex >= 0) {
+                    const horseNumber = firstHorse.number || firstHorse.horseNumber || (firstIndex + 1);
+                    actualResults.finishing_order[horseNumber] = 1;
+                    actualResults.payouts.place[horseNumber] = (firstHorse.placeOdds || firstHorse.odds || 1.5) * 100;
+                }
+            }
+            if (secondHorse) {
+                const secondIndex = currentPredictions.findIndex(p => p.name === secondHorse.name);
+                if (secondIndex >= 0) {
+                    const horseNumber = secondHorse.number || secondHorse.horseNumber || (secondIndex + 1);
+                    actualResults.finishing_order[horseNumber] = 2;
+                    actualResults.payouts.place[horseNumber] = (secondHorse.placeOdds || secondHorse.odds || 1.3) * 100;
+                }
+            }
+            if (thirdHorse) {
+                const thirdIndex = currentPredictions.findIndex(p => p.name === thirdHorse.name);
+                if (thirdIndex >= 0) {
+                    const horseNumber = thirdHorse.number || thirdHorse.horseNumber || (thirdIndex + 1);
+                    actualResults.finishing_order[horseNumber] = 3;
+                    actualResults.payouts.place[horseNumber] = (thirdHorse.placeOdds || thirdHorse.odds || 1.2) * 100;
+                }
+            }
+            
+            // Phase 4の投資推奨結果を記録（フォールバック対応）
+            let bettingRecommendations = [];
+            let recordingNote = '';
+            
+            if (window.lastDynamicBettingResult && window.lastDynamicBettingResult.recommendations && window.lastDynamicBettingResult.recommendations.length > 0) {
+                // Phase 4分析が実行されて推奨がある場合
+                bettingRecommendations = window.lastDynamicBettingResult.recommendations;
+                recordingNote = '分析実行済み';
+            } else {
+                // Phase 4分析未実行または推奨なしの場合、フォールバック記録
+                if (window.lastDynamicBettingResult) {
+                    console.log('⚠️ Phase 4分析は実行されましたが推奨がないため、フォールバック記録を使用');
+                    recordingNote = '分析実行済み（推奨なし・フォールバック記録）';
+                } else {
+                    console.log('⚠️ Phase 4分析未実行のため、フォールバック記録を使用');
+                    recordingNote = '分析未実行（フォールバック記録）';
+                }
+                bettingRecommendations = [{
+                    type: 'place',
+                    horse: firstHorse,
+                    amount: 1000,
+                    strategy: 'fallback_learning',
+                    reason: '学習専用レコード'
+                }];
+            }
+            
+            const raceRecord = performanceTracker.recordRaceResult(
+                { name: 'レース', horses: currentPredictions.length, course: 'unknown' },
+                currentPredictions,
+                bettingRecommendations,
+                actualResults
+            );
+            
+            console.log('✅ Phase 4パフォーマンス記録完了:', raceRecord);
+            showMessage(`📊 Phase 4投資戦略成績記録 (${recordingNote}, ROI: ${raceRecord.performance.roi.toFixed(1)}%)`, 'success');
+            
+        } catch (error) {
+            console.error('Phase 4パフォーマンス記録エラー:', error);
+            console.log('⚠️ Phase 4成績記録でエラーが発生しました');
+        }
+    }
+
+    // 6. Phase 6 Kelly資金管理記録
+    if (typeof window.KellyCapitalManager !== 'undefined') {
+        try {
+            console.log('💰 Phase 6 Kelly資金管理記録開始');
+            
+            const kellyManager = window.KellyCapitalManager;
+            
+            // 投資成果の記録（フォールバック対応）
+            const investmentResults = [];
+            let kellyRecordingNote = '';
+            
+            if (window.lastKellyAnalysis && window.lastKellyAnalysis.recommendations) {
+                // Phase 6分析が実行されている場合
+                window.lastKellyAnalysis.recommendations.forEach(recommendation => {
+                    const horse = recommendation.horse;
+                    const horseName = horse?.name || horse?.number || 'unknown';
+                    
+                    // 的中判定
+                    const isHit = [firstHorse, secondHorse, thirdHorse]
+                        .filter(h => h)
+                        .some(h => h.name === horseName);
+                    
+                    const result = {
+                        horse: horse,
+                        amount: recommendation.amount,
+                        odds: recommendation.odds || horse?.odds || 3.0,
+                        isHit: isHit,
+                        payout: isHit ? recommendation.amount * (recommendation.odds || 1.5) : 0,
+                        kellyRatio: recommendation.kellyRatio,
+                        winProbability: recommendation.winProbability
+                    };
+                    
+                    investmentResults.push(result);
+                });
+                kellyRecordingNote = '分析実行済み';
+            } else {
+                // Phase 6分析未実行の場合、フォールバック記録
+                console.log('⚠️ Phase 6分析未実行のため、フォールバック記録を使用');
+                
+                // 基本的な投資記録を生成（1着馬への投資として記録）
+                const baseOdds = firstHorse.odds || firstHorse.placeOdds || 3.0;
+                investmentResults.push({
+                    horse: firstHorse,
+                    amount: 1000,
+                    odds: baseOdds,
+                    isHit: true, // 1着なので的中
+                    payout: 1000 * baseOdds,
+                    kellyRatio: 0.05, // 基本的なケリー比率
+                    winProbability: 1 / baseOdds
+                });
+                kellyRecordingNote = '分析未実行（フォールバック記録）';
+            }
+            
+            // Kelly Criterionの成績記録
+            const totalInvestment = investmentResults.reduce((sum, r) => sum + r.amount, 0);
+            const totalReturn = investmentResults.reduce((sum, r) => sum + r.payout, 0);
+            const kellyPerformance = {
+                totalInvestment,
+                totalReturn,
+                netProfit: totalReturn - totalInvestment,
+                roi: totalInvestment > 0 ? ((totalReturn - totalInvestment) / totalInvestment) * 100 : 0,
+                hitCount: investmentResults.filter(r => r.isHit).length,
+                totalBets: investmentResults.length
+            };
+            
+            // 軍資金更新（正しいメソッド呼び出し）
+            const kellyCapitalManager = new KellyCapitalManager();
+            const raceResultForKelly = {
+                bets: investmentResults.map(r => ({ amount: r.amount })),
+                returns: investmentResults.map(r => ({ amount: r.payout }))
+            };
+            kellyCapitalManager.updateCapital(raceResultForKelly);
+            
+            console.log('✅ Phase 6 Kelly資金管理記録完了:', kellyPerformance);
+            showMessage(`💰 Kelly基準投資成績記録 (${kellyRecordingNote}): 純利益${kellyPerformance.netProfit.toLocaleString()}円 (ROI: ${kellyPerformance.roi.toFixed(1)}%)`, 
+                       kellyPerformance.netProfit >= 0 ? 'success' : 'warning');
+            
+        } catch (error) {
+            console.error('Phase 6 Kelly記録エラー:', error);
+            console.log('⚠️ Phase 6 Kelly記録でエラーが発生しました');
+        }
+    }
+
+    // 統合処理完了メッセージとUI更新
+    showMessage('🎓 統合学習完了！Phase 1-6の全システムに学習結果が反映されました。', 'success');
 
     // 入力フィールドをクリア
     document.getElementById('unifiedFirst').value = '';
     document.getElementById('unifiedSecond').value = '';
     document.getElementById('unifiedThird').value = '';
+    
+    // Phase 4-6の結果表示エリアを自動表示（既に分析が実行されているため）
+    try {
+        if (document.getElementById('phase4DynamicStrategy')) {
+            document.getElementById('phase4DynamicStrategy').style.display = 'block';
+        }
+        if (document.getElementById('phase6KellyCapitalManagement')) {
+            document.getElementById('phase6KellyCapitalManagement').style.display = 'block';
+        }
+        
+        // 高度分析システムセクションまでスクロール
+        const advancedSection = document.querySelector('[style*="linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%)"]');
+        if (advancedSection) {
+            advancedSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+        
+        console.log('🎯 UI自動更新完了: Phase 4-6の結果が表示されています');
+    } catch (error) {
+        console.warn('UI自動更新エラー:', error);
+    }
 }
 
 // 全学習データリセット機能

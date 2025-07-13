@@ -68,8 +68,20 @@ class ExpectedValueCalculator {
         // 信頼度スコア計算
         analysis.confidenceScore = this.calculateConfidenceScore(horse, analysis);
         
-        // 新方式期待値計算：オッズ × 確率 × 信頼度
-        analysis.expectedValue = (analysis.estimatedOdds / 100) * analysis.estimatedProbability * analysis.confidenceScore;
+        // ロジスティック変換による推定確率の調整
+        const logisticProbability = this.applyLogisticTransform(analysis.estimatedProbability, horse);
+        
+        // リスク係数計算（1.0〜2.0）
+        const riskFactor = this.calculateRiskFactor(horse, analysis);
+        
+        // 新期待値計算式
+        const rawExpectedValue = (analysis.estimatedOdds / 100) * logisticProbability * analysis.confidenceScore;
+        const oddsBasedCap = Math.min(2.5, 1.0 + (horse.odds > 50 ? 0.5 : horse.odds > 20 ? 0.3 : 0.2));
+        analysis.expectedValue = Math.min(rawExpectedValue, oddsBasedCap) / riskFactor;
+        
+        // ケリー係数チェック（最適賭け率）
+        analysis.kellyRatio = this.calculateKellyRatio(analysis.expectedValue, horse.odds, logisticProbability);
+        analysis.shouldDisplay = analysis.kellyRatio >= 0.01; // 1%未満は非表示
         
         // 推奨判定
         analysis.recommendation = this.determineRecommendation(analysis.expectedValue);
@@ -132,6 +144,83 @@ class ExpectedValueCalculator {
         
         // 5. 最終調整（0.5〜1.5の範囲に制限）
         return Math.max(0.5, Math.min(1.5, confidence));
+    }
+    
+    /**
+     * ロジスティック変換による確率調整
+     * @param {number} probability - 元の確率
+     * @param {Object} horse - 馬データ
+     * @returns {number} 調整後確率
+     */
+    static applyLogisticTransform(probability, horse) {
+        // ロジスティック関数: 1 / (1 + e^(-k*(x-x0)))
+        const k = 8; // 傾きパラメータ
+        const x0 = 0.5; // 中心点
+        
+        // スコアベースの調整
+        const score = horse.placeProbability || horse.score || 50;
+        const scoreAdjustment = (score - 50) / 100; // -0.5 to 0.5
+        
+        const adjustedInput = probability + scoreAdjustment;
+        const logisticResult = 1 / (1 + Math.exp(-k * (adjustedInput - x0)));
+        
+        // 現実的な範囲に制限（複勝想定）
+        return Math.max(0.05, Math.min(0.8, logisticResult));
+    }
+    
+    /**
+     * リスク係数計算（1.0〜2.0）
+     * @param {Object} horse - 馬データ
+     * @param {Object} analysis - 分析データ
+     * @returns {number} リスク係数
+     */
+    static calculateRiskFactor(horse, analysis) {
+        let riskFactor = 1.0; // 基準値
+        
+        // 1. 人気によるリスク
+        const odds = horse.odds || 1.0;
+        if (odds > 100) riskFactor += 0.6;      // 極穴馬: 高リスク
+        else if (odds > 50) riskFactor += 0.4;  // 大穴馬: 中高リスク
+        else if (odds > 20) riskFactor += 0.3;  // 人気薄: 中リスク
+        else if (odds > 10) riskFactor += 0.2;  // 中人気: 低リスク
+        else if (odds > 3) riskFactor += 0.1;   // 人気馬: 最低リスク
+        // 3倍未満: リスク係数据え置き
+        
+        // 2. スコアによるリスク
+        const score = horse.placeProbability || horse.score || 50;
+        if (score < 40) riskFactor += 0.3;      // 低スコア: 高リスク
+        else if (score < 60) riskFactor += 0.2; // 中スコア: 中リスク
+        else if (score < 80) riskFactor += 0.1; // 良スコア: 低リスク
+        // 80以上: リスク係数据え置き
+        
+        // 3. 確率とオッズの整合性によるリスク
+        const theoreticalOdds = 1 / analysis.estimatedProbability;
+        const oddsDiscrepancy = Math.abs(odds - theoreticalOdds) / theoreticalOdds;
+        if (oddsDiscrepancy > 0.5) riskFactor += 0.2; // 不整合: リスク増加
+        
+        // 4. 最終調整（1.0〜2.0の範囲に制限）
+        return Math.max(1.0, Math.min(2.0, riskFactor));
+    }
+    
+    /**
+     * ケリー係数計算（最適賭け率）
+     * @param {number} expectedValue - 期待値
+     * @param {number} odds - オッズ
+     * @param {number} probability - 勝率
+     * @returns {number} ケリー係数
+     */
+    static calculateKellyRatio(expectedValue, odds, probability) {
+        const b = odds - 1; // 純利益倍率
+        const p = probability; // 勝率
+        const q = 1 - p; // 負け率
+        
+        // ケリー基準: f = (bp - q) / b
+        const kellyRatio = (b * p - q) / b;
+        
+        // 期待値による補正
+        const adjustedKelly = kellyRatio * Math.min(1.0, expectedValue);
+        
+        return Math.max(0, adjustedKelly);
     }
     
     /**
@@ -283,15 +372,23 @@ class ExpectedValueCalculator {
         // 各馬の期待値分析
         horses.forEach(horse => {
             const analysis = this.calculateHorseExpectedValue(horse, betType);
-            raceAnalysis.analyzedHorses.push(analysis);
             
-            // 推奨レベル別分類（undefinedチェック追加）
-            if (analysis.recommendation && raceAnalysis.summary[analysis.recommendation]) {
-                raceAnalysis.summary[analysis.recommendation].push(analysis);
+            // ケリー係数チェック：1%未満は非表示
+            if (analysis.shouldDisplay) {
+                raceAnalysis.analyzedHorses.push(analysis);
+                
+                // 推奨レベル別分類（undefinedチェック追加）
+                if (analysis.recommendation && raceAnalysis.summary[analysis.recommendation]) {
+                    raceAnalysis.summary[analysis.recommendation].push(analysis);
+                } else {
+                    // デフォルトでskipに分類
+                    raceAnalysis.summary.skip.push(analysis);
+                    console.warn('⚠️ 推奨レベル不明のため skip に分類:', horse.name, analysis.recommendation);
+                }
             } else {
-                // デフォルトでskipに分類
+                // ケリー係数が低い場合はskipに分類
+                console.log(`🚫 ${horse.name || horse.number}番: ケリー係数${(analysis.kellyRatio * 100).toFixed(2)}%で非表示`);
                 raceAnalysis.summary.skip.push(analysis);
-                console.warn('⚠️ 推奨レベル不明のため skip に分類:', horse.name, analysis.recommendation);
             }
             
             // 最良馬の特定

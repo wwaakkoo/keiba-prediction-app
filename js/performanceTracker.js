@@ -67,8 +67,9 @@ class PerformanceTracker {
         };
 
         predictions.forEach(prediction => {
-            const horse = prediction.horse;
-            const actualPosition = actualResults.finishing_order?.[horse.number] || null;
+            const horse = prediction.horse || prediction;
+            const horseNumber = horse?.number || horse?.horseNumber || horse?.num || 1;
+            const actualPosition = actualResults.finishing_order?.[horseNumber] || null;
             
             // 複勝的中判定（1-3着）
             const placeHit = actualPosition && actualPosition <= 3;
@@ -83,8 +84,8 @@ class PerformanceTracker {
             analysis.confidenceAccuracy.push(confidenceAccuracy);
 
             // 期待値精度評価
-            if (actualResults.payouts?.[horse.number]) {
-                const actualOdds = actualResults.payouts[horse.number];
+            if (actualResults.payouts?.[horseNumber]) {
+                const actualOdds = actualResults.payouts[horseNumber];
                 const expectedValueAccuracy = this.evaluateExpectedValueAccuracy(prediction, actualOdds);
                 analysis.expectedValueAccuracy.push(expectedValueAccuracy);
             }

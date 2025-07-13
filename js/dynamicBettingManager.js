@@ -48,7 +48,7 @@ class DynamicBettingManager {
         const maxConfidence = Math.max(...horses.map(h => h.confidence));
         const avgConfidence = horses.reduce((sum, h) => sum + h.confidence, 0) / horses.length;
 
-        // 戦略決定
+        // 戦略決定（期待値重視に修正）
         if (excellentHorses.length === 1 && maxConfidence >= 85 && maxExpectedValue >= 1.5) {
             return {
                 type: 'aggressive_focus',
@@ -69,6 +69,22 @@ class DynamicBettingManager {
                 reasoning: '保守的選択戦略',
                 allocationMultiplier: 0.8,
                 maxBetRatio: 0.25
+            };
+        } else if (maxExpectedValue >= 0.9) {
+            // 期待値0.9以上の馬がある場合は最小リスクでも慎重投資
+            return {
+                type: 'moderate_value_minimal',
+                reasoning: '中期待値馬による慎重投資実行',
+                allocationMultiplier: 0.5,
+                maxBetRatio: 0.15
+            };
+        } else if (maxExpectedValue >= 1.5) {
+            // 高期待値馬がある場合は最小リスクでも投資
+            return {
+                type: 'high_value_minimal',
+                reasoning: '高期待値馬発見により慎重投資実行',
+                allocationMultiplier: 0.6,
+                maxBetRatio: 0.2
             };
         } else {
             return {
@@ -135,32 +151,95 @@ class DynamicBettingManager {
         const horses = raceAnalysis.analyzedHorses;
         const kellyBets = [];
 
-        horses.forEach(horse => {
-            if (horse.expectedValue > 1.0) {
+        console.log('🎰 Kelly計算開始:', { horses: horses.length, bankroll });
+
+        horses.forEach((horse, index) => {
+            // expectedValueが未定義の場合は1.0として扱う
+            const expectedValue = horse.expectedValue || 1.0;
+            
+            console.log(`🐎 ${index + 1}番馬 Kelly検証:`, {
+                expectedValue,
+                condition: expectedValue > 0.8
+            });
+            
+            if (expectedValue > 0.8) { // 期待値0.8以上で投資検討
                 // ケリー基準: f = (bp - q) / b
                 // b = オッズ-1, p = 勝率, q = 負け率
-                const odds = horse.estimatedOdds;
-                const winProbability = 1 / odds * horse.expectedValue;
+                // 複数のオッズソースを試行
+                const odds = horse.estimatedOdds || horse.odds || horse.horse?.odds || horse.horse?.placeOdds || 3.0;
+                
+                // 期待値計算を修正：現実的な勝率に調整
+                let baseWinProbability = Math.min(0.7, 1 / odds); // 勝率上限70%
+                
+                // 高オッズ馬の勝率を現実的に設定
+                if (odds > 100) baseWinProbability = Math.max(0.05, Math.min(0.15, 1 / odds));
+                else if (odds > 50) baseWinProbability = Math.max(0.1, Math.min(0.25, 1 / odds));
+                else if (odds > 20) baseWinProbability = Math.max(0.15, Math.min(0.4, 1 / odds));
+                
+                const winProbability = Math.min(0.8, baseWinProbability * Math.min(1.5, expectedValue));
                 const loseProbability = 1 - winProbability;
                 
+                console.log(`🧮 ${index + 1}番馬 Kelly詳細:`, {
+                    odds,
+                    baseWinProbability,
+                    winProbability,
+                    loseProbability,
+                    expectedValue
+                });
+                
                 if (winProbability > 0 && winProbability < 1) {
-                    const kellyFraction = (odds * winProbability - loseProbability) / odds;
-                    const adjustedKelly = Math.max(0, kellyFraction * this.kellyFraction); // 保守的調整
+                    // ケリー基準修正版: より実用的な計算
+                    const b = odds - 1; // 純利益倍率
+                    const p = winProbability;
+                    const q = loseProbability;
+                    
+                    const kellyFraction = (b * p - q) / b;
+                    
+                    // 期待値が高い場合はより積極的に
+                    const baseKelly = Math.max(0, kellyFraction);
+                    const expectedValueBonus = expectedValue >= 1.5 ? 1.0 : expectedValue >= 1.3 ? 0.8 : 0.6;
+                    const adjustedKelly = Math.min(0.1, baseKelly * expectedValueBonus); // 上限10%
                     
                     const betAmount = Math.floor(bankroll * adjustedKelly);
                     
-                    if (betAmount >= 50) {
+                    console.log(`💰 ${index + 1}番馬 Kelly結果:`, {
+                        kellyFraction: baseKelly,
+                        adjustedKelly,
+                        betAmount,
+                        minAmount: 100,
+                        passed: betAmount >= 100
+                    });
+                    
+                    // 期待値1.5以上は最小投資額を下げる
+                    const minBet = expectedValue >= 1.5 ? 100 : 200;
+                    
+                    if (betAmount >= minBet) {
                         kellyBets.push({
                             horse: horse.horse,
                             kellyFraction: adjustedKelly,
                             amount: betAmount,
-                            expectedValue: horse.expectedValue,
-                            confidence: horse.confidence,
+                            expectedValue: expectedValue,
+                            confidence: horse.confidence || 50,
                             type: 'place'
                         });
+                        console.log(`✅ ${index + 1}番馬 Kelly買い目追加`);
+                    } else {
+                        console.log(`❌ ${index + 1}番馬 投資額不足 (${betAmount}円 < ${minBet}円)`);
                     }
+                } else {
+                    console.log(`❌ ${index + 1}番馬 勝率範囲外:`, winProbability);
                 }
             }
+        });
+
+        console.log(`🎯 Kelly計算完了:`, {
+            totalCandidates: horses.length,
+            validBets: kellyBets.length,
+            bets: kellyBets.map(b => ({
+                horse: b.horse?.number || '?',
+                amount: b.amount,
+                expectedValue: b.expectedValue
+            }))
         });
 
         return kellyBets.sort((a, b) => b.expectedValue - a.expectedValue);
@@ -199,6 +278,12 @@ class DynamicBettingManager {
                 adjustedAmount = Math.floor(bet.amount * adjustment * 0.8);
             } else if (strategy.type === 'minimal_risk' && index === 0) {
                 // 最小リスク：最高期待値馬のみ最小額
+                adjustedAmount = Math.floor(bet.amount * adjustment * 0.5);
+            } else if (strategy.type === 'high_value_minimal' && index < 2) {
+                // 高期待値最小リスク：上位2頭に慎重投資
+                adjustedAmount = Math.floor(bet.amount * adjustment * 0.7);
+            } else if (strategy.type === 'moderate_value_minimal' && index < 3) {
+                // 中期待値最小リスク：上位3頭に超慎重投資
                 adjustedAmount = Math.floor(bet.amount * adjustment * 0.5);
             } else {
                 return; // その他はスキップ
