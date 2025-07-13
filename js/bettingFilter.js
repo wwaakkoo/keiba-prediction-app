@@ -194,8 +194,8 @@ class BettingFilter {
      */
     static evaluatePlaceSuitability(horse, expectedValueAnalysis) {
         const config = this.CONFIG.BET_TYPE_SUITABILITY.place;
-        const probability = expectedValueAnalysis.estimatedProbability;
-        const odds = expectedValueAnalysis.estimatedOdds;
+        const probability = expectedValueAnalysis?.estimatedProbability || 0;
+        const odds = expectedValueAnalysis?.estimatedOdds || 1.0;
         
         const suitable = probability >= config.minProbability && odds <= config.maxOdds;
         
@@ -217,8 +217,8 @@ class BettingFilter {
      */
     static evaluateWideSuitability(horse, expectedValueAnalysis) {
         const config = this.CONFIG.BET_TYPE_SUITABILITY.wide;
-        const probability = expectedValueAnalysis.estimatedProbability;
-        const odds = expectedValueAnalysis.estimatedOdds * 0.7; // ワイドは複勝より低め
+        const probability = expectedValueAnalysis?.estimatedProbability || 0;
+        const odds = (expectedValueAnalysis?.estimatedOdds || 1.0) * 0.7; // ワイドは複勝より低め
         
         const suitable = probability >= config.minProbability && odds <= config.maxOdds;
         
@@ -240,8 +240,8 @@ class BettingFilter {
      */
     static evaluateExactaSuitability(horse, expectedValueAnalysis) {
         const config = this.CONFIG.BET_TYPE_SUITABILITY.exacta;
-        const probability = expectedValueAnalysis.estimatedProbability * 0.5; // 馬連は複勝より厳しく
-        const odds = expectedValueAnalysis.estimatedOdds * 1.5; // 馬連は複勝より高め
+        const probability = (expectedValueAnalysis?.estimatedProbability || 0) * 0.5; // 馬連は複勝より厳しく
+        const odds = (expectedValueAnalysis?.estimatedOdds || 1.0) * 1.5; // 馬連は複勝より高め
         
         const suitable = probability >= config.minProbability && odds <= config.maxOdds;
         
