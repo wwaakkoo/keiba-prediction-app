@@ -1360,7 +1360,24 @@ class PredictionEngine {
             
         } catch (error) {
             console.error('統合買い目推奨システムエラー:', error);
-            html = '<div style="text-align: center; color: #666; padding: 20px;">統合推奨システムの処理中にエラーが発生しました。</div>';
+            console.error('エラースタック:', error.stack);
+            console.error('予測データ:', predictions);
+            
+            // 詳細なエラー情報を表示
+            html = `
+                <div style="background: #ffebee; border: 2px solid #f44336; border-radius: 8px; padding: 20px; margin: 10px 0;">
+                    <h3 style="color: #c62828; margin-top: 0;">🚨 統合推奨システムエラー</h3>
+                    <p><strong>エラー:</strong> ${error.message}</p>
+                    <p><strong>予測データ数:</strong> ${predictions ? predictions.length : 'undefined'}</p>
+                    <p><strong>デバッグ情報:</strong></p>
+                    <ul>
+                        <li>ExpectedValueCalculator: ${typeof ExpectedValueCalculator !== 'undefined' ? '✅利用可能' : '❌未定義'}</li>
+                        <li>BettingFilter: ${typeof window.BettingFilter !== 'undefined' ? '✅利用可能' : '❌未定義'}</li>
+                        <li>RaceSkipDecisionSystem: ${typeof window.RaceSkipDecisionSystem !== 'undefined' ? '✅利用可能' : '❌未定義'}</li>
+                    </ul>
+                    <p style="font-size: 0.9em; color: #666;">コンソールでより詳細なエラー情報を確認してください。</p>
+                </div>
+            `;
         }
         
         container.innerHTML = html;
