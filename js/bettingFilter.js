@@ -142,7 +142,7 @@ class BettingFilter {
      * @returns {Object} フィルター結果
      */
     static applyExpectedValueFilter(expectedValueAnalysis) {
-        const ev = expectedValueAnalysis.expectedValue || 0;
+        const ev = expectedValueAnalysis?.expectedValue || 0;
         const config = this.CONFIG.EXPECTED_VALUE_FILTER;
         
         let level = 'skip';
@@ -383,6 +383,13 @@ class BettingFilter {
      * @returns {Object} フィルタリング結果
      */
     static filterRaceBetting(horses, expectedValueAnalyses) {
+        console.log('🎯 フィルタリング開始', { 
+            horsesCount: horses.length, 
+            analysesCount: expectedValueAnalyses?.length || 0,
+            horsesNames: horses.map(h => h.name || 'unnamed'),
+            analysesStructure: expectedValueAnalyses?.slice(0, 2) || 'undefined'
+        });
+        
         const filteredResults = {
             totalHorses: horses.length,
             evaluations: [],
@@ -398,7 +405,7 @@ class BettingFilter {
         
         // 各馬を評価
         horses.forEach((horse, index) => {
-            const expectedValueAnalysis = expectedValueAnalyses[index];
+            const expectedValueAnalysis = expectedValueAnalyses?.[index] || {};
             const evaluation = this.evaluateHorseSuitability(horse, expectedValueAnalysis);
             
             filteredResults.evaluations.push(evaluation);
