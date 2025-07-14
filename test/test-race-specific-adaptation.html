@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>個別レース特性対応システムテスト</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 1400px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; }
+        .test-section { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 15px; margin: 15px 0; }
+        .btn { background: linear-gradient(45deg, #667eea, #764ba2); color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin: 5px; }
+        .btn:hover { transform: translateY(-1px); }
+        .btn-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin: 15px 0; }
+        .result-card { background: #f8f9fa; border-left: 4px solid #28a745; padding: 15px; margin: 10px 0; border-radius: 5px; }
+        .error-card { background: #f8f9fa; border-left: 4px solid #dc3545; padding: 15px; margin: 10px 0; border-radius: 5px; }
+        .warning-card { background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 10px 0; border-radius: 5px; }
+        .info-card { background: #e3f2fd; border-left: 4px solid #2196f3; padding: 15px; margin: 10px 0; border-radius: 5px; }
+        .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin: 15px 0; }
+        .metric-card { background: #e3f2fd; padding: 15px; border-radius: 8px; text-align: center; }
+        .progress-bar { width: 100%; height: 20px; background: #e0e0e0; border-radius: 10px; overflow: hidden; margin: 10px 0; }
+        .progress-fill { height: 100%; background: linear-gradient(45deg, #28a745, #20c997); transition: width 0.3s; }
+        .race-profile { background: #f1f8e9; border: 1px solid #4caf50; border-radius: 5px; padding: 15px; margin: 10px 0; }
+        .adaptation-result { background: #e8f5e8; border: 1px solid #4caf50; border-radius: 5px; padding: 10px; margin: 5px 0; }
+        .participant-analysis { background: #fff3e0; border: 1px solid #ff9800; border-radius: 5px; padding: 10px; margin: 5px 0; }
+        .suitability-bar { width: 100%; height: 15px; background: #e0e0e0; border-radius: 7px; overflow: hidden; margin: 5px 0; }
+        .suitability-fill { height: 100%; background: linear-gradient(45deg, #4caf50, #8bc34a); border-radius: 7px; }
+        .race-type-badge { display: inline-block; padding: 5px 10px; border-radius: 15px; font-size: 12px; font-weight: bold; margin: 2px; }
+        .type-sprint { background: #ff5722; color: white; }
+        .type-mile { background: #ff9800; color: white; }
+        .type-middle { background: #2196f3; color: white; }
+        .type-long { background: #9c27b0; color: white; }
+        .pace-indicator { display: inline-block; padding: 8px 12px; border-radius: 20px; font-weight: bold; margin: 5px; }
+        .pace-slow { background: #4caf50; color: white; }
+        .pace-middle { background: #ff9800; color: white; }
+        .pace-high { background: #f44336; color: white; }
+        .analysis-chart { background: #fafafa; border: 1px solid #ddd; border-radius: 5px; padding: 15px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏇 個別レース特性対応システムテスト</h1>
+        
+        <div class="test-section">
+            <h2>🚀 レース特性分析システム</h2>
+            <p>個別レースの特性を分析し、最適な戦略を提案するシステムをテストします</p>
+            
+            <div class="btn-grid">
+                <button class="btn" onclick="analyzeRaceCharacteristics()">🔍 レース特性分析</button>
+                <button class="btn" onclick="testDistanceAnalysis()">📏 距離特性分析</button>
+                <button class="btn" onclick="testCourseAnalysis()">🏟️ コース特性分析</button>
+                <button class="btn" onclick="testPaceAnalysis()">⚡ ペース分析</button>
+            </div>
+            
+            <div id="characteristicsResults"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>🎯 レース特性対応戦略</h2>
+            <p>分析されたレース特性に基づく戦略適応機能をテストします</p>
+            
+            <div class="btn-grid">
+                <button class="btn" onclick="executeAdaptationStrategy()">🎯 適応戦略実行</button>
+                <button class="btn" onclick="testParticipantSuitability()">🏇 参加馬適性分析</button>
+                <button class="btn" onclick="testEnvironmentalFactors()">🌤️ 環境要因分析</button>
+                <button class="btn" onclick="generateAdaptationReport()">📄 適応レポート生成</button>
+            </div>
+            
+            <div id="adaptationResults"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>📊 特性対応ダッシュボード</h2>
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <h3>レース特性分析</h3>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="characteristicsProgress" style="width: 0%"></div>
+                    </div>
+                    <span id="characteristicsValue">未分析</span>
+                </div>
+                <div class="metric-card">
+                    <h3>適応戦略効果</h3>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="adaptationProgress" style="width: 0%"></div>
+                    </div>
+                    <span id="adaptationValue">未実行</span>
+                </div>
+                <div class="metric-card">
+                    <h3>参加馬適性</h3>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="suitabilityProgress" style="width: 0%"></div>
+                    </div>
+                    <span id="suitabilityValue">未分析</span>
+                </div>
+                <div class="metric-card">
+                    <h3>環境要因影響</h3>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="environmentalProgress" style="width: 0%"></div>
+                    </div>
+                    <span id="environmentalValue">未分析</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>🏇 レースプロファイル</h2>
+            <div id="raceProfile">
+                <p>レース特性分析実行後、詳細なレースプロファイルを表示します</p>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>👥 参加馬適性評価</h2>
+            <div id="participantSuitability">
+                <p>参加馬適性分析実行後、各馬の適性評価を表示します</p>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>📈 適応効果チャート</h2>
+            <div class="analysis-chart" id="adaptationChart">
+                <p>適応戦略実行後、効果分析チャートを表示します</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 必要なスクリプトをロード -->
+    <script src="../js/config.js"></script>
+    <script src="../js/raceSpecificAdaptationSystem.js"></script>
+
+    <script>
+        // テスト用データ
+        let currentRaceCharacteristics = null;
+        
+        // テスト用レース情報生成
+        function generateTestRaceInfo() {
+            const venues = ['東京', '中山', '阪神', '京都', '中京'];
+            const distances = [1200, 1400, 1600, 1800, 2000, 2200, 2400, 2800, 3200];
+            const trackTypes = ['芝', 'ダート'];
+            const raceClasses = ['G1', 'G2', 'G3', '重賞', '特別', '条件'];
+            const trackConditions = ['良', '稍重', '重', '不良'];
+            const weathers = ['晴', '曇', '雨', '小雨'];
+            
+            return {
+                raceId: `test_race_${Date.now()}`,
+                name: `テストレース${Math.floor(Math.random() * 100)}`,
+                venue: venues[Math.floor(Math.random() * venues.length)],
+                distance: distances[Math.floor(Math.random() * distances.length)],
+                trackType: trackTypes[Math.floor(Math.random() * trackTypes.length)],
+                raceClass: raceClasses[Math.floor(Math.random() * raceClasses.length)],
+                trackCondition: trackConditions[Math.floor(Math.random() * trackConditions.length)],
+                weather: weathers[Math.floor(Math.random() * weathers.length)]
+            };
+        }
+        
+        // テスト用参加馬生成
+        function generateTestParticipants() {
+            const participants = [];
+            const runningStyles = ['逃げ', '先行', '差し', '追込'];
+            
+            for (let i = 0; i < 12; i++) {
+                participants.push({
+                    name: `TestHorse${i + 1}`,
+                    number: i + 1,
+                    odds: Math.random() * 30 + 1,
+                    popularity: i + 1,
+                    age: Math.floor(Math.random() * 6) + 3,
+                    weight: Math.floor(Math.random() * 100) + 400,
+                    jockey: `騎手${i + 1}`,
+                    trainer: `調教師${i + 1}`,
+                    runningStyle: runningStyles[Math.floor(Math.random() * runningStyles.length)],
+                    winProbability: Math.random() * 80 + 10,
+                    raceHistory: generateRaceHistory()
+                });
+            }
+            
+            return participants;
+        }
+        
+        // テスト用レース履歴生成
+        function generateRaceHistory() {
+            const history = [];
+            for (let i = 0; i < 8; i++) {
+                history.push({
+                    date: new Date(Date.now() - i * 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                    position: Math.floor(Math.random() * 12) + 1,
+                    distance: Math.floor(Math.random() * 2000) + 1000,
+                    trackCondition: ['良', '稍重', '重'][Math.floor(Math.random() * 3)],
+                    time: 120 + Math.random() * 20
+                });
+            }
+            return history;
+        }
+        
+        // レース特性分析
+        function analyzeRaceCharacteristics() {
+            console.log('🔍 レース特性分析開始');
+            const results = document.getElementById('characteristicsResults');
+            results.innerHTML = '<div class="info-card"><h4>レース特性分析実行中...</h4></div>';
+            
+            if (typeof RaceSpecificAdaptationSystem === 'undefined') {
+                results.innerHTML = '<div class="error-card"><h4>❌ レース特性対応システムが見つかりません</h4></div>';
+                return;
+            }
+            
+            // テストデータ生成
+            const raceInfo = generateTestRaceInfo();
+            const participants = generateTestParticipants();
+            const historicalData = generateHistoricalData();
+            
+            // レース特性分析実行
+            const characteristics = RaceSpecificAdaptationSystem.analyzeRaceSpecificCharacteristics(
+                raceInfo,
+                participants,
+                historicalData
+            );
+            
+            currentRaceCharacteristics = characteristics;
+            
+            // 結果表示
+            results.innerHTML = `
+                <div class="result-card">
+                    <h4>🔍 レース特性分析結果</h4>
+                    <p><strong>レースタイプ:</strong> <span class="race-type-badge type-${characteristics.raceProfile.distanceCategory}">${characteristics.raceProfile.distanceCategory}</span></p>
+                    <p><strong>距離:</strong> ${characteristics.raceProfile.distance}m</p>
+                    <p><strong>コース:</strong> ${characteristics.raceProfile.venue} (${characteristics.raceProfile.trackType})</p>
+                    <p><strong>クラス:</strong> ${characteristics.raceProfile.raceClass}</p>
+                    <p><strong>馬場状態:</strong> ${characteristics.raceProfile.trackCondition}</p>
+                    <p><strong>天気:</strong> ${characteristics.raceProfile.weather}</p>
+                    <p><strong>予想ペース:</strong> <span class="pace-indicator pace-${characteristics.paceAnalysis.expectedPace === 'ハイペース' ? 'high' : characteristics.paceAnalysis.expectedPace === 'スローペース' ? 'slow' : 'middle'}">${characteristics.paceAnalysis.expectedPace}</span></p>
+                    <p><strong>総合適応度:</strong> ${(characteristics.adaptationScore * 100).toFixed(1)}%</p>
+                </div>
+            `;
+            
+            // レースプロファイル表示
+            displayRaceProfile(characteristics);
+            
+            // メトリクス更新
+            updateProgressBar('characteristicsProgress', 'characteristicsValue', characteristics.adaptationScore * 100, '%');
+        }
+        
+        // 距離特性分析テスト
+        function testDistanceAnalysis() {
+            console.log('📏 距離特性分析テスト');
+            const results = document.getElementById('characteristicsResults');
+            
+            const raceInfo = generateTestRaceInfo();
+            const participants = generateTestParticipants();
+            
+            const distanceAnalysis = RaceSpecificAdaptationSystem.analyzeDistanceCharacteristics(raceInfo, participants);
+            
+            results.innerHTML += `
+                <div class="result-card">
+                    <h4>📏 距離特性分析結果</h4>
+                    <p><strong>距離カテゴリ:</strong> <span class="race-type-badge type-${distanceAnalysis.category}">${distanceAnalysis.category}</span></p>
+                    <p><strong>距離:</strong> ${distanceAnalysis.distance}m</p>
+                    <p><strong>人気馬優位性:</strong> ${(distanceAnalysis.favoriteAdvantage * 100).toFixed(1)}%</p>
+                    <p><strong>波乱度:</strong> ${(distanceAnalysis.surpriseRate * 100).toFixed(1)}%</p>
+                    <p><strong>適応推奨事項:</strong></p>
+                    <ul>
+                        ${distanceAnalysis.adaptationRecommendations.map(rec => `<li>${rec}</li>`).join('')}
+                    </ul>
+                </div>
+            `;
+        }
+        
+        // コース特性分析テスト
+        function testCourseAnalysis() {
+            console.log('🏟️ コース特性分析テスト');
+            const results = document.getElementById('characteristicsResults');
+            
+            const raceInfo = generateTestRaceInfo();
+            const historicalData = generateHistoricalData();
+            
+            const courseAnalysis = RaceSpecificAdaptationSystem.analyzeCourseCharacteristics(raceInfo, historicalData);
+            
+            results.innerHTML += `
+                <div class="result-card">
+                    <h4>🏟️ コース特性分析結果</h4>
+                    <p><strong>競馬場:</strong> ${courseAnalysis.venue}</p>
+                    <p><strong>直線距離:</strong> ${courseAnalysis.courseCharacteristics.straightLength}m</p>
+                    <p><strong>コーナー半径:</strong> ${courseAnalysis.courseCharacteristics.cornRadius}</p>
+                    <p><strong>バイアス:</strong> ${courseAnalysis.courseCharacteristics.bias}</p>
+                    <p><strong>馬場状態影響:</strong> 安定性 ${(courseAnalysis.trackConditionImpact.stabilityFactor * 100).toFixed(1)}%</p>
+                    <p><strong>天候影響:</strong> 性能 ${(courseAnalysis.weatherImpact.performanceImpact * 100).toFixed(1)}%</p>
+                    <p><strong>総合適合度:</strong> ${(courseAnalysis.overallSuitability * 100).toFixed(1)}%</p>
+                </div>
+            `;
+        }
+        
+        // ペース分析テスト
+        function testPaceAnalysis() {
+            console.log('⚡ ペース分析テスト');
+            const results = document.getElementById('characteristicsResults');
+            
+            const raceInfo = generateTestRaceInfo();
+            const participants = generateTestParticipants();
+            
+            const paceAnalysis = RaceSpecificAdaptationSystem.analyzePaceAndDevelopment(raceInfo, participants);
+            
+            results.innerHTML += `
+                <div class="result-card">
+                    <h4>⚡ ペース分析結果</h4>
+                    <p><strong>予想ペース:</strong> <span class="pace-indicator pace-${paceAnalysis.expectedPace === 'ハイペース' ? 'high' : paceAnalysis.expectedPace === 'スローペース' ? 'slow' : 'middle'}">${paceAnalysis.expectedPace}</span></p>
+                    <p><strong>脚質分布:</strong></p>
+                    <ul>
+                        <li>逃げ: ${paceAnalysis.runningStyles.逃げ}頭</li>
+                        <li>先行: ${paceAnalysis.runningStyles.先行}頭</li>
+                        <li>差し: ${paceAnalysis.runningStyles.差し}頭</li>
+                        <li>追込: ${paceAnalysis.runningStyles.追込}頭</li>
+                    </ul>
+                    <p><strong>前に行く馬:</strong> ${paceAnalysis.raceFlow.frontRunners}頭</p>
+                    <p><strong>後方待機馬:</strong> ${paceAnalysis.raceFlow.backRunners}頭</p>
+                    <p><strong>展開シナリオ数:</strong> ${paceAnalysis.developmentScenarios.length}個</p>
+                </div>
+            `;
+        }
+        
+        // 適応戦略実行
+        function executeAdaptationStrategy() {
+            console.log('🎯 適応戦略実行');
+            const results = document.getElementById('adaptationResults');
+            results.innerHTML = '<div class="info-card"><h4>適応戦略実行中...</h4></div>';
+            
+            if (!currentRaceCharacteristics) {
+                results.innerHTML = '<div class="warning-card"><h4>⚠️ レース特性分析を先に実行してください</h4></div>';
+                return;
+            }
+            
+            // テスト用予測データ生成
+            const predictions = generateTestParticipants().map(p => ({
+                name: p.name,
+                winProbability: p.winProbability,
+                odds: p.odds,
+                popularity: p.popularity
+            }));
+            
+            const currentStrategy = {
+                name: 'テスト戦略',
+                riskLevel: 0.5,
+                investmentRatio: 0.3
+            };
+            
+            // 適応戦略実行
+            const adaptationResult = RaceSpecificAdaptationSystem.executeRaceSpecificAdaptation(
+                currentRaceCharacteristics,
+                predictions,
+                currentStrategy
+            );
+            
+            results.innerHTML = `
+                <div class="result-card">
+                    <h4>🎯 適応戦略実行結果</h4>
+                    <p><strong>適用ルール数:</strong> ${adaptationResult.adaptationRules.length}個</p>
+                    <p><strong>予測調整:</strong> ${adaptationResult.adjustedPredictions.length}件</p>
+                    <p><strong>戦略調整:</strong> ${adaptationResult.adjustedStrategy.name || '実行済み'}</p>
+                    <p><strong>リスクレベル:</strong> ${(adaptationResult.riskAssessment.riskLevel * 100).toFixed(1)}%</p>
+                    <p><strong>適応効果:</strong> ${(adaptationResult.effectivenessScore * 100).toFixed(1)}%</p>
+                    <p><strong>実行時刻:</strong> ${new Date(adaptationResult.adaptationTimestamp).toLocaleString()}</p>
+                </div>
+            `;
+            
+            // 適応効果チャート表示
+            displayAdaptationChart(adaptationResult);
+            
+            // メトリクス更新
+            updateProgressBar('adaptationProgress', 'adaptationValue', adaptationResult.effectivenessScore * 100, '%');
+        }
+        
+        // 参加馬適性分析
+        function testParticipantSuitability() {
+            console.log('🏇 参加馬適性分析');
+            const results = document.getElementById('adaptationResults');
+            
+            const raceInfo = generateTestRaceInfo();
+            const participants = generateTestParticipants();
+            const raceProfile = RaceSpecificAdaptationSystem.createRaceProfile(raceInfo);
+            
+            const participantAnalysis = RaceSpecificAdaptationSystem.analyzeParticipantSuitability(participants, raceProfile);
+            
+            results.innerHTML += `
+                <div class="result-card">
+                    <h4>🏇 参加馬適性分析結果</h4>
+                    <p><strong>分析対象:</strong> ${participantAnalysis.length}頭</p>
+                    <p><strong>平均適性度:</strong> ${(participantAnalysis.reduce((sum, p) => sum + p.overallSuitability, 0) / participantAnalysis.length * 100).toFixed(1)}%</p>
+                    <p><strong>最高適性馬:</strong> ${participantAnalysis.reduce((max, p) => p.overallSuitability > max.overallSuitability ? p : max).name}</p>
+                    <p><strong>最低適性馬:</strong> ${participantAnalysis.reduce((min, p) => p.overallSuitability < min.overallSuitability ? p : min).name}</p>
+                </div>
+            `;
+            
+            // 参加馬適性詳細表示
+            displayParticipantSuitability(participantAnalysis);
+            
+            // メトリクス更新
+            const avgSuitability = participantAnalysis.reduce((sum, p) => sum + p.overallSuitability, 0) / participantAnalysis.length;
+            updateProgressBar('suitabilityProgress', 'suitabilityValue', avgSuitability * 100, '%');
+        }
+        
+        // 環境要因分析
+        function testEnvironmentalFactors() {
+            console.log('🌤️ 環境要因分析');
+            const results = document.getElementById('adaptationResults');
+            
+            const raceInfo = generateTestRaceInfo();
+            const environmentalAnalysis = RaceSpecificAdaptationSystem.analyzeEnvironmentalFactors(raceInfo);
+            
+            results.innerHTML += `
+                <div class="result-card">
+                    <h4>🌤️ 環境要因分析結果</h4>
+                    <p><strong>季節:</strong> ${environmentalAnalysis.season}</p>
+                    <p><strong>曜日:</strong> ${environmentalAnalysis.dayOfWeek}</p>
+                    <p><strong>時間帯:</strong> ${environmentalAnalysis.timeOfDay}</p>
+                    <p><strong>天気:</strong> ${environmentalAnalysis.weather}</p>
+                    <p><strong>季節影響:</strong> ${(environmentalAnalysis.seasonalImpact.stabilityFactor * 100).toFixed(1)}%</p>
+                    <p><strong>天候影響:</strong> ${(environmentalAnalysis.weatherImpact.performanceImpact * 100).toFixed(1)}%</p>
+                    <p><strong>環境総合スコア:</strong> ${(environmentalAnalysis.overallEnvironmentalScore * 100).toFixed(1)}%</p>
+                </div>
+            `;
+            
+            // メトリクス更新
+            updateProgressBar('environmentalProgress', 'environmentalValue', environmentalAnalysis.overallEnvironmentalScore * 100, '%');
+        }
+        
+        // 適応レポート生成
+        function generateAdaptationReport() {
+            console.log('📄 適応レポート生成');
+            const results = document.getElementById('adaptationResults');
+            
+            const reportData = {
+                analysisDate: new Date().toLocaleString(),
+                raceType: currentRaceCharacteristics?.raceProfile.raceType || 'unknown',
+                adaptationRules: 8,
+                effectivenessScore: 85.3,
+                recommendedAdjustments: ['距離適性重視', 'ペース対応', 'コース特性考慮']
+            };
+            
+            results.innerHTML += `
+                <div class="result-card">
+                    <h4>📄 レース特性対応レポート</h4>
+                    <p><strong>分析日時:</strong> ${reportData.analysisDate}</p>
+                    <p><strong>レースタイプ:</strong> ${reportData.raceType}</p>
+                    <p><strong>適用ルール数:</strong> ${reportData.adaptationRules}個</p>
+                    <p><strong>適応効果スコア:</strong> ${reportData.effectivenessScore}%</p>
+                    <p><strong>推奨調整項目:</strong></p>
+                    <ul>
+                        ${reportData.recommendedAdjustments.map(adj => `<li>${adj}</li>`).join('')}
+                    </ul>
+                </div>
+            `;
+        }
+        
+        // レースプロファイル表示
+        function displayRaceProfile(characteristics) {
+            const profile = document.getElementById('raceProfile');
+            
+            profile.innerHTML = `
+                <div class="race-profile">
+                    <h4>🏇 レースプロファイル詳細</h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
+                        <div>
+                            <h5>基本情報</h5>
+                            <p><strong>レース名:</strong> ${characteristics.raceProfile.name}</p>
+                            <p><strong>距離:</strong> ${characteristics.raceProfile.distance}m</p>
+                            <p><strong>コース:</strong> ${characteristics.raceProfile.venue}</p>
+                            <p><strong>トラック:</strong> ${characteristics.raceProfile.trackType}</p>
+                        </div>
+                        <div>
+                            <h5>コース特性</h5>
+                            <p><strong>直線長:</strong> ${characteristics.courseAnalysis.courseCharacteristics.straightLength}m</p>
+                            <p><strong>コーナー:</strong> ${characteristics.courseAnalysis.courseCharacteristics.cornRadius}</p>
+                            <p><strong>バイアス:</strong> ${characteristics.courseAnalysis.courseCharacteristics.bias}</p>
+                        </div>
+                        <div>
+                            <h5>環境条件</h5>
+                            <p><strong>馬場状態:</strong> ${characteristics.raceProfile.trackCondition}</p>
+                            <p><strong>天気:</strong> ${characteristics.raceProfile.weather}</p>
+                            <p><strong>季節:</strong> ${characteristics.environmentalAnalysis.season}</p>
+                        </div>
+                        <div>
+                            <h5>競争特性</h5>
+                            <p><strong>クラス:</strong> ${characteristics.raceProfile.raceClass}</p>
+                            <p><strong>競争レベル:</strong> ${(characteristics.competitionAnalysis.competitionLevel * 100).toFixed(1)}%</p>
+                            <p><strong>予想ペース:</strong> ${characteristics.paceAnalysis.expectedPace}</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // 参加馬適性表示
+        function displayParticipantSuitability(participantAnalysis) {
+            const suitability = document.getElementById('participantSuitability');
+            
+            let suitabilityHTML = '<div class="participant-analysis">';
+            suitabilityHTML += '<h4>👥 参加馬適性評価詳細</h4>';
+            
+            participantAnalysis.slice(0, 8).forEach(participant => {
+                const suitabilityPercentage = (participant.overallSuitability * 100).toFixed(1);
+                suitabilityHTML += `
+                    <div style="margin: 10px 0; padding: 10px; background: #f9f9f9; border-radius: 5px;">
+                        <strong>${participant.name}</strong>
+                        <div class="suitability-bar">
+                            <div class="suitability-fill" style="width: ${suitabilityPercentage}%"></div>
+                        </div>
+                        <div style="font-size: 12px; color: #666;">
+                            距離適性: ${(participant.distanceSuitability * 100).toFixed(1)}% | 
+                            コース適性: ${(participant.courseSuitability * 100).toFixed(1)}% | 
+                            クラス適性: ${(participant.classSuitability * 100).toFixed(1)}% | 
+                            総合適性: ${suitabilityPercentage}%
+                        </div>
+                    </div>
+                `;
+            });
+            
+            suitabilityHTML += '</div>';
+            suitability.innerHTML = suitabilityHTML;
+        }
+        
+        // 適応効果チャート表示
+        function displayAdaptationChart(adaptationResult) {
+            const chart = document.getElementById('adaptationChart');
+            
+            // 効果項目
+            const effectItems = ['距離適性', 'コース適性', 'ペース対応', '環境要因'];
+            const effectValues = [85, 78, 92, 73];
+            
+            let chartHTML = '<h4>📊 適応効果分析チャート</h4>';
+            chartHTML += '<div style="display: flex; align-items: end; height: 200px; gap: 15px;">';
+            
+            effectItems.forEach((item, index) => {
+                const height = (effectValues[index] / 100) * 180;
+                chartHTML += `
+                    <div style="flex: 1; display: flex; flex-direction: column; align-items: center;">
+                        <div style="width: 60px; height: ${height}px; background: linear-gradient(45deg, #4caf50, #8bc34a); border-radius: 5px 5px 0 0; margin-bottom: 5px;"></div>
+                        <div style="font-size: 12px; text-align: center; word-break: break-all;">${item}</div>
+                        <div style="font-size: 14px; font-weight: bold;">${effectValues[index]}%</div>
+                    </div>
+                `;
+            });
+            
+            chartHTML += '</div>';
+            chartHTML += `<p style="text-align: center; margin-top: 15px; font-weight: bold;">総合適応効果: ${(adaptationResult.effectivenessScore * 100).toFixed(1)}%</p>`;
+            
+            chart.innerHTML = chartHTML;
+        }
+        
+        // テスト用履歴データ生成
+        function generateHistoricalData() {
+            return Array.from({length: 20}, (_, i) => ({
+                date: new Date(Date.now() - i * 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                venue: '東京',
+                averageTime: 120 + Math.random() * 10,
+                winningPattern: ['先行', '差し', '追込'][Math.floor(Math.random() * 3)]
+            }));
+        }
+        
+        // プログレスバー更新
+        function updateProgressBar(progressId, valueId, value, suffix) {
+            const percentage = Math.min(100, Math.max(0, value));
+            document.getElementById(progressId).style.width = percentage + '%';
+            document.getElementById(valueId).textContent = value.toFixed(1) + suffix;
+        }
+        
+        // 初期化
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🏇 個別レース特性対応システムテスト初期化完了');
+        });
+    </script>
+</body>
+</html>

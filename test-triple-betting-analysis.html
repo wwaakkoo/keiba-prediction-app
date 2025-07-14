@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3連複・3連単推奨機能詳細調査</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; }
+        .test-section { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 15px; margin: 15px 0; }
+        .btn { background: linear-gradient(45deg, #667eea, #764ba2); color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin: 5px; }
+        .btn:hover { transform: translateY(-1px); }
+        .result-card { background: #f8f9fa; border-left: 4px solid #28a745; padding: 15px; margin: 10px 0; border-radius: 5px; }
+        .warning-card { background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 10px 0; border-radius: 5px; }
+        .error-card { background: #f8d7da; border-left: 4px solid #dc3545; padding: 15px; margin: 10px 0; border-radius: 5px; }
+        .info-card { background: #e3f2fd; border-left: 4px solid #2196f3; padding: 15px; margin: 10px 0; border-radius: 5px; }
+        .pre-code { background: #f8f9fa; border: 1px solid #e9ecef; padding: 10px; border-radius: 5px; font-family: monospace; font-size: 0.9em; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 3連複・3連単推奨機能詳細調査</h1>
+        
+        <div class="test-section">
+            <h2>🔍 テストシナリオ</h2>
+            <p>各種条件での3連複・3連単推奨の動作を確認します</p>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+                <button class="btn" onclick="testBasicMarkedHorses()">🐎 基本印つき馬テスト</button>
+                <button class="btn" onclick="testMinimalMarkedHorses()">📉 最小印数テスト</button>
+                <button class="btn" onclick="testLowEfficiencyHorses()">⚡ 低効率馬テスト</button>
+                <button class="btn" onclick="testHighEfficiencyHorses()">🚀 高効率馬テスト</button>
+                <button class="btn" onclick="testLearningThresholds()">🧠 学習閾値確認</button>
+                <button class="btn" onclick="testRealWorldScenario()">🌍 現実的シナリオテスト</button>
+            </div>
+            
+            <div id="testResults"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>📊 効率計算詳細</h2>
+            <div id="efficiencyDetails"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>🎯 学習閾値設定</h2>
+            <div id="thresholdSettings"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>🔬 推奨条件分析</h2>
+            <div id="conditionAnalysis"></div>
+        </div>
+    </div>
+
+    <!-- 必要なスクリプトをロード -->
+    <script src="../js/config.js"></script>
+    <script src="../js/learningSystem.js"></script>
+    <script src="../js/predictionEngine.js"></script>
+    <script src="../js/bettingRecommender.js"></script>
+    <script src="../js/reliabilityFilter.js"></script>
+    <script src="../js/hitCriteriaSystem.js"></script>
+    <script src="../js/dynamicRecommendationAdjuster.js"></script>
+
+    <script>
+        // テスト馬データ生成
+        function generateTestHorses(scenario) {
+            const horses = [];
+            
+            switch(scenario) {
+                case 'basic':
+                    horses.push(
+                        { name: '本命馬', odds: 2.5, winProbability: 25, placeProbability: 60 },
+                        { name: '対抗馬', odds: 4.0, winProbability: 15, placeProbability: 45 },
+                        { name: '単穴馬', odds: 8.0, winProbability: 8, placeProbability: 35 },
+                        { name: '連複馬', odds: 12.0, winProbability: 5, placeProbability: 35 },
+                        { name: '人気薄馬', odds: 25.0, winProbability: 2, placeProbability: 15 }
+                    );
+                    break;
+                case 'minimal':
+                    horses.push(
+                        { name: '本命馬', odds: 2.0, winProbability: 30, placeProbability: 65 },
+                        { name: '対抗馬', odds: 5.0, winProbability: 12, placeProbability: 40 },
+                        { name: '穴馬', odds: 20.0, winProbability: 3, placeProbability: 20 }
+                    );
+                    break;
+                case 'low_efficiency':
+                    horses.push(
+                        { name: '人気馬A', odds: 1.8, winProbability: 35, placeProbability: 70 },
+                        { name: '人気馬B', odds: 2.2, winProbability: 25, placeProbability: 60 },
+                        { name: '人気馬C', odds: 2.8, winProbability: 20, placeProbability: 55 },
+                        { name: '中人気馬', odds: 6.0, winProbability: 10, placeProbability: 35 }
+                    );
+                    break;
+                case 'high_efficiency':
+                    horses.push(
+                        { name: '穴馬A', odds: 15.0, winProbability: 8, placeProbability: 40 },
+                        { name: '穴馬B', odds: 20.0, winProbability: 6, placeProbability: 35 },
+                        { name: '穴馬C', odds: 25.0, winProbability: 4, placeProbability: 30 },
+                        { name: '大穴馬', odds: 40.0, winProbability: 2, placeProbability: 20 }
+                    );
+                    break;
+                case 'realistic':
+                    horses.push(
+                        { name: '本命馬', odds: 3.2, winProbability: 18, placeProbability: 50 },
+                        { name: '対抗馬', odds: 5.8, winProbability: 12, placeProbability: 42 },
+                        { name: '単穴馬', odds: 9.5, winProbability: 7, placeProbability: 38 },
+                        { name: '連複馬', odds: 15.2, winProbability: 4, placeProbability: 32 },
+                        { name: '中穴馬', odds: 22.0, winProbability: 3, placeProbability: 25 }
+                    );
+                    break;
+            }
+            
+            return horses.map((horse, index) => ({
+                ...horse,
+                number: index + 1,
+                age: Math.floor(Math.random() * 4) + 3,
+                weight: Math.floor(Math.random() * 60) + 440,
+                jockey: `騎手${index + 1}`,
+                winExpectedValue: (horse.winProbability / 100) * horse.odds - 1,
+                placeExpectedValue: (horse.placeProbability / 100) * (horse.odds * 0.3) - 1
+            }));
+        }
+        
+        // 基本印つき馬テスト
+        function testBasicMarkedHorses() {
+            console.log('🐎 基本印つき馬テスト開始');
+            const results = document.getElementById('testResults');
+            
+            const horses = generateTestHorses('basic');
+            console.log('テスト馬データ:', horses);
+            
+            // 印分類をテスト
+            const marks = BettingRecommender.classifyHorses(horses, 
+                [...horses].sort((a, b) => b.winProbability - a.winProbability),
+                [...horses].sort((a, b) => b.winExpectedValue - a.winExpectedValue)
+            );
+            
+            console.log('印分類結果:', marks);
+            
+            // 3連複推奨生成
+            const tripleBoxRecs = BettingRecommender.generateTripleBoxRecommendations(
+                marks, horses, (name) => horses.findIndex(h => h.name === name) + 1
+            );
+            
+            // 3連単推奨生成
+            const tripleExactRecs = BettingRecommender.generateTripleExactRecommendations(
+                marks, horses, (name) => horses.findIndex(h => h.name === name) + 1
+            );
+            
+            // 学習閾値取得
+            const thresholds = LearningSystem.getComplexBettingThresholds();
+            
+            results.innerHTML = `
+                <div class="result-card">
+                    <h4>🐎 基本印つき馬テスト結果</h4>
+                    <p><strong>印つき馬数:</strong> ${Object.values(marks).filter(m => m).length}頭</p>
+                    <p><strong>印分類:</strong></p>
+                    <ul>
+                        ${marks.honmei ? `<li>◎ 本命: ${marks.honmei.name} (勝率${marks.honmei.winProbability}%)</li>` : ''}
+                        ${marks.taikou ? `<li>○ 対抗: ${marks.taikou.name} (勝率${marks.taikou.winProbability}%)</li>` : ''}
+                        ${marks.tanana ? `<li>▲ 単穴: ${marks.tanana.name} (勝率${marks.tanana.winProbability}%)</li>` : ''}
+                        ${marks.renpuku ? `<li>△ 連複: ${marks.renpuku.name} (勝率${marks.renpuku.winProbability}%)</li>` : ''}
+                    </ul>
+                    <p><strong>3連複推奨数:</strong> ${tripleBoxRecs.length}件</p>
+                    <p><strong>3連単推奨数:</strong> ${tripleExactRecs.length}件</p>
+                    <p><strong>学習閾値:</strong> 3連複メイン${thresholds.tripleBox.main}, 3連単メイン${thresholds.tripleExact.main}</p>
+                </div>
+                
+                ${tripleBoxRecs.length > 0 ? `
+                <div class="info-card">
+                    <h4>📊 3連複推奨詳細</h4>
+                    ${tripleBoxRecs.map(rec => `
+                        <div style="margin-bottom: 10px; padding: 10px; background: #f8f9fa; border-radius: 5px;">
+                            <strong>${rec.type}:</strong> ${rec.horse}<br>
+                            <strong>効率:</strong> ${rec.efficiency.toFixed(3)} (閾値: ${rec.type === 'メイン' ? thresholds.tripleBox.main : thresholds.tripleBox.formation})<br>
+                            <strong>的中率:</strong> ${rec.probability}<br>
+                            <strong>推定配当:</strong> ${rec.odds}
+                        </div>
+                    `).join('')}
+                </div>
+                ` : '<div class="warning-card"><h4>⚠️ 3連複推奨が生成されませんでした</h4></div>'}
+                
+                ${tripleExactRecs.length > 0 ? `
+                <div class="info-card">
+                    <h4>📊 3連単推奨詳細</h4>
+                    ${tripleExactRecs.map(rec => `
+                        <div style="margin-bottom: 10px; padding: 10px; background: #f8f9fa; border-radius: 5px;">
+                            <strong>${rec.type}:</strong> ${rec.horse}<br>
+                            <strong>効率:</strong> ${rec.efficiency.toFixed(3)} (閾値: ${rec.type === '軸流し' ? thresholds.tripleExact.main : thresholds.tripleExact.formation})<br>
+                            <strong>的中率:</strong> ${rec.probability}<br>
+                            <strong>推定配当:</strong> ${rec.odds}
+                        </div>
+                    `).join('')}
+                </div>
+                ` : '<div class="warning-card"><h4>⚠️ 3連単推奨が生成されませんでした</h4></div>'}
+            `;
+            
+            // 効率計算詳細を表示
+            displayEfficiencyDetails(marks, horses);
+        }
+        
+        // 最小印数テスト
+        function testMinimalMarkedHorses() {
+            console.log('📉 最小印数テスト開始');
+            const results = document.getElementById('testResults');
+            
+            const horses = generateTestHorses('minimal');
+            
+            const marks = BettingRecommender.classifyHorses(horses, 
+                [...horses].sort((a, b) => b.winProbability - a.winProbability),
+                [...horses].sort((a, b) => b.winExpectedValue - a.winExpectedValue)
+            );
+            
+            const markedCount = Object.values(marks).filter(m => m).length;
+            
+            const tripleBoxRecs = BettingRecommender.generateTripleBoxRecommendations(
+                marks, horses, (name) => horses.findIndex(h => h.name === name) + 1
+            );
+            
+            const tripleExactRecs = BettingRecommender.generateTripleExactRecommendations(
+                marks, horses, (name) => horses.findIndex(h => h.name === name) + 1
+            );
+            
+            results.innerHTML = `
+                <div class="result-card">
+                    <h4>📉 最小印数テスト結果</h4>
+                    <p><strong>印つき馬数:</strong> ${markedCount}頭 (必要: 3頭以上)</p>
+                    <p><strong>3連複推奨数:</strong> ${tripleBoxRecs.length}件</p>
+                    <p><strong>3連単推奨数:</strong> ${tripleExactRecs.length}件</p>
+                    ${markedCount < 3 ? '<p style="color: #dc3545;"><strong>⚠️ 印つき馬が3頭未満のため推奨が生成されません</strong></p>' : ''}
+                </div>
+            `;
+        }
+        
+        // 低効率馬テスト
+        function testLowEfficiencyHorses() {
+            console.log('⚡ 低効率馬テスト開始');
+            const results = document.getElementById('testResults');
+            
+            const horses = generateTestHorses('low_efficiency');
+            
+            const marks = BettingRecommender.classifyHorses(horses, 
+                [...horses].sort((a, b) => b.winProbability - a.winProbability),
+                [...horses].sort((a, b) => b.winExpectedValue - a.winExpectedValue)
+            );
+            
+            const tripleBoxRecs = BettingRecommender.generateTripleBoxRecommendations(
+                marks, horses, (name) => horses.findIndex(h => h.name === name) + 1
+            );
+            
+            const tripleExactRecs = BettingRecommender.generateTripleExactRecommendations(
+                marks, horses, (name) => horses.findIndex(h => h.name === name) + 1
+            );
+            
+            // 効率計算
+            const markedHorses = Object.values(marks).filter(m => m).slice(0, 3);
+            const efficiency = markedHorses.length === 3 ? 
+                BettingRecommender.calculateTripleBoxExpectedValue(markedHorses, horses) : 
+                { efficiency: 0 };
+            
+            const thresholds = LearningSystem.getComplexBettingThresholds();
+            
+            results.innerHTML = `
+                <div class="result-card">
+                    <h4>⚡ 低効率馬テスト結果</h4>
+                    <p><strong>印つき馬数:</strong> ${Object.values(marks).filter(m => m).length}頭</p>
+                    <p><strong>計算された効率:</strong> ${efficiency.efficiency.toFixed(3)}</p>
+                    <p><strong>必要な効率閾値:</strong> ${thresholds.tripleBox.main}</p>
+                    <p><strong>3連複推奨数:</strong> ${tripleBoxRecs.length}件</p>
+                    <p><strong>3連単推奨数:</strong> ${tripleExactRecs.length}件</p>
+                    ${efficiency.efficiency < thresholds.tripleBox.main ? '<p style="color: #dc3545;"><strong>⚠️ 効率が閾値を下回るため推奨が生成されません</strong></p>' : ''}
+                </div>
+            `;
+        }
+        
+        // 高効率馬テスト
+        function testHighEfficiencyHorses() {
+            console.log('🚀 高効率馬テスト開始');
+            const results = document.getElementById('testResults');
+            
+            const horses = generateTestHorses('high_efficiency');
+            
+            const marks = BettingRecommender.classifyHorses(horses, 
+                [...horses].sort((a, b) => b.winProbability - a.winProbability),
+                [...horses].sort((a, b) => b.winExpectedValue - a.winExpectedValue)
+            );
+            
+            const tripleBoxRecs = BettingRecommender.generateTripleBoxRecommendations(
+                marks, horses, (name) => horses.findIndex(h => h.name === name) + 1
+            );
+            
+            const tripleExactRecs = BettingRecommender.generateTripleExactRecommendations(
+                marks, horses, (name) => horses.findIndex(h => h.name === name) + 1
+            );
+            
+            // 効率計算
+            const markedHorses = Object.values(marks).filter(m => m).slice(0, 3);
+            const efficiency = markedHorses.length === 3 ? 
+                BettingRecommender.calculateTripleBoxExpectedValue(markedHorses, horses) : 
+                { efficiency: 0 };
+            
+            const thresholds = LearningSystem.getComplexBettingThresholds();
+            
+            results.innerHTML = `
+                <div class="result-card">
+                    <h4>🚀 高効率馬テスト結果</h4>
+                    <p><strong>印つき馬数:</strong> ${Object.values(marks).filter(m => m).length}頭</p>
+                    <p><strong>計算された効率:</strong> ${efficiency.efficiency.toFixed(3)}</p>
+                    <p><strong>必要な効率閾値:</strong> ${thresholds.tripleBox.main}</p>
+                    <p><strong>3連複推奨数:</strong> ${tripleBoxRecs.length}件</p>
+                    <p><strong>3連単推奨数:</strong> ${tripleExactRecs.length}件</p>
+                    ${efficiency.efficiency >= thresholds.tripleBox.main ? '<p style="color: #28a745;"><strong>✅ 効率が閾値を上回るため推奨が生成されます</strong></p>' : ''}
+                </div>
+            `;
+        }
+        
+        // 学習閾値確認
+        function testLearningThresholds() {
+            console.log('🧠 学習閾値確認開始');
+            const thresholds = LearningSystem.getComplexBettingThresholds();
+            const learningData = LearningSystem.getLearningData();
+            
+            const thresholdDiv = document.getElementById('thresholdSettings');
+            thresholdDiv.innerHTML = `
+                <div class="result-card">
+                    <h4>🧠 現在の学習閾値設定</h4>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div>
+                            <h5>3連複閾値</h5>
+                            <p><strong>メイン:</strong> ${thresholds.tripleBox.main}</p>
+                            <p><strong>フォーメーション:</strong> ${thresholds.tripleBox.formation}</p>
+                        </div>
+                        <div>
+                            <h5>3連単閾値</h5>
+                            <p><strong>メイン:</strong> ${thresholds.tripleExact.main}</p>
+                            <p><strong>フォーメーション:</strong> ${thresholds.tripleExact.formation}</p>
+                        </div>
+                    </div>
+                    <p><strong>学習データ有無:</strong> ${learningData.complexBetting ? '✅ あり' : '❌ なし'}</p>
+                    ${learningData.complexBetting ? `
+                        <p><strong>3連複推奨回数:</strong> ${learningData.complexBetting.tripleBox.totalBets}回</p>
+                        <p><strong>3連単推奨回数:</strong> ${learningData.complexBetting.tripleExact.totalBets}回</p>
+                    ` : ''}
+                </div>
+            `;
+        }
+        
+        // 現実的シナリオテスト
+        function testRealWorldScenario() {
+            console.log('🌍 現実的シナリオテスト開始');
+            const results = document.getElementById('testResults');
+            
+            const horses = generateTestHorses('realistic');
+            
+            const marks = BettingRecommender.classifyHorses(horses, 
+                [...horses].sort((a, b) => b.winProbability - a.winProbability),
+                [...horses].sort((a, b) => b.winExpectedValue - a.winExpectedValue)
+            );
+            
+            const tripleBoxRecs = BettingRecommender.generateTripleBoxRecommendations(
+                marks, horses, (name) => horses.findIndex(h => h.name === name) + 1
+            );
+            
+            const tripleExactRecs = BettingRecommender.generateTripleExactRecommendations(
+                marks, horses, (name) => horses.findIndex(h => h.name === name) + 1
+            );
+            
+            // 詳細な分析
+            const markedHorses = Object.values(marks).filter(m => m);
+            const analysisText = [];
+            
+            if (markedHorses.length < 3) {
+                analysisText.push('❌ 印つき馬が3頭未満のため推奨が生成されません');
+            } else {
+                const topThree = markedHorses.slice(0, 3);
+                const tripleBoxEfficiency = BettingRecommender.calculateTripleBoxExpectedValue(topThree, horses);
+                const thresholds = LearningSystem.getComplexBettingThresholds();
+                
+                analysisText.push(`🧮 3連複効率: ${tripleBoxEfficiency.efficiency.toFixed(3)} (閾値: ${thresholds.tripleBox.main})`);
+                analysisText.push(`🎯 3連複的中率: ${tripleBoxEfficiency.hitProbability.toFixed(2)}%`);
+                analysisText.push(`💰 3連複推定配当: ${tripleBoxEfficiency.estimatedDividend}倍`);
+                
+                if (tripleBoxEfficiency.efficiency >= thresholds.tripleBox.main) {
+                    analysisText.push('✅ 効率が閾値を上回るため3連複推奨が生成されます');
+                } else {
+                    analysisText.push('❌ 効率が閾値を下回るため3連複推奨が生成されません');
+                }
+            }
+            
+            results.innerHTML = `
+                <div class="result-card">
+                    <h4>🌍 現実的シナリオテスト結果</h4>
+                    <p><strong>印つき馬数:</strong> ${markedHorses.length}頭</p>
+                    <p><strong>3連複推奨数:</strong> ${tripleBoxRecs.length}件</p>
+                    <p><strong>3連単推奨数:</strong> ${tripleExactRecs.length}件</p>
+                    <div style="margin-top: 15px;">
+                        ${analysisText.map(text => `<p>${text}</p>`).join('')}
+                    </div>
+                </div>
+            `;
+        }
+        
+        // 効率計算詳細表示
+        function displayEfficiencyDetails(marks, horses) {
+            const efficiencyDiv = document.getElementById('efficiencyDetails');
+            const markedHorses = Object.values(marks).filter(m => m);
+            
+            if (markedHorses.length < 3) {
+                efficiencyDiv.innerHTML = `
+                    <div class="warning-card">
+                        <h4>⚠️ 効率計算不可</h4>
+                        <p>印つき馬が3頭未満のため効率計算できません</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            const topThree = markedHorses.slice(0, 3);
+            const tripleBoxCalc = BettingRecommender.calculateTripleBoxExpectedValue(topThree, horses);
+            const tripleExactCalc = BettingRecommender.calculateTripleExactExpectedValue(topThree, horses);
+            
+            efficiencyDiv.innerHTML = `
+                <div class="result-card">
+                    <h4>📊 効率計算詳細</h4>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div>
+                            <h5>3連複計算</h5>
+                            <p><strong>対象馬:</strong> ${topThree.map(h => h.name).join(', ')}</p>
+                            <p><strong>複勝率:</strong> ${topThree.map(h => h.placeProbability + '%').join(', ')}</p>
+                            <p><strong>的中率:</strong> ${tripleBoxCalc.hitProbability.toFixed(2)}%</p>
+                            <p><strong>推定配当:</strong> ${tripleBoxCalc.estimatedDividend}倍</p>
+                            <p><strong>効率:</strong> ${tripleBoxCalc.efficiency.toFixed(3)}</p>
+                        </div>
+                        <div>
+                            <h5>3連単計算</h5>
+                            <p><strong>対象馬:</strong> ${topThree.map(h => h.name).join(', ')}</p>
+                            <p><strong>勝率:</strong> ${topThree.map(h => h.winProbability + '%').join(', ')}</p>
+                            <p><strong>的中率:</strong> ${tripleExactCalc.hitProbability.toFixed(3)}%</p>
+                            <p><strong>推定配当:</strong> ${tripleExactCalc.estimatedDividend}倍</p>
+                            <p><strong>効率:</strong> ${tripleExactCalc.efficiency.toFixed(3)}</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // 推奨条件分析
+        function analyzeRecommendationConditions() {
+            const conditionDiv = document.getElementById('conditionAnalysis');
+            const thresholds = LearningSystem.getComplexBettingThresholds();
+            
+            conditionDiv.innerHTML = `
+                <div class="result-card">
+                    <h4>🔬 推奨条件分析</h4>
+                    
+                    <h5>✅ 3連複・3連単が表示される条件</h5>
+                    <ul>
+                        <li><strong>印つき馬数:</strong> 3頭以上必要</li>
+                        <li><strong>3連複効率閾値:</strong> ${thresholds.tripleBox.main}以上</li>
+                        <li><strong>3連単効率閾値:</strong> ${thresholds.tripleExact.main}以上</li>
+                        <li><strong>計算式:</strong> 効率 = (的中率 × 推定配当) ÷ 100</li>
+                    </ul>
+                    
+                    <h5>❌ 表示されない理由</h5>
+                    <ul>
+                        <li>印つき馬が3頭未満</li>
+                        <li>計算された効率が学習閾値を下回る</li>
+                        <li>馬のオッズ・勝率データが不適切</li>
+                        <li>複勝率が極端に低い</li>
+                    </ul>
+                    
+                    <h5>🎯 効率を高める方法</h5>
+                    <ul>
+                        <li>複勝率の高い馬を選ぶ</li>
+                        <li>オッズのバランスを考慮する</li>
+                        <li>競争激化度を下げる</li>
+                        <li>学習データを蓄積して閾値を調整する</li>
+                    </ul>
+                </div>
+            `;
+        }
+        
+        // 初期化
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🎯 3連複・3連単推奨機能調査システム初期化完了');
+            analyzeRecommendationConditions();
+        });
+    </script>
+</body>
+</html>

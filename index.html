@@ -406,28 +406,19 @@
                 <div class="section" style="background: #f3e5f5; border-left: 4px solid #9c27b0; margin-top: 15px;">
                     <h4 style="color: #7b1fa2; margin-bottom: 10px;">📦 学習データの移行</h4>
                     
-                    <!-- 全体データ移行 -->
-                    <div style="margin-bottom: 15px;">
-                        <h5 style="color: #7b1fa2; margin-bottom: 8px; font-size: 1em;">🗂️ 全データ（統計・AI・設定）</h5>
-                        <div class="btn-grid" style="grid-template-columns: 1fr 1fr;">
-                            <button class="btn" style="background: linear-gradient(45deg, #9c27b0, #7b1fa2);" onclick="exportLearningData()">📤 全データエクスポート</button>
-                            <button class="btn" style="background: linear-gradient(45deg, #673ab7, #512da8);" onclick="document.getElementById('importFile').click()">📥 全データインポート</button>
-                        </div>
-                        <input type="file" id="importFile" accept=".json" style="display: none;" onchange="importLearningData(event)">
+                    <!-- コンパクトなボタン配置 -->
+                    <div class="btn-grid" style="grid-template-columns: 1fr 1fr 1fr 1fr;">
+                        <button class="btn" style="background: linear-gradient(45deg, #9c27b0, #7b1fa2); font-size: 0.85em;" onclick="exportLearningData()">📤 全データエクスポート</button>
+                        <button class="btn" style="background: linear-gradient(45deg, #673ab7, #512da8); font-size: 0.85em;" onclick="document.getElementById('importFile').click()">📥 全データインポート</button>
+                        <button class="btn" style="background: linear-gradient(45deg, #667eea, #764ba2); font-size: 0.85em;" onclick="exportAILearningData()">📤 AIデータエクスポート</button>
+                        <button class="btn" style="background: linear-gradient(45deg, #5a6fd8, #6b4b9d); font-size: 0.85em;" onclick="document.getElementById('importAIFile').click()">📥 AIデータインポート</button>
                     </div>
                     
-                    <!-- AI学習データ専用移行 -->
-                    <div style="margin-bottom: 10px;">
-                        <h5 style="color: #667eea; margin-bottom: 8px; font-size: 1em;">🤖 AI学習データのみ</h5>
-                        <div class="btn-grid" style="grid-template-columns: 1fr 1fr;">
-                            <button class="btn" style="background: linear-gradient(45deg, #667eea, #764ba2);" onclick="exportAILearningData()">📤 AI データエクスポート</button>
-                            <button class="btn" style="background: linear-gradient(45deg, #5a6fd8, #6b4b9d);" onclick="document.getElementById('importAIFile').click()">📥 AI データインポート</button>
-                        </div>
-                        <input type="file" id="importAIFile" accept=".json" style="display: none;" onchange="importAILearningData(event)">
-                    </div>
+                    <input type="file" id="importFile" accept=".json" style="display: none;" onchange="importLearningData(event)">
+                    <input type="file" id="importAIFile" accept=".json" style="display: none;" onchange="importAILearningData(event)">
                     
-                    <p style="font-size: 0.85em; color: #7b1fa2; margin-top: 8px; margin-bottom: 0;">
-                        💡 端末間で学習データを移行できます。AI学習データのみの移行も可能です（JSONファイル形式）
+                    <p style="font-size: 0.8em; color: #7b1fa2; margin-top: 8px; margin-bottom: 0;">
+                        💡 端末間で学習データを移行できます（JSONファイル形式）
                     </p>
                 </div>
                 <div id="learningFeedback" style="margin-top: 15px;"></div>
@@ -436,15 +427,15 @@
                 <div id="learningGraphsSection" class="section" style="display: none; background: #f8f9fa; border-left: 4px solid #ff9800; margin-top: 20px;">
                     <h3 style="color: #e65100;">📊 AI判断パターン分析グラフ</h3>
                     
-                    <!-- グラフ制御ボタン -->
-                    <div class="btn-grid" style="margin-bottom: 20px;">
-                        <button class="btn" style="background: linear-gradient(45deg, #4caf50, #2e7d32);" onclick="AIRecommendationService.showSuccessRateChart()">📈 成功率推移</button>
-                        <button class="btn" style="background: linear-gradient(45deg, #2196f3, #1976d2);" onclick="AIRecommendationService.showConfidenceChart()">🎯 信頼度分析</button>
-                        <button class="btn" style="background: linear-gradient(45deg, #9c27b0, #7b1fa2);" onclick="AIRecommendationService.showOddsChart()">💰 オッズ分布</button>
-                        <button class="btn" style="background: linear-gradient(45deg, #ff9800, #f57c00);" onclick="AIRecommendationService.showBettingStrategyChart()">🎯 買い目成功率</button>
-                        <button class="btn" style="background: linear-gradient(45deg, #e67e22, #d35400);" onclick="LearningSystem.showSleeperStats()">💎 穴馬学習統計</button>
-                        <button class="btn" style="background: linear-gradient(45deg, #2e8b57, #228b22);" onclick="showProfitabilityDashboard()">💰 収益性分析</button>
-                        <button class="btn" style="background: linear-gradient(45deg, #f44336, #d32f2f);" onclick="document.getElementById('learningGraphsSection').style.display='none'">❌ 閉じる</button>
+                    <!-- コンパクトなグラフボタン -->
+                    <div class="btn-grid" style="margin-bottom: 15px; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));">
+                        <button class="btn" style="background: linear-gradient(45deg, #4caf50, #2e7d32); font-size: 0.8em;" onclick="AIRecommendationService.showSuccessRateChart()">📈 成功率</button>
+                        <button class="btn" style="background: linear-gradient(45deg, #2196f3, #1976d2); font-size: 0.8em;" onclick="AIRecommendationService.showConfidenceChart()">🎯 信頼度</button>
+                        <button class="btn" style="background: linear-gradient(45deg, #9c27b0, #7b1fa2); font-size: 0.8em;" onclick="AIRecommendationService.showOddsChart()">💰 オッズ</button>
+                        <button class="btn" style="background: linear-gradient(45deg, #ff9800, #f57c00); font-size: 0.8em;" onclick="AIRecommendationService.showBettingStrategyChart()">🎯 買い目</button>
+                        <button class="btn" style="background: linear-gradient(45deg, #e67e22, #d35400); font-size: 0.8em;" onclick="LearningSystem.showSleeperStats()">💎 穴馬</button>
+                        <button class="btn" style="background: linear-gradient(45deg, #2e8b57, #228b22); font-size: 0.8em;" onclick="showProfitabilityDashboard()">💰 収益</button>
+                        <button class="btn" style="background: linear-gradient(45deg, #f44336, #d32f2f); font-size: 0.8em;" onclick="document.getElementById('learningGraphsSection').style.display='none'">❌ 閉じる</button>
                     </div>
                     
                     <!-- グラフキャンバス -->
@@ -585,6 +576,9 @@
         </div>
     </div>
 
+    <!-- ログレベル制御システム（最初に読み込み） -->
+    <script src="js/logLevelController.js"></script>
+    
     <script src="js/config.js"></script>
     <script src="js/pedigreeDatabase.js"></script>
     <script src="js/dataConverter.js"></script>
@@ -619,16 +613,16 @@
     <script src="js/profitabilityPatternAnalyzer.js"></script>
     <script src="js/betTypeOptimizationSystem.js"></script>
     <script src="js/drawdownControlSystem.js"></script>
-    <!-- Phase 4: 高度統合・完成システム -->
-    <script src="js/integratedControlEngine.js"></script>
-    <script src="js/dataFlowOptimizer.js"></script>
-    <script src="js/systemInterfaceUnification.js"></script>
-    <script src="js/performanceOptimizer.js"></script>
-    <!-- 期待値ベース買い目システム -->
+    <!-- Phase 3: リアルタイム学習・最適化システム -->
+    <script src="js/realtimeLearningEngine.js"></script>
+    <script src="js/marketAdaptationSystem.js"></script>
+    <script src="js/multiDimensionalFeatureAnalyzer.js"></script>
+    <script src="js/abTestingSystem.js"></script>
+    <script src="js/raceSpecificAdaptationSystem.js"></script>
+    <!-- Phase 4: 期待値ベース買い目システム -->
     <script src="js/expectedValueCalculator.js"></script>
     <script src="js/bettingFilter.js"></script>
     <script src="js/raceSkipDecisionSystem.js"></script>
-    <!-- Phase 4: 動的買い方変更機能 -->
     <script src="js/dynamicBettingManager.js"></script>
     <script src="js/performanceTracker.js"></script>
     <script src="js/raceStrategyManager.js"></script>

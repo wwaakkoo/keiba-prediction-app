@@ -37,7 +37,7 @@ class EnhancedRecommendationSystem {
         }
     };
 
-    // 馬の信頼度計算（改良版）
+    // 馬の信頼度計算（学習機能統合版）
     static calculateHorseConfidence(horse) {
         let confidence = 0;
         
@@ -72,6 +72,26 @@ class EnhancedRecommendationSystem {
         if (horse.score > 80) confidence += 10;
         else if (horse.score > 70) confidence += 5;
         else if (horse.score < 50) confidence -= 5;
+        
+        // 🆕 アンサンブルスコア統合（Phase 3改善）
+        if (horse.enhancedScore && horse.ensembleConfidence) {
+            const ensembleBonus = (horse.enhancedScore * horse.ensembleConfidence) * 0.15;
+            confidence += ensembleBonus;
+            console.log(`🧠 ${horse.name}: アンサンブルボーナス +${ensembleBonus.toFixed(1)}`);
+        }
+        
+        // 🆕 学習データ統合（BettingRecommenderと同等）
+        if (typeof LearningSystem !== 'undefined') {
+            const learningData = LearningSystem.getLearningData();
+            if (learningData.adjustments) {
+                const adj = learningData.adjustments;
+                
+                // 学習による信頼度補正
+                if (horse.winProbability > 15) confidence *= adj.winProbabilityWeight || 1;
+                if (horse.placeProbability > 50) confidence *= adj.placeProbabilityWeight || 1;
+                if (horse.odds <= 5) confidence *= adj.oddsWeight || 1;
+            }
+        }
         
         console.log(`🎯 ${horse.name}: 勝率${horse.winProbability}%, オッズ${horse.odds}倍, 複勝率${horse.placeProbability}%, スコア${horse.score} → 信頼度${confidence.toFixed(1)}`);
         
