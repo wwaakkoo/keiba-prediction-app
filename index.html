@@ -310,7 +310,8 @@
                         <label for="sortSelect" style="font-weight: bold; margin-right: 10px;">並び順:</label>
                         <select id="sortSelect" onchange="PredictionEngine.changeSortOrder(this.value)">
                             <option value="score">スコア順</option>
-                            <option value="ensembleScore">🎯 アンサンブルスコア順</option>
+                            <!-- アンサンブルスコア順は Phase 6では無効化 (将来のPhase 8で復活検討) -->
+                            <!-- <option value="ensembleScore">🎯 アンサンブルスコア順</option> -->
                             <option value="place">複勝率順</option>
                             <option value="win">勝率順</option>
                             <option value="odds">オッズ順</option>
