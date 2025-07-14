@@ -1869,7 +1869,52 @@ class EnhancedLearningSystem {
      * 過学習防止アルゴリズム
      */
     static detectOverlearning(currentScore, isValidation = true) {
+        // learningDataとmetaLearningの初期化確認
+        if (!this.learningData) {
+            console.warn('learningDataが未初期化です。初期化します。');
+            // learningDataの緊急初期化
+            this.learningData = {
+                adjustments: {},
+                metaLearning: {
+                    adaptationHistory: [],
+                    adjustmentHistory: [],
+                    overlearningDetection: 0,
+                    adaptationRate: 0.1,
+                    validationScores: [],
+                    trainingScores: [],
+                    earlyStoppingCounter: 0,
+                    bestValidationScore: 0,
+                    overlearningThreshold: 0.05,
+                    minLearningCycles: 10
+                }
+            };
+        }
+        
+        if (!this.learningData.metaLearning) {
+            console.warn('metaLearningが未初期化です。初期化します。');
+            this.learningData.metaLearning = {
+                adaptationHistory: [],
+                adjustmentHistory: [],
+                overlearningDetection: 0,
+                adaptationRate: 0.1,
+                validationScores: [],
+                trainingScores: [],
+                earlyStoppingCounter: 0,
+                bestValidationScore: 0,
+                overlearningThreshold: 0.05,
+                minLearningCycles: 10
+            };
+        }
+        
         const metaLearning = this.learningData.metaLearning;
+        
+        // validationScoresとtrainingScoresの初期化確認
+        if (!metaLearning.validationScores) {
+            metaLearning.validationScores = [];
+        }
+        if (!metaLearning.trainingScores) {
+            metaLearning.trainingScores = [];
+        }
         
         if (isValidation) {
             metaLearning.validationScores.push(currentScore);
@@ -1960,6 +2005,44 @@ class EnhancedLearningSystem {
         
         const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
         return slope;
+    }
+    
+    /**
+     * 調整値の正則化（過学習対策）
+     */
+    static regularizeAdjustments(adjustments) {
+        if (!adjustments || typeof adjustments !== 'object') {
+            return {};
+        }
+        
+        const regularized = {};
+        const regularizationFactor = 0.8; // 80%に縮小
+        
+        Object.keys(adjustments).forEach(key => {
+            if (typeof adjustments[key] === 'number') {
+                // 数値の調整値を正則化
+                regularized[key] = adjustments[key] * regularizationFactor;
+            } else if (Array.isArray(adjustments[key])) {
+                // 配列の調整値を正則化
+                regularized[key] = adjustments[key].map(val => 
+                    typeof val === 'number' ? val * regularizationFactor : val
+                );
+            } else if (typeof adjustments[key] === 'object' && adjustments[key] !== null) {
+                // ネストしたオブジェクトの正則化
+                regularized[key] = this.regularizeAdjustments(adjustments[key]);
+            } else {
+                // その他の値はそのまま
+                regularized[key] = adjustments[key];
+            }
+        });
+        
+        console.log('📉 調整値正則化完了:', {
+            originalKeys: Object.keys(adjustments),
+            regularizedKeys: Object.keys(regularized),
+            factor: regularizationFactor
+        });
+        
+        return regularized;
     }
     
     /**

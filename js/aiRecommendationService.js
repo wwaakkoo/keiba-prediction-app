@@ -400,11 +400,11 @@ class AIRecommendationService {
 あなたは経験豊富な競馬予想の専門家です。以下のデータを基に、実戦的な買い目を推奨してください。
 
 ## 📍 レース基本情報
-- **コース**: ${raceInfo?.course || '未設定'}
-- **距離**: ${raceInfo?.distance || '未設定'}m
-- **馬場**: ${raceInfo?.trackType || '芝'} (${raceInfo?.trackCondition || '良'})
-- **天候**: ${raceInfo?.weather || '晴'}
-- **レースレベル**: ${raceInfo?.raceLevel || horses[0]?.currentRaceLevel || '未設定'}
+- **コース**: ${this.getRaceInfoValue(raceInfo, 'course', 'raceCourse', '東京')}
+- **距離**: ${this.getRaceInfoValue(raceInfo, 'distance', 'raceDistance', '1600')}m
+- **馬場**: ${this.getRaceInfoValue(raceInfo, 'trackType', 'raceTrackType', '芝')} (${this.getRaceInfoValue(raceInfo, 'trackCondition', 'raceTrackCondition', '良')})
+- **天候**: ${this.getRaceInfoValue(raceInfo, 'weather', 'weather', '晴')}
+- **レースレベル**: ${this.getRaceInfoValue(raceInfo, 'raceLevel', 'raceLevel', 'G1')}
 
 ## 🐎 出走馬詳細データ
 ${horseList}
@@ -1651,11 +1651,12 @@ ${horseList}
     // 現在のレース情報を取得
     static getCurrentRaceInfo() {
         return {
-            distance: document.getElementById('raceDistance')?.value || null,
-            course: document.getElementById('raceCourse')?.value || null,
-            trackType: document.getElementById('raceTrackType')?.value || null,
-            trackCondition: document.getElementById('raceTrackCondition')?.value || null,
-            weather: document.getElementById('raceWeather')?.value || null
+            course: document.getElementById('raceCourse')?.value || '東京',
+            distance: document.getElementById('raceDistance')?.value || '1600',
+            trackType: document.getElementById('raceTrackType')?.value || '芝',
+            trackCondition: document.getElementById('raceTrackCondition')?.value || '良',
+            weather: document.getElementById('raceWeather')?.value || '晴',
+            raceLevel: document.getElementById('raceLevel')?.value || 'G1'
         };
     }
 
@@ -3870,10 +3871,60 @@ ${horseList}
             return 'Claude AIからの回答を処理しました';
         }
     }
+
+    // レース情報を取得するヘルパーメソッド
+    static getRaceInfoValue(raceInfo, raceInfoKey, elementId, defaultValue) {
+        // 1. raceInfoオブジェクトから取得を試行
+        if (raceInfo && raceInfo[raceInfoKey] && raceInfo[raceInfoKey] !== '未設定') {
+            return raceInfo[raceInfoKey];
+        }
+        
+        // 2. HTML要素から取得を試行
+        const element = document.getElementById(elementId);
+        if (element && element.value && element.value !== '' && element.value !== '未設定') {
+            return element.value;
+        }
+        
+        // 3. 現在のレース情報を取得試行
+        try {
+            const currentRaceInfo = getCurrentRaceInfo();
+            if (currentRaceInfo && currentRaceInfo[raceInfoKey] && currentRaceInfo[raceInfoKey] !== '未設定') {
+                return currentRaceInfo[raceInfoKey];
+            }
+        } catch (error) {
+            // getCurrentRaceInfo が存在しない場合のエラーを無視
+        }
+        
+        // 4. select要素の選択された値を取得
+        if (element && element.tagName === 'SELECT') {
+            const selectedOption = element.options[element.selectedIndex];
+            if (selectedOption && selectedOption.value && selectedOption.value !== '') {
+                return selectedOption.value;
+            }
+        }
+        
+        // 5. デフォルト値を返す
+        return defaultValue;
+    }
+}
+
+// レース情報を取得するグローバル関数
+function getCurrentRaceInfo() {
+    return {
+        course: document.getElementById('raceCourse')?.value || '東京',
+        distance: document.getElementById('raceDistance')?.value || '1600',
+        trackType: document.getElementById('raceTrackType')?.value || '芝',
+        trackCondition: document.getElementById('raceTrackCondition')?.value || '良',
+        weather: document.getElementById('weather')?.value || '晴',
+        raceLevel: document.getElementById('raceLevel')?.value || 'G1',
+        raceName: document.getElementById('raceName')?.value || '',
+        raceDate: document.getElementById('raceDate')?.value || ''
+    };
 }
 
 // グローバル関数として公開
 window.AIRecommendationService = AIRecommendationService;
+window.getCurrentRaceInfo = getCurrentRaceInfo;
 
 // ページ読み込み時に初期化
 document.addEventListener('DOMContentLoaded', function() {

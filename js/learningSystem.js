@@ -565,82 +565,73 @@ class LearningSystem {
                                     patternHits++;
                                 }
                             } else if (bet.type === '複勝') {
-                                // 馬番での照合も追加
+                                // 複勝的中判定の改善版
                                 const betNumber = parseInt(bet.combination.replace(/[^\d]/g, ''));
+                                
+                                // 馬名の正規化（全角・半角、スペース除去）
+                                const normalizeName = (name) => {
+                                    return name.replace(/[\s　]/g, '').toLowerCase();
+                                };
+                                
                                 const hitHorse = actualTop3.find(h => {
+                                    // 直接的な馬名マッチング（部分一致）
                                     if (bet.combination.includes(h.name)) return true;
+                                    
+                                    // 正規化した馬名でのマッチング
+                                    const normalizedHorseName = normalizeName(h.name);
+                                    const normalizedCombination = normalizeName(bet.combination);
+                                    if (normalizedCombination.includes(normalizedHorseName)) return true;
+                                    
+                                    // 馬番での照合
                                     if (!isNaN(betNumber)) {
                                         if (h.name === betNumber.toString()) return true;
                                         if (h.horseNumber === betNumber) return true;
+                                        // 馬番が文字列の場合も考慮
+                                        if (h.horseNumber && h.horseNumber.toString() === betNumber.toString()) return true;
                                     }
+                                    
                                     return false;
                                 });
+                                
                                 if (hitHorse) {
                                     hitStatus = '✅';
                                     const hitPos = actualTop3.findIndex(h => h.name === hitHorse.name) + 1;
                                     details = `「${hitHorse.name}」が${hitPos}着で的中`;
                                     patternHits++;
+                                } else {
+                                    // デバッグ用ログ
+                                    console.log('複勝的中判定 - 外れ:', {
+                                        betCombination: bet.combination,
+                                        actualTop3Names: actualTop3.map(h => h.name),
+                                        betNumber: betNumber
+                                    });
                                 }
                             } else if (bet.type === 'ワイド' || bet.type.includes('ワイド')) {
-                                // ワイド的中判定（馬番対応版）
-                                const wideHorses = bet.combination.split('-');
-                                if (wideHorses.length >= 2) {
-                                    // 馬番から馬名を取得するための関数
-                                    const getHorseNameFromNumber = (horseNumberStr) => {
-                                        const horseNumber = parseInt(horseNumberStr.replace(/[^\d]/g, ''));
-                                        if (isNaN(horseNumber)) return horseNumberStr;
-                                        
-                                        // HorseManagerから馬データを取得
-                                        let horses = [];
-                                        try {
-                                            if (typeof HorseManager !== 'undefined' && HorseManager.getAllHorses) {
-                                                horses = HorseManager.getAllHorses();
-                                            } else if (typeof PredictionEngine !== 'undefined' && PredictionEngine.getAllHorses) {
-                                                horses = PredictionEngine.getAllHorses();
-                                            }
-                                        } catch (e) {
-                                            console.warn('馬データ取得エラー:', e);
-                                        }
-                                        
-                                        // 馬番に対応する馬名を検索
-                                        const foundHorse = horses.find(h => {
-                                            // horseNumberプロパティがある場合
-                                            if (h.horseNumber === horseNumber) return true;
-                                            // 馬名に番号が含まれている場合の簡易チェック
-                                            if (h.name && h.name.includes(horseNumber.toString())) return true;
-                                            return false;
-                                        });
-                                        
-                                        return foundHorse ? foundHorse.name : horseNumberStr;
-                                    };
-                                    
-                                    // 馬番を馬名に変換
-                                    const horseNames = wideHorses.map(getHorseNameFromNumber);
-                                    
-                                    // 両方の馬が3着以内にいるかチェック（馬番・馬名両対応）
-                                    const bothIn = wideHorses.every(horseRef => {
-                                        const horseNumber = parseInt(horseRef.replace(/[^\d]/g, ''));
-                                        return actualTop3.some(h => {
-                                            // 馬名での照合
-                                            if (h.name === horseRef || horseRef.includes(h.name) || h.name.includes(horseRef)) return true;
-                                            // 馬番での照合（着順入力が馬番の場合）
-                                            if (!isNaN(horseNumber)) {
-                                                // h.nameが馬番の場合（例：「11」「9」「8」）
-                                                if (h.name === horseNumber.toString()) return true;
-                                                // h.horseNumberがある場合
-                                                if (h.horseNumber === horseNumber) return true;
-                                                // 馬名に馬番が含まれている場合
-                                                if (h.name && h.name.includes(horseNumber.toString())) return true;
-                                            }
-                                            return false;
-                                        });
-                                    });
-                                    
-                                    if (bothIn) {
-                                        hitStatus = '✅';
-                                        const hitPositions = wideHorses.map(horseRef => {
+                                // ワイド的中判定（複数組み合わせ対応版）
+                                
+                                // 複数の組み合わせがある場合（例：「1-3, 1-6」）
+                                const combinations = bet.combination.split(', ');
+                                let wideHit = false;
+                                let hitDetails = [];
+                                
+                                combinations.forEach(combination => {
+                                    const wideHorses = combination.trim().split('-');
+                                    if (wideHorses.length >= 2) {
+                                        // 馬番から実際の馬を特定する関数
+                                        const findHorseByNumber = (horseRef) => {
                                             const horseNumber = parseInt(horseRef.replace(/[^\d]/g, ''));
-                                            const foundHorse = actualTop3.find(h => {
+                                            
+                                            // 現在の予測データから馬番に対応する馬名を取得
+                                            const currentPredictions = PredictionEngine.getCurrentPredictions();
+                                            if (currentPredictions && currentPredictions.length > 0) {
+                                                if (!isNaN(horseNumber) && horseNumber >= 1 && horseNumber <= currentPredictions.length) {
+                                                    const targetHorse = currentPredictions[horseNumber - 1];
+                                                    return actualTop3.find(h => h.name === targetHorse.name);
+                                                }
+                                            }
+                                            
+                                            // 馬名での直接照合
+                                            return actualTop3.find(h => {
                                                 if (h.name === horseRef || horseRef.includes(h.name) || h.name.includes(horseRef)) return true;
                                                 if (!isNaN(horseNumber)) {
                                                     if (h.name === horseNumber.toString()) return true;
@@ -649,37 +640,91 @@ class LearningSystem {
                                                 }
                                                 return false;
                                             });
-                                            const pos = actualTop3.indexOf(foundHorse) + 1;
-                                            const displayName = foundHorse ? foundHorse.name : horseRef;
-                                            return `${displayName}(${pos}着)`;
-                                        }).join('・');
-                                        details = `ワイド的中: ${hitPositions}`;
-                                        patternHits++;
+                                        };
+                                        
+                                        // 両方の馬が3着以内にいるかチェック
+                                        const bothIn = wideHorses.every(horseRef => {
+                                            const foundHorse = findHorseByNumber(horseRef);
+                                            return foundHorse !== undefined;
+                                        });
+                                        
+                                        if (bothIn) {
+                                            wideHit = true;
+                                            const hitPositions = wideHorses.map(horseRef => {
+                                                const foundHorse = findHorseByNumber(horseRef);
+                                                const pos = actualTop3.indexOf(foundHorse) + 1;
+                                                const displayName = foundHorse ? foundHorse.name : horseRef;
+                                                return `${displayName}(${pos}着)`;
+                                            }).join('・');
+                                            hitDetails.push(`${combination}: ${hitPositions}`);
+                                        }
                                     }
+                                });
+                                
+                                if (wideHit) {
+                                    hitStatus = '✅';
+                                    details = `ワイド的中: ${hitDetails.join('、')}`;
+                                    patternHits++;
                                 }
                             } else if (bet.type.includes('連複') || bet.type.includes('連単')) {
-                                // 3連複・3連単等の的中判定（馬番対応版）
-                                const horses = bet.combination.split('-');
-                                if (horses.length >= 3) {
-                                    const allIn = horses.every(horseRef => {
-                                        const horseNumber = parseInt(horseRef.replace(/[^\d]/g, ''));
-                                        return actualTop3.some(h => {
-                                            // 馬名での照合
-                                            if (h.name === horseRef || horseRef.includes(h.name) || h.name.includes(horseRef)) return true;
-                                            // 馬番での照合
-                                            if (!isNaN(horseNumber)) {
-                                                if (h.name === horseNumber.toString()) return true;
-                                                if (h.horseNumber === horseNumber) return true;
-                                                if (h.name && h.name.includes(horseNumber.toString())) return true;
+                                // 3連複・3連単等の的中判定（複数組み合わせ対応版）
+                                
+                                // 複数の組み合わせがある場合（例：「1-3-6, 1-4-6, 1-5-6」）
+                                const combinations = bet.combination.split(', ');
+                                let complexHit = false;
+                                let hitDetails = [];
+                                
+                                combinations.forEach(combination => {
+                                    const horses = combination.trim().split('-');
+                                    if (horses.length >= 3) {
+                                        // 馬番から実際の馬を特定する関数
+                                        const findHorseByNumber = (horseRef) => {
+                                            const horseNumber = parseInt(horseRef.replace(/[^\d]/g, ''));
+                                            
+                                            // 現在の予測データから馬番に対応する馬名を取得
+                                            const currentPredictions = PredictionEngine.getCurrentPredictions();
+                                            if (currentPredictions && currentPredictions.length > 0) {
+                                                if (!isNaN(horseNumber) && horseNumber >= 1 && horseNumber <= currentPredictions.length) {
+                                                    const targetHorse = currentPredictions[horseNumber - 1];
+                                                    return actualTop3.find(h => h.name === targetHorse.name);
+                                                }
                                             }
-                                            return false;
+                                            
+                                            // 馬名での直接照合
+                                            return actualTop3.find(h => {
+                                                if (h.name === horseRef || horseRef.includes(h.name) || h.name.includes(horseRef)) return true;
+                                                if (!isNaN(horseNumber)) {
+                                                    if (h.name === horseNumber.toString()) return true;
+                                                    if (h.horseNumber === horseNumber) return true;
+                                                    if (h.name && h.name.includes(horseNumber.toString())) return true;
+                                                }
+                                                return false;
+                                            });
+                                        };
+                                        
+                                        // 全ての馬が3着以内にいるかチェック
+                                        const allIn = horses.every(horseRef => {
+                                            const foundHorse = findHorseByNumber(horseRef);
+                                            return foundHorse !== undefined;
                                         });
-                                    });
-                                    if (allIn) {
-                                        hitStatus = '✅';
-                                        details = '全ての馬が3着以内で的中';
-                                        patternHits++;
+                                        
+                                        if (allIn) {
+                                            complexHit = true;
+                                            const hitPositions = horses.map(horseRef => {
+                                                const foundHorse = findHorseByNumber(horseRef);
+                                                const pos = actualTop3.indexOf(foundHorse) + 1;
+                                                const displayName = foundHorse ? foundHorse.name : horseRef;
+                                                return `${displayName}(${pos}着)`;
+                                            }).join('・');
+                                            hitDetails.push(`${combination}: ${hitPositions}`);
+                                        }
                                     }
+                                });
+                                
+                                if (complexHit) {
+                                    hitStatus = '✅';
+                                    details = `${bet.type}的中: ${hitDetails.join('、')}`;
+                                    patternHits++;
                                 }
                             }
                             
@@ -1601,256 +1646,26 @@ class LearningSystem {
         return factors;
     }
 
-    // 3連複・3連単の学習処理
+    // 複雑馬券種学習は削除済み（システム簡潔化のため）
     static processComplexBettingResults(firstHorse, secondHorse, thirdHorse) {
-        const actualTop3 = [firstHorse, secondHorse, thirdHorse].filter(h => h);
-        
-        if (actualTop3.length < 3) {
-            console.log('3着まで入力されていないため、3連複・3連単の学習をスキップします');
-            return;
-        }
-
-        // HTMLフィールドから入力を取得
-        const tripleBoxResult = document.getElementById('tripleBoxResult')?.value;
-        const tripleExactResult = document.getElementById('tripleExactResult')?.value;
-        const tripleBoxDividend = document.getElementById('tripleBoxDividend')?.value;
-        const tripleExactDividend = document.getElementById('tripleExactDividend')?.value;
-
-        // 学習データ初期化（存在しない場合）
-        if (!this.learningData.complexBetting) {
-            this.learningData.complexBetting = {
-                tripleBox: {
-                    totalBets: 0,
-                    hits: 0,
-                    totalReturn: 0,
-                    totalInvestment: 0,
-                    hitRate: 0,
-                    roi: 0,
-                    efficiencyThresholds: {
-                        main: 0.25,      // より現実的な効率閾値（25%以上）
-                        formation: 0.20   // フォーメーション推奨の効率閾値（20%以上）
-                    }
-                },
-                tripleExact: {
-                    totalBets: 0,
-                    hits: 0,
-                    totalReturn: 0,
-                    totalInvestment: 0,
-                    hitRate: 0,
-                    roi: 0,
-                    efficiencyThresholds: {
-                        main: 0.15,      // 3連単は15%以上で推奨
-                        formation: 0.10   // フォーメーション推奨の効率閾値（10%以上）
-                    }
-                },
-                history: []
-            };
-        }
-
-        const complexData = this.learningData.complexBetting;
-        
-        // 3連複の学習
-        if (tripleBoxResult && tripleBoxResult !== '') {
-            // 推奨が出た場合のみカウント（「no-recommendation」は除外）
-            if (tripleBoxResult !== 'no-recommendation') {
-                complexData.tripleBox.totalBets++;
-            }
-            
-            if (tripleBoxResult === 'hit') {
-                complexData.tripleBox.hits++;
-                const dividend = parseFloat(tripleBoxDividend) || 0;
-                if (dividend > 0) {
-                    // 実際に購入した場合のみ投資・回収を記録
-                    complexData.tripleBox.totalReturn += dividend;
-                    complexData.tripleBox.totalInvestment += 100; // 100円購入と仮定
-                }
-                
-                // 効率閾値の調整（的中した場合、少し緩める）
-                complexData.tripleBox.efficiencyThresholds.main = Math.max(0.06, 
-                    complexData.tripleBox.efficiencyThresholds.main - 0.005);
-                complexData.tripleBox.efficiencyThresholds.formation = Math.max(0.04, 
-                    complexData.tripleBox.efficiencyThresholds.formation - 0.005);
-                    
-                console.log(`🏆 3連複的中学習: 配当${dividend}円, 新閾値メイン=${complexData.tripleBox.efficiencyThresholds.main.toFixed(3)}`);
-            } else if (tripleBoxResult === 'miss') {
-                // 外れの場合、実際に購入していた場合のみ投資額を記録
-                // 配当入力がある場合は実際に購入していたと判断（通常0だが）
-                const dividend = parseFloat(tripleBoxDividend) || 0;
-                if (dividend >= 0 && document.getElementById('tripleBoxDividend').value !== '') {
-                    complexData.tripleBox.totalInvestment += 100; // 100円購入と仮定
-                }
-                
-                // 効率閾値の調整（外れた場合、少し厳しくする）
-                complexData.tripleBox.efficiencyThresholds.main = Math.min(0.12, 
-                    complexData.tripleBox.efficiencyThresholds.main + 0.005);
-                complexData.tripleBox.efficiencyThresholds.formation = Math.min(0.08, 
-                    complexData.tripleBox.efficiencyThresholds.formation + 0.005);
-                    
-                console.log(`❌ 3連複外れ学習: 新閾値メイン=${complexData.tripleBox.efficiencyThresholds.main.toFixed(3)}`);
-            }
-            
-            // 的中率とROIを再計算
-            complexData.tripleBox.hitRate = (complexData.tripleBox.hits / complexData.tripleBox.totalBets) * 100;
-            if (complexData.tripleBox.totalInvestment > 0) {
-                complexData.tripleBox.roi = (complexData.tripleBox.totalReturn / complexData.tripleBox.totalInvestment) * 100;
-            }
-        }
-
-        // 3連単の学習
-        if (tripleExactResult && tripleExactResult !== '') {
-            // 推奨が出た場合のみカウント（「no-recommendation」は除外）
-            if (tripleExactResult !== 'no-recommendation') {
-                complexData.tripleExact.totalBets++;
-            }
-            
-            if (tripleExactResult === 'hit') {
-                complexData.tripleExact.hits++;
-                const dividend = parseFloat(tripleExactDividend) || 0;
-                if (dividend > 0) {
-                    // 実際に購入した場合のみ投資・回収を記録
-                    complexData.tripleExact.totalReturn += dividend;
-                    complexData.tripleExact.totalInvestment += 100; // 100円購入と仮定
-                }
-                
-                // 効率閾値の調整（的中した場合、少し緩める）
-                complexData.tripleExact.efficiencyThresholds.main = Math.max(0.06, 
-                    complexData.tripleExact.efficiencyThresholds.main - 0.005);
-                complexData.tripleExact.efficiencyThresholds.formation = Math.max(0.04, 
-                    complexData.tripleExact.efficiencyThresholds.formation - 0.005);
-                    
-                console.log(`🏆 3連単的中学習: 配当${dividend}円, 新閾値メイン=${complexData.tripleExact.efficiencyThresholds.main.toFixed(3)}`);
-            } else if (tripleExactResult === 'miss') {
-                // 外れの場合、実際に購入していた場合のみ投資額を記録
-                const dividend = parseFloat(tripleExactDividend) || 0;
-                if (dividend >= 0 && document.getElementById('tripleExactDividend').value !== '') {
-                    complexData.tripleExact.totalInvestment += 100; // 100円購入と仮定
-                }
-                
-                // 効率閾値の調整（外れた場合、少し厳しくする）
-                complexData.tripleExact.efficiencyThresholds.main = Math.min(0.12, 
-                    complexData.tripleExact.efficiencyThresholds.main + 0.005);
-                complexData.tripleExact.efficiencyThresholds.formation = Math.min(0.08, 
-                    complexData.tripleExact.efficiencyThresholds.formation + 0.005);
-                    
-                console.log(`❌ 3連単外れ学習: 新閾値メイン=${complexData.tripleExact.efficiencyThresholds.main.toFixed(3)}`);
-            }
-            
-            // 的中率とROIを再計算
-            complexData.tripleExact.hitRate = (complexData.tripleExact.hits / complexData.tripleExact.totalBets) * 100;
-            if (complexData.tripleExact.totalInvestment > 0) {
-                complexData.tripleExact.roi = (complexData.tripleExact.totalReturn / complexData.tripleExact.totalInvestment) * 100;
-            }
-        }
-
-        // 履歴に記録
-        const historyEntry = {
-            date: new Date().toLocaleDateString(),
-            actualResult: actualTop3.map(h => h.name),
-            tripleBox: {
-                result: tripleBoxResult,
-                dividend: tripleBoxDividend || null
-            },
-            tripleExact: {
-                result: tripleExactResult,
-                dividend: tripleExactDividend || null
-            }
-        };
-        
-        complexData.history.push(historyEntry);
-        
-        // 履歴サイズ制限
-        if (complexData.history.length > 50) {
-            complexData.history = complexData.history.slice(-50);
-        }
-
-        // 学習データを保存
-        this.saveLearningData();
-        
-        // フィールドをクリア
-        if (document.getElementById('tripleBoxResult')) document.getElementById('tripleBoxResult').value = '';
-        if (document.getElementById('tripleExactResult')) document.getElementById('tripleExactResult').value = '';
-        if (document.getElementById('tripleBoxDividend')) document.getElementById('tripleBoxDividend').value = '';
-        if (document.getElementById('tripleExactDividend')) document.getElementById('tripleExactDividend').value = '';
-
-        console.log('🎯 複雑馬券種学習完了:', {
-            tripleBox: {
-                totalBets: complexData.tripleBox.totalBets,
-                hitRate: complexData.tripleBox.hitRate.toFixed(1) + '%',
-                roi: complexData.tripleBox.roi.toFixed(1) + '%'
-            },
-            tripleExact: {
-                totalBets: complexData.tripleExact.totalBets,
-                hitRate: complexData.tripleExact.hitRate.toFixed(1) + '%',
-                roi: complexData.tripleExact.roi.toFixed(1) + '%'
-            }
-        });
+        // 連複・3連単学習機能は削除されました
+        console.log('🎯 システム簡潔化: 連複・3連単学習は削除済みです');
+        return;
     }
 
-    // 学習した効率閾値を取得（BettingRecommenderから呼び出される）
+    // 複雑馬券種閾値取得機能は削除済み
     static getComplexBettingThresholds() {
-        if (!this.learningData.complexBetting) {
-            return {
-                tripleBox: { main: 0.25, formation: 0.20 },
-                tripleExact: { main: 0.15, formation: 0.10 }
-            };
-        }
-        
-        return {
-            tripleBox: this.learningData.complexBetting.tripleBox.efficiencyThresholds,
-            tripleExact: this.learningData.complexBetting.tripleExact.efficiencyThresholds
-        };
+        console.log('🎯 連複・3連単機能は削除済みです');
+        return null;
     }
 
     // 複雑馬券種の統計表示
-    static showComplexBettingStats() {
-        if (!this.learningData.complexBetting) {
-            alert('複雑馬券種の学習データがありません。');
-            return;
-        }
-
-        const data = this.learningData.complexBetting;
-        let statsText = '🎯 複雑馬券種学習統計\n\n';
-        
-        statsText += '【3連複】\n';
-        statsText += `推奨回数: ${data.tripleBox.totalBets}回\n`;
-        statsText += `的中数: ${data.tripleBox.hits}回\n`;
-        statsText += `推奨的中率: ${data.tripleBox.hitRate.toFixed(1)}%\n`;
-        if (data.tripleBox.totalInvestment > 0) {
-            statsText += `実購入ROI: ${data.tripleBox.roi.toFixed(1)}% (実購入分のみ)\n`;
-        } else {
-            statsText += `実購入データ: なし\n`;
-        }
-        statsText += `効率閾値: メイン ${data.tripleBox.efficiencyThresholds.main.toFixed(3)}, フォーメーション ${data.tripleBox.efficiencyThresholds.formation.toFixed(3)}\n\n`;
-        
-        statsText += '【3連単】\n';
-        statsText += `推奨回数: ${data.tripleExact.totalBets}回\n`;
-        statsText += `的中数: ${data.tripleExact.hits}回\n`;
-        statsText += `推奨的中率: ${data.tripleExact.hitRate.toFixed(1)}%\n`;
-        if (data.tripleExact.totalInvestment > 0) {
-            statsText += `実購入ROI: ${data.tripleExact.roi.toFixed(1)}% (実購入分のみ)\n`;
-        } else {
-            statsText += `実購入データ: なし\n`;
-        }
-        statsText += `効率閾値: メイン ${data.tripleExact.efficiencyThresholds.main.toFixed(3)}, フォーメーション ${data.tripleExact.efficiencyThresholds.formation.toFixed(3)}\n\n`;
-        
-        if (data.history.length > 0) {
-            statsText += `最新の学習履歴（直近${Math.min(5, data.history.length)}件）:\n`;
-            data.history.slice(-5).forEach((entry, index) => {
-                statsText += `${index + 1}. ${entry.date}: ${entry.actualResult.join('→')}\n`;
-                if (entry.tripleBox.result) {
-                    statsText += `   3連複: ${entry.tripleBox.result === 'hit' ? '的中' : '外れ'}`;
-                    if (entry.tripleBox.dividend) statsText += ` (${entry.tripleBox.dividend}円)`;
-                    statsText += '\n';
-                }
-                if (entry.tripleExact.result) {
-                    statsText += `   3連単: ${entry.tripleExact.result === 'hit' ? '的中' : '外れ'}`;
-                    if (entry.tripleExact.dividend) statsText += ` (${entry.tripleExact.dividend}円)`;
-                    statsText += '\n';
-                }
-            });
-        }
-
-        alert(statsText);
+    // 複雑馬券種統計機能は削除済み（システム簡潔化のため）
+    static showSimplifiedLearningInfo() {
+        alert('🎯 学習システム簡潔化のお知らせ\n\n' +
+              '連複・3連単の学習機能は削除されました。\n' +
+              'より信頼性の高い単勝・複勝予測に集中します。\n\n' +
+              '詳細な学習統計は「📈 統計学習状況」ボタンをご利用ください。');
     }
 }
 
@@ -1863,4 +1678,4 @@ window.resetLearningData = LearningSystem.resetLearningData.bind(LearningSystem)
 window.saveLearningData = LearningSystem.saveLearningData.bind(LearningSystem);
 window.loadLearningData = LearningSystem.loadLearningData.bind(LearningSystem);
 window.showSleeperStats = LearningSystem.showSleeperStats.bind(LearningSystem);
-window.showComplexBettingStats = LearningSystem.showComplexBettingStats.bind(LearningSystem); 
+// 複雑馬券種統計は削除済み 

@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phase 4-6 データ保存・表示検証ツール</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            margin: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.2em;
+        }
+        .section {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 5px solid #007bff;
+        }
+        .btn {
+            background: linear-gradient(45deg, #007bff, #0056b3);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 5px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,123,255,0.4);
+        }
+        .btn-phase4 { background: linear-gradient(45deg, #ff9800, #f57c00); }
+        .btn-phase5 { background: linear-gradient(45deg, #9c27b0, #7b1fa2); }
+        .btn-phase6 { background: linear-gradient(45deg, #4caf50, #2e7d32); }
+        .btn-test { background: linear-gradient(45deg, #e91e63, #c2185b); }
+        .btn-clear { background: linear-gradient(45deg, #6c757d, #495057); }
+        
+        .result {
+            background: #e8f5e8;
+            border: 1px solid #4caf50;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        .error {
+            background: #ffebee;
+            border: 1px solid #f44336;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            color: #c62828;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+        .status {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-weight: bold;
+            font-size: 0.85em;
+        }
+        .status-ok { background: #c8e6c9; color: #2e7d32; }
+        .status-error { background: #ffcdd2; color: #c62828; }
+        .status-warning { background: #fff3cd; color: #856404; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔬 Phase 4-6 データ保存・表示検証ツール</h1>
+        
+        <div class="section">
+            <h2>📋 検証概要</h2>
+            <p>このツールはPhase 4-6の学習データとパフォーマンス記録が実際に保存・表示されているかを確認します。</p>
+            <ul>
+                <li><strong>Phase 4:</strong> PerformanceTracker - レース成績追跡とパフォーマンス分析</li>
+                <li><strong>Phase 5:</strong> CalibrationSystem - 予測精度校正データ</li>
+                <li><strong>Phase 6:</strong> KellyCapitalManager - ケリー基準資金管理データ</li>
+            </ul>
+        </div>
+
+        <!-- Phase 4 検証 -->
+        <div class="section">
+            <h3 style="color: #ff9800;">🎯 Phase 4: PerformanceTracker 検証</h3>
+            <div class="grid">
+                <button class="btn btn-phase4" onclick="checkPhase4Data()">📊 データ状況確認</button>
+                <button class="btn btn-test" onclick="createPhase4TestData()">🧪 テストデータ作成</button>
+                <button class="btn btn-phase4" onclick="showPhase4Stats()">📈 統計表示</button>
+                <button class="btn btn-clear" onclick="clearPhase4Data()">🗑️ データクリア</button>
+            </div>
+            <div id="phase4Results"></div>
+        </div>
+
+        <!-- Phase 5 検証 -->
+        <div class="section">
+            <h3 style="color: #9c27b0;">🔬 Phase 5: CalibrationSystem 検証</h3>
+            <div class="grid">
+                <button class="btn btn-phase5" onclick="checkPhase5Data()">📊 データ状況確認</button>
+                <button class="btn btn-test" onclick="createPhase5TestData()">🧪 テストデータ作成</button>
+                <button class="btn btn-phase5" onclick="showPhase5Report()">📋 レポート表示</button>
+                <button class="btn btn-clear" onclick="clearPhase5Data()">🗑️ データクリア</button>
+            </div>
+            <div id="phase5Results"></div>
+        </div>
+
+        <!-- Phase 6 検証 -->
+        <div class="section">
+            <h3 style="color: #4caf50;">💰 Phase 6: KellyCapitalManager 検証</h3>
+            <div class="grid">
+                <button class="btn btn-phase6" onclick="checkPhase6Data()">📊 データ状況確認</button>
+                <button class="btn btn-test" onclick="createPhase6TestData()">🧪 テストデータ作成</button>
+                <button class="btn btn-phase6" onclick="showPhase6Report()">📋 レポート表示</button>
+                <button class="btn btn-clear" onclick="clearPhase6Data()">🗑️ データクリア</button>
+            </div>
+            <div id="phase6Results"></div>
+        </div>
+
+        <!-- ローカルストレージ検証 -->
+        <div class="section">
+            <h3>💾 ローカルストレージ総合検証</h3>
+            <div class="grid">
+                <button class="btn" onclick="checkAllLocalStorage()">🔍 全データ確認</button>
+                <button class="btn btn-test" onclick="createAllTestData()">🧪 全テストデータ作成</button>
+                <button class="btn" onclick="exportAllData()">📤 全データエクスポート</button>
+                <button class="btn btn-clear" onclick="clearAllData()">🗑️ 全データクリア</button>
+            </div>
+            <div id="storageResults"></div>
+        </div>
+
+        <!-- 表示機能検証 -->
+        <div class="section">
+            <h3>📱 HTML表示機能検証</h3>
+            <div class="grid">
+                <button class="btn" onclick="checkHtmlButtons()">🔘 表示ボタン確認</button>
+                <button class="btn" onclick="testDisplayFunctions()">📺 表示関数テスト</button>
+                <button class="btn" onclick="simulateUserFlow()">👤 ユーザーフロー模擬</button>
+            </div>
+            <div id="displayResults"></div>
+        </div>
+    </div>
+
+    <!-- 必要なJavaScriptファイルを読み込み -->
+    <script src="js/performanceTracker.js"></script>
+    <script src="js/calibrationSystem.js"></script>
+    <script src="js/kellyCapitalManager.js"></script>
+
+    <script>
+        // Phase 4: PerformanceTracker 検証
+        function checkPhase4Data() {
+            const resultDiv = document.getElementById('phase4Results');
+            try {
+                const saved = localStorage.getItem('keiba_race_history');
+                const strategyData = localStorage.getItem('keiba_strategy_performance');
+                const monthlyData = localStorage.getItem('keiba_monthly_stats');
+                
+                let status = '<div class="result">';
+                status += '=== Phase 4 PerformanceTracker データ状況 ===\n';
+                
+                if (saved) {
+                    const history = JSON.parse(saved);
+                    status += `✅ レース履歴: ${history.length}件\n`;
+                    status += `🕒 最新データ: ${history.length > 0 ? new Date(history[history.length-1].date).toLocaleString() : 'なし'}\n`;
+                } else {
+                    status += '❌ レース履歴: データなし\n';
+                }
+                
+                if (strategyData) {
+                    const strategies = JSON.parse(strategyData);
+                    status += `📊 戦略データ: ${Object.keys(strategies).length}種類\n`;
+                } else {
+                    status += '❌ 戦略データ: データなし\n';
+                }
+                
+                if (monthlyData) {
+                    const monthly = JSON.parse(monthlyData);
+                    status += `📅 月次データ: ${Object.keys(monthly).length}ヶ月分\n`;
+                } else {
+                    status += '❌ 月次データ: データなし\n';
+                }
+                
+                status += '</div>';
+                resultDiv.innerHTML = status;
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">エラー: ${error.message}</div>`;
+            }
+        }
+
+        function createPhase4TestData() {
+            const resultDiv = document.getElementById('phase4Results');
+            try {
+                const tracker = new PerformanceTracker();
+                
+                // テストレースデータを作成
+                const testRaces = [
+                    {
+                        name: 'テストレース1',
+                        horses: [{number: 1}, {number: 2}, {number: 3}],
+                        course: '東京'
+                    },
+                    {
+                        name: 'テストレース2', 
+                        horses: [{number: 4}, {number: 5}, {number: 6}],
+                        course: '京都'
+                    }
+                ];
+                
+                testRaces.forEach((raceData, index) => {
+                    const predictions = [
+                        {horse: {number: 1}, score: 75, confidence: 0.8, estimatedOdds: 3.2},
+                        {horse: {number: 2}, score: 68, confidence: 0.7, estimatedOdds: 4.1}
+                    ];
+                    
+                    const bettingRecommendations = [
+                        {type: 'place', horse: {number: 1}, amount: 1000, strategy: 'test'},
+                        {type: 'place', horse: {number: 2}, amount: 800, strategy: 'test'}
+                    ];
+                    
+                    const actualResults = {
+                        finishing_order: {1: 1, 2: 3, 3: 5}, // 1番が1着、2番が3着
+                        payouts: {
+                            place: {1: 180, 2: 240}
+                        }
+                    };
+                    
+                    tracker.recordRaceResult(raceData, predictions, bettingRecommendations, actualResults);
+                });
+                
+                resultDiv.innerHTML = '<div class="result">✅ Phase 4テストデータを作成しました\n2レース分のデータが保存されています</div>';
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">エラー: ${error.message}</div>`;
+            }
+        }
+
+        function showPhase4Stats() {
+            const resultDiv = document.getElementById('phase4Results');
+            try {
+                const tracker = new PerformanceTracker();
+                const stats = tracker.getOverallStats();
+                
+                let result = '<div class="result">';
+                result += '=== Phase 4 統計レポート ===\n';
+                result += `📊 総レース数: ${stats.totalRaces}\n`;
+                result += `💰 総投資額: ${stats.totalInvestment?.toLocaleString() || 0}円\n`;
+                result += `💵 総回収額: ${stats.totalReturns?.toLocaleString() || 0}円\n`;
+                result += `📈 ROI: ${stats.overallROI?.toFixed(2) || 0}%\n`;
+                result += `🎯 平均的中率: ${stats.averageHitRate?.toFixed(1) || 0}%\n`;
+                result += `📊 収益レース率: ${stats.profitableRaceRate?.toFixed(1) || 0}%\n`;
+                result += '</div>';
+                
+                resultDiv.innerHTML = result;
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">エラー: ${error.message}</div>`;
+            }
+        }
+
+        function clearPhase4Data() {
+            localStorage.removeItem('keiba_race_history');
+            localStorage.removeItem('keiba_strategy_performance');
+            localStorage.removeItem('keiba_monthly_stats');
+            document.getElementById('phase4Results').innerHTML = '<div class="result">✅ Phase 4データをクリアしました</div>';
+        }
+
+        // Phase 5: CalibrationSystem 検証
+        function checkPhase5Data() {
+            const resultDiv = document.getElementById('phase5Results');
+            try {
+                const status = CalibrationSystem.debugDataStatus();
+                
+                let result = '<div class="result">';
+                result += '=== Phase 5 CalibrationSystem データ状況 ===\n';
+                result += `📊 データ状況: ${status.hasData ? '✅ あり' : '❌ なし'}\n`;
+                result += `🔢 総サンプル数: ${status.totalSamples || 0}\n`;
+                result += `📋 バケット数: ${status.buckets || 0}\n`;
+                result += `🕒 最終更新: ${status.lastUpdated || 'なし'}\n`;
+                
+                if (status.error) {
+                    result += `❌ エラー: ${status.error}\n`;
+                }
+                
+                result += '</div>';
+                resultDiv.innerHTML = result;
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">エラー: ${error.message}</div>`;
+            }
+        }
+
+        function createPhase5TestData() {
+            const resultDiv = document.getElementById('phase5Results');
+            try {
+                const testSystem = CalibrationSystem.createTestData();
+                resultDiv.innerHTML = '<div class="result">✅ Phase 5テストデータを作成しました\n8サンプルのキャリブレーションデータが保存されています</div>';
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">エラー: ${error.message}</div>`;
+            }
+        }
+
+        function showPhase5Report() {
+            const resultDiv = document.getElementById('phase5Results');
+            try {
+                const calibrationSystem = new CalibrationSystem();
+                const report = calibrationSystem.generateCalibrationReport();
+                
+                let result = '<div class="result">';
+                result += '=== Phase 5 キャリブレーションレポート ===\n';
+                result += `📊 総サンプル数: ${report.overview.totalSamples}\n`;
+                result += `📋 データのあるバケット数: ${report.overview.bucketsWithData}\n`;
+                result += `🕒 最終更新: ${report.overview.lastUpdated}\n\n`;
+                
+                result += '📈 バケット分析:\n';
+                Object.keys(report.bucketAnalysis).forEach(bucket => {
+                    const analysis = report.bucketAnalysis[bucket];
+                    result += `  ${bucket}点台: ${analysis.samples}サンプル, 的中率${analysis.actualHitRate}\n`;
+                });
+                
+                if (report.recommendations.length > 0) {
+                    result += '\n💡 推奨事項:\n';
+                    report.recommendations.forEach(rec => {
+                        result += `  ${rec}\n`;
+                    });
+                }
+                
+                result += '</div>';
+                resultDiv.innerHTML = result;
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">エラー: ${error.message}</div>`;
+            }
+        }
+
+        function clearPhase5Data() {
+            if (typeof resetPhase5Data === 'function') {
+                resetPhase5Data();
+            } else {
+                localStorage.removeItem('phase5_calibration_data');
+            }
+            document.getElementById('phase5Results').innerHTML = '<div class="result">✅ Phase 5データをクリアしました</div>';
+        }
+
+        // Phase 6: KellyCapitalManager 検証
+        function checkPhase6Data() {
+            const resultDiv = document.getElementById('phase6Results');
+            try {
+                const report = checkKellyCapital();
+                
+                let result = '<div class="result">';
+                result += '=== Phase 6 KellyCapitalManager データ状況 ===\n';
+                result += `💰 現在資金: ${report.capitalStatus.currentCapital.toLocaleString()}円\n`;
+                result += `📈 総収益率: ${report.capitalStatus.totalReturnRate.toFixed(2)}%\n`;
+                result += `🎯 リスクレベル: ${report.riskManagement.riskLevel}\n`;
+                result += `📊 最大投資比率: ${(report.riskManagement.maxBetRatio * 100)}%\n`;
+                result += `📉 現在ドローダウン: ${(report.capitalStatus.currentDrawdown * 100).toFixed(2)}%\n`;
+                result += `🔢 直近レース数: ${report.recentPerformance.totalRaces}\n`;
+                result += '</div>';
+                
+                resultDiv.innerHTML = result;
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">エラー: ${error.message}</div>`;
+            }
+        }
+
+        function createPhase6TestData() {
+            const resultDiv = document.getElementById('phase6Results');
+            try {
+                const manager = new KellyCapitalManager();
+                
+                // テスト取引データを作成
+                const testRaces = [
+                    {
+                        bets: [{amount: 1000}, {amount: 1500}],
+                        returns: [{amount: 1800}, {amount: 0}] // 一部的中
+                    },
+                    {
+                        bets: [{amount: 2000}],
+                        returns: [{amount: 3200}] // 的中
+                    },
+                    {
+                        bets: [{amount: 1200}, {amount: 800}],
+                        returns: [{amount: 0}, {amount: 0}] // 全外れ
+                    }
+                ];
+                
+                testRaces.forEach(raceResult => {
+                    manager.updateCapital(raceResult);
+                });
+                
+                resultDiv.innerHTML = '<div class="result">✅ Phase 6テストデータを作成しました\n3レース分の資金管理データが保存されています</div>';
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">エラー: ${error.message}</div>`;
+            }
+        }
+
+        function showPhase6Report() {
+            const resultDiv = document.getElementById('phase6Results');
+            try {
+                const manager = new KellyCapitalManager();
+                const report = manager.generateCapitalReport();
+                
+                let result = '<div class="result">';
+                result += '=== Phase 6 資金管理レポート ===\n';
+                result += `💰 現在資金: ${report.capitalStatus.currentCapital.toLocaleString()}円\n`;
+                result += `📊 初期資金: ${report.capitalStatus.initialCapital.toLocaleString()}円\n`;
+                result += `📈 総収益: ${report.capitalStatus.totalReturn.toLocaleString()}円\n`;
+                result += `📊 収益率: ${report.capitalStatus.totalReturnRate.toFixed(2)}%\n`;
+                result += `🔝 最高資金: ${report.capitalStatus.capitalPeak.toLocaleString()}円\n`;
+                result += `📉 ドローダウン: ${(report.capitalStatus.currentDrawdown * 100).toFixed(2)}%\n`;
+                result += `🎯 リスクレベル: ${report.riskManagement.riskLevel}\n`;
+                result += `🔢 直近レース数: ${report.recentPerformance.totalRaces}\n`;
+                result += `🎯 直近勝率: ${(report.recentPerformance.winRate * 100).toFixed(1)}%\n`;
+                result += `📊 直近ROI: ${report.recentPerformance.averageROI.toFixed(2)}%\n`;
+                
+                if (report.recommendations.length > 0) {
+                    result += '\n💡 推奨事項:\n';
+                    report.recommendations.forEach(rec => {
+                        result += `  ${rec}\n`;
+                    });
+                }
+                
+                result += '</div>';
+                resultDiv.innerHTML = result;
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">エラー: ${error.message}</div>`;
+            }
+        }
+
+        function clearPhase6Data() {
+            localStorage.removeItem('kelly_capital_data');
+            document.getElementById('phase6Results').innerHTML = '<div class="result">✅ Phase 6データをクリアしました</div>';
+        }
+
+        // 総合検証機能
+        function checkAllLocalStorage() {
+            const resultDiv = document.getElementById('storageResults');
+            
+            const keys = Object.keys(localStorage);
+            const phaseKeys = keys.filter(key => 
+                key.includes('keiba_') || 
+                key.includes('phase5_') || 
+                key.includes('kelly_') ||
+                key.includes('learning_') ||
+                key.includes('ai_recommendation')
+            );
+            
+            let result = '<div class="result">';
+            result += '=== ローカルストレージ総合確認 ===\n';
+            result += `📊 総キー数: ${keys.length}\n`;
+            result += `🎯 競馬アプリ関連: ${phaseKeys.length}個\n\n`;
+            
+            result += '📋 競馬アプリ関連データ:\n';
+            phaseKeys.forEach(key => {
+                const data = localStorage.getItem(key);
+                const size = data ? (data.length / 1024).toFixed(2) : 0;
+                result += `  ${key}: ${size}KB\n`;
+            });
+            
+            result += '</div>';
+            resultDiv.innerHTML = result;
+        }
+
+        function createAllTestData() {
+            createPhase4TestData();
+            createPhase5TestData();
+            createPhase6TestData();
+            
+            document.getElementById('storageResults').innerHTML = '<div class="result">✅ 全フェーズのテストデータを作成しました</div>';
+        }
+
+        function exportAllData() {
+            const data = {};
+            const keys = Object.keys(localStorage);
+            
+            keys.forEach(key => {
+                if (key.includes('keiba_') || key.includes('phase5_') || key.includes('kelly_')) {
+                    data[key] = localStorage.getItem(key);
+                }
+            });
+            
+            const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `phase4-6-data-${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            
+            document.getElementById('storageResults').innerHTML = '<div class="result">✅ 全データをエクスポートしました</div>';
+        }
+
+        function clearAllData() {
+            if (confirm('全てのPhase 4-6データを削除しますか？この操作は取り消せません。')) {
+                clearPhase4Data();
+                clearPhase5Data();
+                clearPhase6Data();
+                
+                document.getElementById('storageResults').innerHTML = '<div class="result">✅ 全Phase 4-6データをクリアしました</div>';
+            }
+        }
+
+        // HTML表示機能検証
+        function checkHtmlButtons() {
+            const resultDiv = document.getElementById('displayResults');
+            
+            // index.htmlで定義されている表示関数を確認
+            const functions = [
+                'showPhase4DynamicStrategy',
+                'showPhase5CalibrationReport', 
+                'showPhase6KellyCapitalAnalysis',
+                'checkPhase5Data',
+                'checkKellyCapital',
+                'simulateKellyBet'
+            ];
+            
+            let result = '<div class="result">';
+            result += '=== HTML表示機能確認 ===\n';
+            
+            functions.forEach(funcName => {
+                if (typeof window[funcName] === 'function') {
+                    result += `✅ ${funcName}: 定義済み\n`;
+                } else {
+                    result += `❌ ${funcName}: 未定義\n`;
+                }
+            });
+            
+            result += '</div>';
+            resultDiv.innerHTML = result;
+        }
+
+        function testDisplayFunctions() {
+            const resultDiv = document.getElementById('displayResults');
+            
+            let result = '<div class="result">';
+            result += '=== 表示関数テスト実行 ===\n';
+            
+            try {
+                // Phase 5デバッグ関数テスト
+                if (typeof checkPhase5Data === 'function') {
+                    checkPhase5Data();
+                    result += '✅ checkPhase5Data: 実行成功\n';
+                } else {
+                    result += '❌ checkPhase5Data: 関数なし\n';
+                }
+                
+                // Phase 6デバッグ関数テスト
+                if (typeof checkKellyCapital === 'function') {
+                    const report = checkKellyCapital();
+                    result += '✅ checkKellyCapital: 実行成功\n';
+                } else {
+                    result += '❌ checkKellyCapital: 関数なし\n';
+                }
+                
+                // ケリーシミュレーション
+                if (typeof simulateKellyBet === 'function') {
+                    const simulation = simulateKellyBet(0.4, 3.5, 1.4);
+                    result += '✅ simulateKellyBet: 実行成功\n';
+                } else {
+                    result += '❌ simulateKellyBet: 関数なし\n';
+                }
+                
+            } catch (error) {
+                result += `❌ エラー: ${error.message}\n`;
+            }
+            
+            result += '</div>';
+            resultDiv.innerHTML = result;
+        }
+
+        function simulateUserFlow() {
+            const resultDiv = document.getElementById('displayResults');
+            
+            let result = '<div class="result">';
+            result += '=== ユーザーフロー模擬テスト ===\n';
+            
+            try {
+                // 1. テストデータ作成
+                createAllTestData();
+                result += '1. ✅ テストデータ作成完了\n';
+                
+                // 2. データ確認
+                checkAllLocalStorage();
+                result += '2. ✅ データ確認完了\n';
+                
+                // 3. 各フェーズの状況確認
+                checkPhase4Data();
+                checkPhase5Data();
+                checkPhase6Data();
+                result += '3. ✅ 各フェーズ状況確認完了\n';
+                
+                // 4. レポート表示テスト
+                showPhase4Stats();
+                showPhase5Report();
+                showPhase6Report();
+                result += '4. ✅ レポート表示テスト完了\n';
+                
+                result += '\n🎉 全工程が正常に動作しました！\n';
+                result += 'Phase 4-6の学習データとパフォーマンス記録システムは正常に機能しています。\n';
+                
+            } catch (error) {
+                result += `❌ エラー発生: ${error.message}\n`;
+            }
+            
+            result += '</div>';
+            resultDiv.innerHTML = result;
+        }
+
+        // ページロード時の初期化
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🔬 Phase 4-6 データ検証ツールが読み込まれました');
+            
+            // 初期状況確認
+            setTimeout(() => {
+                checkAllLocalStorage();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

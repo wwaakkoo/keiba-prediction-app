@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phase 4-6統合学習デバッグツール</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            margin: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .section {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 5px solid #007bff;
+        }
+        .btn {
+            background: linear-gradient(45deg, #007bff, #0056b3);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 5px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,123,255,0.4);
+        }
+        .result {
+            background: #e8f5e8;
+            border: 1px solid #4caf50;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        .error {
+            background: #ffebee;
+            border: 1px solid #f44336;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            color: #c62828;
+        }
+        .warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔬 Phase 4-6統合学習デバッグツール</h1>
+        
+        <div class="section">
+            <h2>📋 動作確認概要</h2>
+            <p>統合学習の自動Phase 4-6実行機能が正しく動作しているかテストします。</p>
+            <div class="warning">
+                <strong>⚠️ 注意:</strong> このツールを使用する前に、メインアプリで馬データ入力と予測実行を完了してください。
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>🔍 事前状態確認</h3>
+            <button class="btn" onclick="checkPrerequisites()">📊 前提条件チェック</button>
+            <div id="prerequisitesResult"></div>
+        </div>
+
+        <div class="section">
+            <h3>🚀 グローバル変数状態確認</h3>
+            <button class="btn" onclick="checkGlobalVariables()">🔍 Phase 4-6変数確認</button>
+            <div id="globalVariablesResult"></div>
+        </div>
+
+        <div class="section">
+            <h3>💾 ローカルストレージ確認</h3>
+            <button class="btn" onclick="checkLocalStorage()">📦 保存データ確認</button>
+            <div id="localStorageResult"></div>
+        </div>
+
+        <div class="section">
+            <h3>🧪 関数実行テスト</h3>
+            <button class="btn" onclick="testPhase4Function()">📊 Phase 4関数テスト</button>
+            <button class="btn" onclick="testPhase6Function()">💰 Phase 6関数テスト</button>
+            <button class="btn" onclick="testUnifiedLearning()">🚀 統合学習テスト</button>
+            <div id="functionTestResult"></div>
+        </div>
+
+        <div class="section">
+            <h3>📈 パフォーマンス表示テスト</h3>
+            <button class="btn" onclick="testPerformanceDisplay()">📊 全統計表示テスト</button>
+            <div id="performanceTestResult"></div>
+        </div>
+
+        <div class="section">
+            <h3>🧹 テストデータクリア</h3>
+            <button class="btn" onclick="clearTestData()" style="background: linear-gradient(45deg, #f44336, #d32f2f);">🗑️ 全テストデータ削除</button>
+            <div id="clearDataResult"></div>
+        </div>
+    </div>
+
+    <script>
+        function checkPrerequisites() {
+            const resultDiv = document.getElementById('prerequisitesResult');
+            
+            try {
+                let result = '<div class="result">';
+                result += '=== 前提条件チェック結果 ===\n';
+                
+                // PredictionEngineの確認
+                if (typeof PredictionEngine !== 'undefined') {
+                    const predictions = PredictionEngine.getCurrentPredictions();
+                    result += `✅ PredictionEngine: 利用可能\n`;
+                    result += `📊 現在の予測データ: ${predictions ? predictions.length : 0}頭\n`;
+                } else {
+                    result += `❌ PredictionEngine: 未定義\n`;
+                }
+                
+                // 必要なクラスの確認
+                const requiredClasses = [
+                    'PerformanceTracker',
+                    'KellyCapitalManager', 
+                    'CalibrationSystem',
+                    'EnhancedPredictionEngine'
+                ];
+                
+                result += '\n📋 必要なクラスの確認:\n';
+                requiredClasses.forEach(className => {
+                    if (typeof window[className] !== 'undefined') {
+                        result += `  ✅ ${className}: 利用可能\n`;
+                    } else {
+                        result += `  ❌ ${className}: 未定義\n`;
+                    }
+                });
+                
+                // 必要な関数の確認
+                const requiredFunctions = [
+                    'showPhase4DynamicStrategy',
+                    'showPhase6KellyCapitalAnalysis',
+                    'processUnifiedRaceResult'
+                ];
+                
+                result += '\n🔧 必要な関数の確認:\n';
+                requiredFunctions.forEach(funcName => {
+                    if (typeof window[funcName] === 'function') {
+                        result += `  ✅ ${funcName}: 定義済み\n`;
+                    } else {
+                        result += `  ❌ ${funcName}: 未定義\n`;
+                    }
+                });
+                
+                result += '</div>';
+                resultDiv.innerHTML = result;
+                
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">エラー: ${error.message}</div>`;
+            }
+        }
+
+        function checkGlobalVariables() {
+            const resultDiv = document.getElementById('globalVariablesResult');
+            
+            try {
+                let result = '<div class="result">';
+                result += '=== グローバル変数状態 ===\n';
+                
+                // Phase 4変数
+                if (window.lastDynamicBettingResult) {
+                    result += '✅ window.lastDynamicBettingResult: 存在\n';
+                    result += `📊 推奨数: ${window.lastDynamicBettingResult.recommendations?.length || 0}\n`;
+                    result += `💰 総投資額: ${window.lastDynamicBettingResult.totalAmount || 0}円\n`;
+                } else {
+                    result += '❌ window.lastDynamicBettingResult: 未設定\n';
+                }
+                
+                // Phase 6変数
+                if (window.lastKellyAnalysis) {
+                    result += '\n✅ window.lastKellyAnalysis: 存在\n';
+                    result += `📊 推奨数: ${window.lastKellyAnalysis.recommendations?.length || 0}\n`;
+                    result += `💰 現在資金: ${window.lastKellyAnalysis.capital || 'N/A'}円\n`;
+                } else {
+                    result += '\n❌ window.lastKellyAnalysis: 未設定\n';
+                }
+                
+                result += '</div>';
+                resultDiv.innerHTML = result;
+                
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">エラー: ${error.message}</div>`;
+            }
+        }
+
+        function checkLocalStorage() {
+            const resultDiv = document.getElementById('localStorageResult');
+            
+            try {
+                let result = '<div class="result">';
+                result += '=== ローカルストレージ確認 ===\n';
+                
+                // Phase 4データ
+                const phase4Data = localStorage.getItem('keiba_race_history');
+                if (phase4Data) {
+                    const data = JSON.parse(phase4Data);
+                    result += `✅ Phase 4データ: ${data.length}件のレース履歴\n`;
+                } else {
+                    result += `❌ Phase 4データ: なし\n`;
+                }
+                
+                // Phase 5データ
+                const phase5Data = localStorage.getItem('phase5_calibration_data');
+                if (phase5Data) {
+                    const data = JSON.parse(phase5Data);
+                    const totalSamples = Object.values(data.calibrationData || {})
+                        .reduce((sum, bucket) => sum + (bucket.totalPredictions || 0), 0);
+                    result += `✅ Phase 5データ: ${totalSamples}サンプル\n`;
+                } else {
+                    result += `❌ Phase 5データ: なし\n`;
+                }
+                
+                // Phase 6データ
+                const phase6Data = localStorage.getItem('kelly_capital_data');
+                if (phase6Data) {
+                    const data = JSON.parse(phase6Data);
+                    result += `✅ Phase 6データ: 現在資金${data.currentCapital || 0}円\n`;
+                    result += `📈 履歴件数: ${data.performanceHistory?.length || 0}件\n`;
+                } else {
+                    result += `❌ Phase 6データ: なし\n`;
+                }
+                
+                result += '</div>';
+                resultDiv.innerHTML = result;
+                
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">エラー: ${error.message}</div>`;
+            }
+        }
+
+        function testPhase4Function() {
+            const resultDiv = document.getElementById('functionTestResult');
+            
+            try {
+                if (typeof showPhase4DynamicStrategy === 'function') {
+                    showPhase4DynamicStrategy();
+                    resultDiv.innerHTML = '<div class="result">✅ Phase 4関数実行完了\nコンソールとメイン画面を確認してください</div>';
+                } else {
+                    resultDiv.innerHTML = '<div class="error">❌ showPhase4DynamicStrategy関数が見つかりません</div>';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">Phase 4関数テストエラー: ${error.message}</div>`;
+            }
+        }
+
+        function testPhase6Function() {
+            const resultDiv = document.getElementById('functionTestResult');
+            
+            try {
+                if (typeof showPhase6KellyCapitalAnalysis === 'function') {
+                    showPhase6KellyCapitalAnalysis();
+                    resultDiv.innerHTML = '<div class="result">✅ Phase 6関数実行完了\nコンソールとメイン画面を確認してください</div>';
+                } else {
+                    resultDiv.innerHTML = '<div class="error">❌ showPhase6KellyCapitalAnalysis関数が見つかりません</div>';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">Phase 6関数テストエラー: ${error.message}</div>`;
+            }
+        }
+
+        function testUnifiedLearning() {
+            const resultDiv = document.getElementById('functionTestResult');
+            
+            try {
+                // テスト用のレース結果を設定
+                if (document.getElementById('unifiedFirst')) {
+                    document.getElementById('unifiedFirst').value = '1';
+                    document.getElementById('unifiedSecond').value = '2';
+                    document.getElementById('unifiedThird').value = '3';
+                    
+                    if (typeof processUnifiedRaceResult === 'function') {
+                        processUnifiedRaceResult();
+                        resultDiv.innerHTML = '<div class="result">✅ 統合学習テスト実行完了\nコンソールとメッセージを確認してください\n\n設定値:\n1着: 1番\n2着: 2番\n3着: 3番</div>';
+                    } else {
+                        resultDiv.innerHTML = '<div class="error">❌ processUnifiedRaceResult関数が見つかりません</div>';
+                    }
+                } else {
+                    resultDiv.innerHTML = '<div class="warning">⚠️ メイン画面でレース結果入力欄が見つかりません\nメインページを開いてからテストしてください</div>';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">統合学習テストエラー: ${error.message}</div>`;
+            }
+        }
+
+        function testPerformanceDisplay() {
+            const resultDiv = document.getElementById('performanceTestResult');
+            
+            try {
+                let result = '<div class="result">';
+                result += '=== パフォーマンス表示テスト ===\n';
+                
+                // Phase 4統計テスト
+                if (typeof showPhase4PerformanceStats === 'function') {
+                    showPhase4PerformanceStats();
+                    result += '✅ Phase 4統計表示: 実行完了\n';
+                } else {
+                    result += '❌ Phase 4統計表示: 関数未定義\n';
+                }
+                
+                // Phase 5データ状況テスト
+                if (typeof checkPhase5Data === 'function') {
+                    checkPhase5Data();
+                    result += '✅ Phase 5データ確認: 実行完了\n';
+                } else {
+                    result += '❌ Phase 5データ確認: 関数未定義\n';
+                }
+                
+                // Phase 6統計テスト
+                if (typeof showPhase6PerformanceStats === 'function') {
+                    showPhase6PerformanceStats();
+                    result += '✅ Phase 6統計表示: 実行完了\n';
+                } else {
+                    result += '❌ Phase 6統計表示: 関数未定義\n';
+                }
+                
+                result += '\n📋 アラートとコンソールログを確認してください</div>';
+                resultDiv.innerHTML = result;
+                
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">パフォーマンス表示テストエラー: ${error.message}</div>`;
+            }
+        }
+
+        function clearTestData() {
+            const resultDiv = document.getElementById('clearDataResult');
+            
+            if (confirm('全てのPhase 4-6テストデータを削除しますか？\nこの操作は取り消せません。')) {
+                try {
+                    // ローカルストレージクリア
+                    localStorage.removeItem('keiba_race_history');
+                    localStorage.removeItem('keiba_strategy_performance');
+                    localStorage.removeItem('keiba_monthly_stats');
+                    localStorage.removeItem('phase5_calibration_data');
+                    localStorage.removeItem('kelly_capital_data');
+                    
+                    // グローバル変数クリア
+                    window.lastDynamicBettingResult = null;
+                    window.lastKellyAnalysis = null;
+                    
+                    resultDiv.innerHTML = '<div class="result">✅ 全テストデータを削除しました\n\n削除項目:\n- Phase 4レース履歴\n- Phase 4戦略データ\n- Phase 4月次統計\n- Phase 5キャリブレーションデータ\n- Phase 6資金管理データ\n- グローバル変数</div>';
+                    
+                } catch (error) {
+                    resultDiv.innerHTML = `<div class="error">データ削除エラー: ${error.message}</div>`;
+                }
+            }
+        }
+
+        // ページロード時に自動チェック
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🔬 Phase 4-6統合学習デバッグツールが読み込まれました');
+            setTimeout(checkPrerequisites, 1000);
+        });
+    </script>
+</body>
+</html>
