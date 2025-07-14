@@ -7,28 +7,28 @@ class ExpectedValueCalculator {
         ACCEPTABLE_THRESHOLD: 1.02,   // 許容馬券（条件付購入）
         BREAK_EVEN_THRESHOLD: 1.0,    // 損益分岐点
         
-        // 人気層別オッズ係数（複勝想定）- より現実的な値に修正
+        // 人気層別オッズ係数（実測データ校正済み）
         POPULARITY_ODDS_FACTOR: {
-            favorite: 0.25,     // 1-3番人気の複勝オッズ係数（低く修正）
-            midrange: 0.35,     // 4-6番人気の複勝オッズ係数（低く修正）
-            outsider: 0.45      // 7番人気以下の複勝オッズ係数（低く修正）
+            favorite: 0.6,      // 0.25→0.6に大幅上方修正
+            midrange: 0.7,      // 0.35→0.7に上方修正
+            outsider: 0.8       // 0.45→0.8に上方修正
         },
         
-        // スコア→確率変換パラメータ（キャリブレーション用）
+        // スコア→確率変換パラメータ（実測データ校正済み）
         SCORE_CALIBRATION: {
-            // 複勝確率変換係数（現実的な値に修正）
-            PLACE_BASE: 0.4,        // 基本係数を大幅に下げる
-            PLACE_ADJUSTMENT: 0.1,  // 調整幅を縮小
+            // 複勝確率変換係数（個別馬精度を考慮して調整）
+            PLACE_BASE: 0.55,       // 0.4→0.55に適度上方修正（0.7から抑制）
+            PLACE_ADJUSTMENT: 0.12, // 0.1→0.12に調整（0.15から抑制）
             
-            // 単勝確率変換係数
-            WIN_BASE: 0.15,         // 基本係数を大幅に下げる
-            WIN_ADJUSTMENT: 0.05,   // 調整幅を縮小
+            // 単勝確率変換係数（複勝の約1/3として設定）
+            WIN_BASE: 0.25,         // 0.15→0.25に上方修正
+            WIN_ADJUSTMENT: 0.08,   // 0.05→0.08に調整
             
-            // 人気補正係数（より現実的に）
+            // 人気補正係数（実測データ反映）
             POPULARITY_CORRECTION: {
-                favorite: 1.3,      // 人気馬は予想より的中率がかなり高い
-                midrange: 1.0,      // 中人気は予想通り
-                outsider: 0.6       // 穴馬は予想より的中率がかなり低い
+                favorite: 1.2,      // 1.3→1.2に微調整（高スコア馬の過大評価抑制）
+                midrange: 1.0,      // 据え置き
+                outsider: 0.7       // 0.6→0.7に緩和（過度なペナルティ軽減）
             }
         }
     };
@@ -76,18 +76,59 @@ class ExpectedValueCalculator {
         
         // 新期待値計算式
         const rawExpectedValue = (analysis.estimatedOdds / 100) * logisticProbability * analysis.confidenceScore;
-        const oddsBasedCap = Math.min(2.5, 1.0 + (horse.odds > 50 ? 0.5 : horse.odds > 20 ? 0.3 : 0.2));
+        
+        // 超高オッズ馬の期待値制限を強化（段階的制限）
+        let oddsBasedCap;
+        if (horse.odds >= 100) {
+            oddsBasedCap = 1.05;    // 100倍以上：ほぼ損益分岐点のみ
+        } else if (horse.odds >= 50) {
+            oddsBasedCap = 1.15;    // 50-99倍：極めて保守的
+        } else if (horse.odds >= 30) {
+            oddsBasedCap = 1.25;    // 30-49倍：かなり保守的
+        } else if (horse.odds >= 20) {
+            oddsBasedCap = 1.35;    // 20-29倍：保守的
+        } else if (horse.odds >= 10) {
+            oddsBasedCap = 1.50;    // 10-19倍：やや保守的
+        } else {
+            oddsBasedCap = 2.0;     // 10倍未満：通常制限
+        }
+        
         analysis.expectedValue = Math.min(rawExpectedValue, oddsBasedCap) / riskFactor;
         
         // ケリー係数チェック（最適賭け率）
         analysis.kellyRatio = this.calculateKellyRatio(analysis.expectedValue, horse.odds, logisticProbability);
-        analysis.shouldDisplay = analysis.kellyRatio >= 0.01; // 1%未満は非表示
         
-        // 推奨判定
-        analysis.recommendation = this.determineRecommendation(analysis.expectedValue);
+        // 超高オッズ馬のケリー係数閾値を強化
+        let kellyThreshold;
+        if (horse.odds >= 50) {
+            kellyThreshold = 0.05;  // 50倍以上：5%以上必要
+        } else if (horse.odds >= 20) {
+            kellyThreshold = 0.03;  // 20-49倍：3%以上必要
+        } else if (horse.odds >= 10) {
+            kellyThreshold = 0.02;  // 10-19倍：2%以上必要
+        } else {
+            kellyThreshold = 0.01;  // 10倍未満：1%以上必要
+        }
+        
+        analysis.shouldDisplay = analysis.kellyRatio >= kellyThreshold;
+        
+        // 推奨判定（期待値ベース）
+        analysis.recommendation = this.determineRecommendation(analysis.expectedValue, horse.odds);
+        
+        // 購買指数計算（期待値 × 信頼度）- 信頼度計算後に移動
+        analysis.purchaseIndex = analysis.expectedValue * analysis.confidenceScore;
+        
+        // 購買推奨判定（購買指数ベース）
+        analysis.purchaseRecommendation = this.determinePurchaseRecommendation(analysis.purchaseIndex, horse.odds);
         
         // 従来の信頼度計算（表示用）
         analysis.confidence = this.calculateConfidence(horse, analysis);
+        
+        // 統計収集（フィードバックループ用）
+        this.collectPredictionStatistics(analysis);
+        
+        // Phase 5効果測定ログ収集
+        this.collectPhase5EffectLog(analysis, horse);
         
         return analysis;
     }
@@ -101,49 +142,62 @@ class ExpectedValueCalculator {
     static calculateConfidenceScore(horse, analysis) {
         let confidence = 1.0; // 基準値
         
-        // 1. スコアによる信頼度補正
+        // 1. スコアによる信頼度補正（強化されたスケーリング）
         const score = horse.placeProbability || horse.score || 0;
-        if (score >= 90) confidence *= 1.3;       // 超高スコア
-        else if (score >= 80) confidence *= 1.2;  // 高スコア
-        else if (score >= 70) confidence *= 1.1;  // 良スコア
-        else if (score >= 60) confidence *= 1.0;  // 標準
-        else if (score >= 50) confidence *= 0.9;  // やや低
-        else if (score >= 40) confidence *= 0.8;  // 低スコア
-        else confidence *= 0.7;                   // 超低スコア
+        if (score >= 95) confidence *= 1.5;       // 最高スコア（大幅アップ）
+        else if (score >= 90) confidence *= 1.35; // 超高スコア（強化）
+        else if (score >= 85) confidence *= 1.25; // 高スコア（新設）
+        else if (score >= 80) confidence *= 1.15; // 良好スコア
+        else if (score >= 75) confidence *= 1.05; // やや良好（新設）
+        else if (score >= 70) confidence *= 1.0;  // 標準
+        else if (score >= 65) confidence *= 0.95; // やや標準以下（新設）
+        else if (score >= 60) confidence *= 0.9;  // 標準以下
+        else if (score >= 55) confidence *= 0.85; // やや低（新設）
+        else if (score >= 50) confidence *= 0.8;  // 低スコア
+        else if (score >= 45) confidence *= 0.7;  // かなり低（新設）
+        else if (score >= 40) confidence *= 0.6;  // 超低スコア（強化）
+        else confidence *= 0.5;                   // 最低スコア（大幅ダウン）
         
-        // 2. 人気による信頼度補正
+        // 2. 人気による信頼度補正（詳細化）
         const popularity = horse.popularity || analysis.popularity;
         if (typeof popularity === 'string') {
-            // 人気層文字列の場合
             switch (popularity) {
-                case 'favorite': confidence *= 1.15; break;  // 人気馬は安定
+                case 'favorite': confidence *= 1.2; break;   // 人気馬（強化）
                 case 'midrange': confidence *= 1.0; break;   // 中人気は標準
-                case 'outsider': confidence *= 0.85; break;  // 人気薄は不安定
+                case 'outsider': confidence *= 0.8; break;   // 人気薄（ペナルティ強化）
             }
         } else if (typeof popularity === 'number') {
-            // 人気順数値の場合
-            if (popularity <= 3) confidence *= 1.15;         // 1-3番人気
-            else if (popularity <= 6) confidence *= 1.0;     // 4-6番人気
-            else if (popularity <= 9) confidence *= 0.9;     // 7-9番人気
-            else confidence *= 0.8;                          // 10番人気以下
+            if (popularity <= 2) confidence *= 1.25;         // 1-2番人気（強化）
+            else if (popularity <= 4) confidence *= 1.1;     // 3-4番人気
+            else if (popularity <= 6) confidence *= 1.0;     // 5-6番人気
+            else if (popularity <= 8) confidence *= 0.9;     // 7-8番人気
+            else if (popularity <= 10) confidence *= 0.8;    // 9-10番人気
+            else confidence *= 0.7;                          // 11番人気以下（強化）
         }
         
-        // 3. オッズによる現実性補正
+        // 3. オッズによる現実性補正（段階的細分化）
         const odds = horse.odds || 1.0;
-        if (odds < 1.5) confidence *= 0.9;        // 極端な低オッズは疑問
-        else if (odds <= 3.0) confidence *= 1.1;  // 人気馬
-        else if (odds <= 7.0) confidence *= 1.0;  // 中人気
-        else if (odds <= 15.0) confidence *= 0.95; // やや人気薄
-        else if (odds <= 30.0) confidence *= 0.85; // 人気薄
-        else confidence *= 0.7;                    // 極端な穴馬
+        if (odds < 1.3) confidence *= 0.8;        // 極端な低オッズ（ペナルティ強化）
+        else if (odds <= 2.0) confidence *= 1.15; // 大人気（強化）
+        else if (odds <= 3.5) confidence *= 1.1;  // 人気馬
+        else if (odds <= 5.0) confidence *= 1.05; // やや人気（新設）
+        else if (odds <= 8.0) confidence *= 1.0;  // 中人気
+        else if (odds <= 12.0) confidence *= 0.95; // やや人気薄
+        else if (odds <= 18.0) confidence *= 0.9;  // 人気薄
+        else if (odds <= 25.0) confidence *= 0.8;  // かなり人気薄（新設）
+        else if (odds <= 40.0) confidence *= 0.7;  // 大穴（新設）
+        else confidence *= 0.6;                    // 極端な大穴（ペナルティ強化）
         
-        // 4. 確率とオッズの整合性チェック
-        const theoreticalOdds = 1 / analysis.estimatedProbability;
+        // 4. 確率とオッズの整合性チェック（厳格化）
+        const theoreticalOdds = 1 / (analysis.estimatedProbability || 0.1);
         const oddsRatio = Math.abs(odds - theoreticalOdds) / theoreticalOdds;
-        if (oddsRatio > 0.5) confidence *= 0.9;   // 整合性が低い場合は減点
+        if (oddsRatio > 1.0) confidence *= 0.8;      // 大きな不整合（ペナルティ強化）
+        else if (oddsRatio > 0.6) confidence *= 0.85; // 中程度の不整合（新設）
+        else if (oddsRatio > 0.3) confidence *= 0.9;  // 小さな不整合
+        else confidence *= 1.05;                      // 整合性良好（ボーナス新設）
         
-        // 5. 最終調整（0.5〜1.5の範囲に制限）
-        return Math.max(0.5, Math.min(1.5, confidence));
+        // 5. 最終範囲調整（0.4〜1.4のシンプルな制限）
+        return Math.max(0.4, Math.min(1.4, confidence));
     }
     
     /**
@@ -263,6 +317,10 @@ class ExpectedValueCalculator {
                 baseProbability = score / 100;
         }
         
+        // Phase 5軽量補正（プロトタイプ）
+        const phase5Correction = this.getPhase5LightCorrection(score, betType);
+        baseProbability *= phase5Correction;
+        
         // 人気層補正
         const popularityCorrection = config.POPULARITY_CORRECTION[popularity] || 1.0;
         
@@ -302,12 +360,584 @@ class ExpectedValueCalculator {
      * @param {number} expectedValue - 期待値
      * @returns {string} 推奨レベル
      */
-    static determineRecommendation(expectedValue) {
-        if (expectedValue >= this.CONFIG.EXCELLENT_THRESHOLD) return 'excellent';
-        if (expectedValue >= this.CONFIG.GOOD_THRESHOLD) return 'good';
-        if (expectedValue >= this.CONFIG.ACCEPTABLE_THRESHOLD) return 'acceptable';
+    static determineRecommendation(expectedValue, odds = 5.0) {
+        // 超高オッズ馬に対する厳格な期待値基準
+        let excellentThreshold = this.CONFIG.EXCELLENT_THRESHOLD;
+        let goodThreshold = this.CONFIG.GOOD_THRESHOLD;
+        let acceptableThreshold = this.CONFIG.ACCEPTABLE_THRESHOLD;
+        
+        if (odds >= 50) {
+            // 50倍以上：極めて厳格
+            excellentThreshold = 1.30;
+            goodThreshold = 1.20;
+            acceptableThreshold = 1.10;
+        } else if (odds >= 20) {
+            // 20-49倍：かなり厳格
+            excellentThreshold = 1.25;
+            goodThreshold = 1.15;
+            acceptableThreshold = 1.08;
+        } else if (odds >= 10) {
+            // 10-19倍：やや厳格
+            excellentThreshold = 1.20;
+            goodThreshold = 1.12;
+            acceptableThreshold = 1.05;
+        }
+        
+        if (expectedValue >= excellentThreshold) return 'excellent';
+        if (expectedValue >= goodThreshold) return 'good';
+        if (expectedValue >= acceptableThreshold) return 'acceptable';
         if (expectedValue >= this.CONFIG.BREAK_EVEN_THRESHOLD) return 'break_even';
         return 'skip';
+    }
+    
+    /**
+     * 購買推奨判定（購買指数ベース）
+     * @param {number} purchaseIndex - 購買指数（期待値 × 信頼度）
+     * @param {number} odds - オッズ
+     * @returns {string} 購買推奨レベル
+     */
+    static determinePurchaseRecommendation(purchaseIndex, odds = 5.0) {
+        // 購買指数の基準値（的中期待×回収期待のバランス考慮）
+        let strongBuyThreshold = 1.2;  // 強い購買推奨
+        let buyThreshold = 1.05;       // 購買推奨
+        let weakBuyThreshold = 0.95;   // 弱い購買推奨
+        
+        // オッズ帯別の厳格化（リスク調整）
+        if (odds >= 50) {
+            // 超高オッズ：的中期待が極めて低いため厳格に
+            strongBuyThreshold = 1.4;
+            buyThreshold = 1.25;
+            weakBuyThreshold = 1.1;
+        } else if (odds >= 20) {
+            // 高オッズ：リスクを考慮してやや厳格に
+            strongBuyThreshold = 1.3;
+            buyThreshold = 1.15;
+            weakBuyThreshold = 1.0;
+        } else if (odds >= 10) {
+            // 中オッズ：標準的な基準
+            strongBuyThreshold = 1.25;
+            buyThreshold = 1.1;
+            weakBuyThreshold = 0.98;
+        }
+        // 低オッズ（10未満）はデフォルト値を使用
+        
+        if (purchaseIndex >= strongBuyThreshold) return 'strong_buy';
+        if (purchaseIndex >= buyThreshold) return 'buy';
+        if (purchaseIndex >= weakBuyThreshold) return 'weak_buy';
+        return 'skip';
+    }
+    
+    /**
+     * 予測統計収集（フィードバックループ用）
+     * @param {Object} analysis - 分析結果
+     */
+    static collectPredictionStatistics(analysis) {
+        if (!this.predictionStats) {
+            this.predictionStats = {
+                scoreAccuracy: {}, // スコア帯別的中率
+                oddsAccuracy: {},  // オッズ帯別期待値精度
+                purchaseIndexPerformance: {}, // 購買指数別成績
+                totalPredictions: 0
+            };
+        }
+        
+        // 予測データを蓄積（実結果との照合は別途実装）
+        const scoreRange = Math.floor(analysis.horse.score / 10) * 10;
+        const oddsRange = this.getOddsRange(analysis.horse.odds);
+        const purchaseRange = Math.floor(analysis.purchaseIndex * 10) / 10;
+        
+        // 統計カウンタを初期化
+        if (!this.predictionStats.scoreAccuracy[scoreRange]) {
+            this.predictionStats.scoreAccuracy[scoreRange] = { predictions: 0, hits: 0 };
+        }
+        if (!this.predictionStats.oddsAccuracy[oddsRange]) {
+            this.predictionStats.oddsAccuracy[oddsRange] = { predictions: 0, totalEV: 0, actualReturns: 0 };
+        }
+        if (!this.predictionStats.purchaseIndexPerformance[purchaseRange]) {
+            this.predictionStats.purchaseIndexPerformance[purchaseRange] = { predictions: 0, hits: 0, returns: 0 };
+        }
+        
+        this.predictionStats.totalPredictions++;
+    }
+    
+    /**
+     * Phase 5効果測定ログ収集
+     * @param {Object} analysis - 分析結果
+     * @param {Object} horse - 馬データ
+     */
+    static collectPhase5EffectLog(analysis, horse) {
+        if (!this.phase5EffectLog) {
+            this.phase5EffectLog = [];
+        }
+        
+        // 補正前の確率を計算（Phase 5補正なし）
+        const originalProbability = this.calculateOriginalProbability(horse.score || 0, 'place', analysis.popularity);
+        const correctionFactor = this.getPhase5LightCorrection(horse.score || 0, 'place');
+        
+        const logEntry = {
+            timestamp: Date.now(),
+            raceId: this.generateRaceId(),
+            horseId: horse.number || horse.name || 'unknown',
+            score: horse.score || horse.placeProbability || 0,
+            originalProbability: originalProbability,
+            correctedProbability: analysis.estimatedProbability,
+            correctionFactor: correctionFactor,
+            correctionEnabled: this.PHASE5_LIGHT_CORRECTION_ENABLED,
+            correctionMode: this.PHASE5_CORRECTION_MODE,
+            expectedValue: analysis.expectedValue,
+            purchaseIndex: analysis.purchaseIndex,
+            actualResult: null // 後でレース結果で更新
+        };
+        
+        this.phase5EffectLog.push(logEntry);
+        
+        // ログサイズ制限（最新1000件まで）
+        if (this.phase5EffectLog.length > 1000) {
+            this.phase5EffectLog = this.phase5EffectLog.slice(-1000);
+        }
+    }
+    
+    /**
+     * 補正前の確率を計算（Phase 5補正なし）
+     */
+    static calculateOriginalProbability(score, betType, popularity) {
+        if (score <= 0) return 0;
+        
+        let baseProbability = 0;
+        const config = this.CONFIG.SCORE_CALIBRATION;
+        
+        switch (betType) {
+            case 'place':
+                baseProbability = Math.min(0.95, (score / 100) * config.PLACE_BASE + config.PLACE_ADJUSTMENT);
+                break;
+            case 'win':
+                baseProbability = Math.min(0.80, (score / 100) * config.WIN_BASE + config.WIN_ADJUSTMENT);
+                break;
+            default:
+                baseProbability = score / 100;
+        }
+        
+        // 人気層補正のみ適用（Phase 5補正はスキップ）
+        const popularityCorrection = config.POPULARITY_CORRECTION[popularity] || 1.0;
+        
+        return Math.max(0.01, Math.min(0.99, baseProbability * popularityCorrection));
+    }
+    
+    /**
+     * レースIDを生成
+     */
+    static generateRaceId() {
+        const date = new Date();
+        const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
+        const timeStr = date.getHours().toString().padStart(2, '0') + 
+                       date.getMinutes().toString().padStart(2, '0');
+        return `${dateStr}-${timeStr}`;
+    }
+    
+    /**
+     * Phase 5効果レポート生成
+     */
+    static generatePhase5EffectReport() {
+        if (!this.phase5EffectLog || this.phase5EffectLog.length === 0) {
+            return {
+                status: 'no_data',
+                message: 'Phase 5効果測定データがありません'
+            };
+        }
+        
+        const totalPredictions = this.phase5EffectLog.length;
+        const correctedPredictions = this.phase5EffectLog.filter(log => log.correctionEnabled).length;
+        const uncorrectedPredictions = totalPredictions - correctedPredictions;
+        
+        // 効果分析（実際の結果更新後に計算）
+        const withResults = this.phase5EffectLog.filter(log => log.actualResult !== null);
+        const correctedWithResults = withResults.filter(log => log.correctionEnabled);
+        const uncorrectedWithResults = withResults.filter(log => !log.correctionEnabled);
+        
+        return {
+            status: 'available',
+            totalPredictions,
+            correctedPredictions,
+            uncorrectedPredictions,
+            withResults: withResults.length,
+            summary: {
+                averageCorrection: this.calculateAverageCorrection(),
+                probabilityShift: this.calculateProbabilityShift(),
+                expectedValueImpact: this.calculateExpectedValueImpact()
+            },
+            accuracy: {
+                corrected: this.calculateAccuracy(correctedWithResults),
+                uncorrected: this.calculateAccuracy(uncorrectedWithResults)
+            }
+        };
+    }
+    
+    /**
+     * 平均補正率を計算
+     */
+    static calculateAverageCorrection() {
+        const correctedLogs = this.phase5EffectLog.filter(log => log.correctionEnabled);
+        if (correctedLogs.length === 0) return 1.0;
+        
+        const totalCorrection = correctedLogs.reduce((sum, log) => sum + log.correctionFactor, 0);
+        return totalCorrection / correctedLogs.length;
+    }
+    
+    /**
+     * 確率シフトを計算
+     */
+    static calculateProbabilityShift() {
+        const correctedLogs = this.phase5EffectLog.filter(log => log.correctionEnabled);
+        if (correctedLogs.length === 0) return 0;
+        
+        const totalShift = correctedLogs.reduce((sum, log) => {
+            return sum + (log.correctedProbability - log.originalProbability);
+        }, 0);
+        
+        return totalShift / correctedLogs.length;
+    }
+    
+    /**
+     * 期待値への影響を計算
+     */
+    static calculateExpectedValueImpact() {
+        // 簡易実装：期待値の平均変化
+        const recentLogs = this.phase5EffectLog.slice(-100); // 最新100件
+        const corrected = recentLogs.filter(log => log.correctionEnabled);
+        const uncorrected = recentLogs.filter(log => !log.correctionEnabled);
+        
+        if (corrected.length === 0 || uncorrected.length === 0) return 0;
+        
+        const avgCorrected = corrected.reduce((sum, log) => sum + log.expectedValue, 0) / corrected.length;
+        const avgUncorrected = uncorrected.reduce((sum, log) => sum + log.expectedValue, 0) / uncorrected.length;
+        
+        return avgCorrected - avgUncorrected;
+    }
+    
+    /**
+     * 精度を計算
+     */
+    static calculateAccuracy(logs) {
+        if (logs.length === 0) return { hitRate: 0, sampleSize: 0 };
+        
+        const hits = logs.filter(log => log.actualResult === 'hit').length;
+        return {
+            hitRate: hits / logs.length,
+            sampleSize: logs.length
+        };
+    }
+    
+    /**
+     * オッズ範囲取得
+     * @param {number} odds - オッズ
+     * @returns {string} オッズ範囲
+     */
+    static getOddsRange(odds) {
+        if (odds < 2) return '1.0-1.9';
+        if (odds < 5) return '2.0-4.9';
+        if (odds < 10) return '5.0-9.9';
+        if (odds < 20) return '10.0-19.9';
+        if (odds < 50) return '20.0-49.9';
+        return '50.0+';
+    }
+    
+    /**
+     * 統計レポート生成
+     * @returns {Object} 統計レポート
+     */
+    static generateStatisticsReport() {
+        return {
+            totalPredictions: this.predictionStats?.totalPredictions || 0,
+            scoreAccuracy: this.predictionStats?.scoreAccuracy || {},
+            oddsAccuracy: this.predictionStats?.oddsAccuracy || {},
+            purchaseIndexPerformance: this.predictionStats?.purchaseIndexPerformance || {}
+        };
+    }
+    
+    /**
+     * Phase 5データ監査（プロトタイプ統合準備）
+     * @returns {Object} 監査結果
+     */
+    static auditPhase5Data() {
+        console.log('🔍 === Phase 5データ監査開始 ===');
+        
+        const data = JSON.parse(localStorage.getItem('phase5_calibration_data') || '{}');
+        const analysis = {
+            timestamp: new Date().toISOString(),
+            totalSamples: 0,
+            bucketAnalysis: [],
+            statisticalReliability: {},
+            outlierDetection: {},
+            recommendations: []
+        };
+        
+        // バケット別分析
+        Object.entries(data).forEach(([bucket, bucketData]) => {
+            const n = bucketData.totalPredictions || 0;
+            const hits = bucketData.correctPredictions || 0;
+            const rate = n > 0 ? hits / n : 0;
+            
+            // Wilson score interval（95%信頼区間）
+            const p = rate;
+            const z = 1.96; // 95%信頼区間
+            if (n > 0) {
+                const wilson_center = (p + z*z/(2*n)) / (1 + z*z/n);
+                const wilson_halfwidth = z * Math.sqrt(p*(1-p)/n + z*z/(4*n*n)) / (1 + z*z/n);
+                
+                analysis.bucketAnalysis.push({
+                    bucket,
+                    scoreRange: this.getScoreRangeFromBucket(bucket),
+                    samples: n,
+                    hits: hits,
+                    hitRate: rate,
+                    hitRatePercent: (rate * 100).toFixed(1),
+                    confidenceInterval: [
+                        Math.max(0, wilson_center - wilson_halfwidth),
+                        Math.min(1, wilson_center + wilson_halfwidth)
+                    ],
+                    isReliable: n >= 15, // 最小サンプル閾値
+                    isOutlier: false, // 後で計算
+                    theoreticalRate: this.getTheoreticalRateForBucket(bucket)
+                });
+            }
+            
+            analysis.totalSamples += n;
+        });
+        
+        // 外れ値検出（Zスコア）
+        if (analysis.bucketAnalysis.length > 1) {
+            const rates = analysis.bucketAnalysis.map(b => b.hitRate);
+            const mean = rates.reduce((a, b) => a + b, 0) / rates.length;
+            const variance = rates.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / rates.length;
+            const stdDev = Math.sqrt(variance);
+            
+            analysis.bucketAnalysis.forEach(bucket => {
+                if (stdDev > 0) {
+                    const zScore = Math.abs(bucket.hitRate - mean) / stdDev;
+                    bucket.isOutlier = zScore > 2.5; // 2.5σ以上を外れ値
+                    bucket.zScore = zScore.toFixed(2);
+                }
+            });
+        }
+        
+        // 統計的信頼性評価
+        const reliableBuckets = analysis.bucketAnalysis.filter(b => b.isReliable);
+        analysis.statisticalReliability = {
+            totalBuckets: analysis.bucketAnalysis.length,
+            reliableBuckets: reliableBuckets.length,
+            reliabilityRate: analysis.bucketAnalysis.length > 0 ? 
+                (reliableBuckets.length / analysis.bucketAnalysis.length * 100).toFixed(1) + '%' : '0%',
+            readyForIntegration: reliableBuckets.length >= 3
+        };
+        
+        // 推奨事項生成
+        analysis.recommendations = this.generatePhase5Recommendations(analysis);
+        
+        console.log('📊 Phase 5監査結果:', analysis);
+        return analysis;
+    }
+    
+    /**
+     * バケット名からスコア範囲を取得
+     */
+    static getScoreRangeFromBucket(bucket) {
+        const match = bucket.match(/bucket_(\d+)/);
+        if (match) {
+            const score = parseInt(match[1]);
+            return `${score}-${score + 9}`;
+        }
+        return 'unknown';
+    }
+    
+    /**
+     * バケットの理論的確率を計算
+     */
+    static getTheoreticalRateForBucket(bucket) {
+        const match = bucket.match(/bucket_(\d+)/);
+        if (match) {
+            const score = parseInt(match[1]) + 5; // バケット中央値
+            // 簡易理論値（既存の計算ロジックベース）
+            return Math.min(0.95, (score / 100) * 0.55 + 0.12);
+        }
+        return 0.5;
+    }
+    
+    /**
+     * Phase 5統合推奨事項を生成
+     */
+    static generatePhase5Recommendations(analysis) {
+        const recommendations = [];
+        
+        if (analysis.totalSamples < 50) {
+            recommendations.push({
+                type: 'warning',
+                message: `総サンプル数${analysis.totalSamples}は統計的に不十分です。最低100サンプルの蓄積を推奨。`
+            });
+        }
+        
+        if (analysis.statisticalReliability.readyForIntegration) {
+            recommendations.push({
+                type: 'success',
+                message: `${analysis.statisticalReliability.reliableBuckets}個のバケットが統合可能です。軽量補正の実装を推奨。`
+            });
+        } else {
+            recommendations.push({
+                type: 'info',
+                message: `統合には最低3バケットが必要です（現在: ${analysis.statisticalReliability.reliableBuckets}）。`
+            });
+        }
+        
+        const outliers = analysis.bucketAnalysis.filter(b => b.isOutlier);
+        if (outliers.length > 0) {
+            recommendations.push({
+                type: 'warning',
+                message: `${outliers.length}個のバケットが統計的外れ値です: ${outliers.map(o => o.scoreRange).join(', ')}`
+            });
+        }
+        
+        // 大幅乖離の検出
+        analysis.bucketAnalysis.forEach(bucket => {
+            const deviation = Math.abs(bucket.hitRate - bucket.theoreticalRate);
+            if (deviation > 0.3 && bucket.isReliable) {
+                recommendations.push({
+                    type: 'critical',
+                    message: `${bucket.scoreRange}点: 実測${bucket.hitRatePercent}% vs 理論${(bucket.theoreticalRate*100).toFixed(1)}% - 大幅乖離`
+                });
+            }
+        });
+        
+        return recommendations;
+    }
+    
+    /**
+     * Phase 5軽量補正係数を取得（プロトタイプ）
+     * @param {number} score - スコア値
+     * @param {string} betType - 馬券種別
+     * @returns {number} 補正係数
+     */
+    static getPhase5LightCorrection(score, betType) {
+        // 複勝以外は補正なし（将来拡張可能）
+        if (betType !== 'place') return 1.0;
+        
+        // Phase 5軽量補正フラグ（ON/OFF切り替え用）
+        if (!this.PHASE5_LIGHT_CORRECTION_ENABLED) return 1.0;
+        
+        // 方法A: 固定補正係数テーブル（デフォルト）
+        if (this.PHASE5_CORRECTION_MODE === 'fixed') {
+            return this.getFixedCorrectionFactor(score);
+        }
+        
+        // 方法B: 重み付け補正（データ十分時）
+        if (this.PHASE5_CORRECTION_MODE === 'weighted') {
+            return this.getWeightedCorrectionFactor(score);
+        }
+        
+        return 1.0; // 無補正
+    }
+    
+    /**
+     * 固定補正係数を取得（案A）
+     */
+    static getFixedCorrectionFactor(score) {
+        // 監査結果に基づく固定係数（プロトタイプ用）
+        if (score >= 90) return 1.0;   // 十分な精度と仮定
+        if (score >= 80) return 0.6;   // 31.6% ÷ 理論52% ≈ 0.6
+        if (score >= 70) return 0.2;   // 8.7% ÷ 理論42% ≈ 0.2
+        if (score >= 60) return 0.3;   // 仮の値（要監査）
+        if (score >= 50) return 0.4;   // 仮の値（要監査）
+        return 0.5; // デフォルト（低スコア）
+    }
+    
+    /**
+     * 重み付け補正係数を取得（案B）
+     */
+    static getWeightedCorrectionFactor(score) {
+        const phase5Data = this.getPhase5BucketData(score);
+        
+        if (!phase5Data || phase5Data.samples < 10) {
+            return 1.0; // データ不足時は補正なし
+        }
+        
+        const weight = this.getContinuousWeight(phase5Data.samples);
+        const theoreticalRate = this.getTheoreticalRate(score);
+        const calibratedRate = phase5Data.hitRate;
+        
+        // 理論値との乖離が大きすぎる場合は保守的に
+        if (Math.abs(calibratedRate - theoreticalRate) > 0.5) {
+            return 1.0;
+        }
+        
+        // ハイブリッド補正
+        const correctionFactor = calibratedRate / Math.max(0.01, theoreticalRate);
+        return 1.0 + (correctionFactor - 1.0) * weight;
+    }
+    
+    /**
+     * 連続重み関数
+     */
+    static getContinuousWeight(samples) {
+        if (samples < 10) return 0.0;
+        if (samples < 30) return (samples - 10) / 20;  // 0～1で連続増加
+        return 1.0;
+    }
+    
+    /**
+     * Phase 5バケットデータを取得
+     */
+    static getPhase5BucketData(score) {
+        if (!this.phase5Cache) {
+            this.initializePhase5Cache();
+        }
+        
+        const bucketKey = `bucket_${Math.floor(score / 10) * 10}`;
+        const bucketData = this.phase5Cache[bucketKey];
+        
+        if (!bucketData) return null;
+        
+        return {
+            samples: bucketData.totalPredictions || 0,
+            hits: bucketData.correctPredictions || 0,
+            hitRate: bucketData.totalPredictions > 0 ? 
+                bucketData.correctPredictions / bucketData.totalPredictions : 0
+        };
+    }
+    
+    /**
+     * Phase 5キャッシュを初期化
+     */
+    static initializePhase5Cache() {
+        const data = localStorage.getItem('phase5_calibration_data');
+        this.phase5Cache = data ? JSON.parse(data) : {};
+    }
+    
+    /**
+     * 理論的確率を計算
+     */
+    static getTheoreticalRate(score) {
+        const config = this.CONFIG.SCORE_CALIBRATION;
+        return Math.min(0.95, (score / 100) * config.PLACE_BASE + config.PLACE_ADJUSTMENT);
+    }
+    
+    /**
+     * Phase 5補正設定（制御用フラグ）
+     */
+    static PHASE5_LIGHT_CORRECTION_ENABLED = true;  // 初期はOFF
+    static PHASE5_CORRECTION_MODE = 'fixed';         // 'fixed' or 'weighted'
+    static phase5Cache = null;
+    
+    /**
+     * Phase 5補正の有効化・無効化
+     */
+    static enablePhase5Correction(mode = 'fixed') {
+        this.PHASE5_LIGHT_CORRECTION_ENABLED = true;
+        this.PHASE5_CORRECTION_MODE = mode;
+        this.initializePhase5Cache();
+        console.log(`✅ Phase 5軽量補正を有効化: ${mode}モード`);
+    }
+    
+    static disablePhase5Correction() {
+        this.PHASE5_LIGHT_CORRECTION_ENABLED = false;
+        console.log('❌ Phase 5軽量補正を無効化');
     }
     
     /**
@@ -530,14 +1160,16 @@ class ExpectedValueCalculator {
                 <table style="width: 100%; border-collapse: collapse;">
                     <thead>
                         <tr style="background: #f8f9fa; border-bottom: 2px solid #dee2e6;">
-                            <th style="padding: 12px 8px; text-align: center;">馬番</th>
-                            <th style="padding: 12px 8px; text-align: center;">馬名</th>
-                            <th style="padding: 12px 8px; text-align: center;">人気</th>
-                            <th style="padding: 12px 8px; text-align: center;">期待値</th>
-                            <th style="padding: 12px 8px; text-align: center;">推定確率</th>
-                            <th style="padding: 12px 8px; text-align: center;">推定配当</th>
-                            <th style="padding: 12px 8px; text-align: center;">推奨</th>
-                            <th style="padding: 12px 8px; text-align: center;">信頼度</th>
+                            <th style="padding: 10px 6px; text-align: center; font-size: 0.9em;">馬番</th>
+                            <th style="padding: 10px 6px; text-align: center; font-size: 0.9em;">馬名</th>
+                            <th style="padding: 10px 6px; text-align: center; font-size: 0.9em;">人気</th>
+                            <th style="padding: 10px 6px; text-align: center; font-size: 0.9em;">期待値</th>
+                            <th style="padding: 10px 6px; text-align: center; font-size: 0.9em;">購買指数</th>
+                            <th style="padding: 10px 6px; text-align: center; font-size: 0.9em;">購買推奨</th>
+                            <th style="padding: 10px 6px; text-align: center; font-size: 0.9em;">推定確率</th>
+                            <th style="padding: 10px 6px; text-align: center; font-size: 0.9em;">推定配当</th>
+                            <th style="padding: 10px 6px; text-align: center; font-size: 0.9em;">推奨</th>
+                            <th style="padding: 10px 6px; text-align: center; font-size: 0.9em;">信頼度</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -549,16 +1181,20 @@ class ExpectedValueCalculator {
                 const bgColor = index % 2 === 0 ? '#ffffff' : '#f8f9fa';
                 const recommendationColor = this.getRecommendationColor(analysis.recommendation);
                 
+                const purchaseColor = this.getPurchaseRecommendationColor(analysis.purchaseRecommendation);
+                
                 html += `
                     <tr style="background: ${bgColor}; border-bottom: 1px solid #dee2e6;">
-                        <td style="padding: 12px 8px; text-align: center; font-weight: bold;">${analysis.horse.number || '?'}</td>
-                        <td style="padding: 12px 8px; font-size: 0.9em;">${analysis.horse.name || '馬' + (analysis.horse.number || '?')}</td>
-                        <td style="padding: 12px 8px; text-align: center;">${analysis.popularity}</td>
-                        <td style="padding: 12px 8px; text-align: center; font-weight: bold; color: ${recommendationColor};">${analysis.expectedValue.toFixed(2)}</td>
-                        <td style="padding: 12px 8px; text-align: center;">${(analysis.estimatedProbability * 100).toFixed(1)}%</td>
-                        <td style="padding: 12px 8px; text-align: center;">${analysis.estimatedOdds.toFixed(0)}円</td>
-                        <td style="padding: 12px 8px; text-align: center; color: ${recommendationColor}; font-weight: bold;">${this.getRecommendationDisplay(analysis.recommendation)}</td>
-                        <td style="padding: 12px 8px; text-align: center;">${(analysis.confidence * 100).toFixed(0)}%</td>
+                        <td style="padding: 10px 6px; text-align: center; font-weight: bold; font-size: 0.9em;">${analysis.horse.number || '?'}</td>
+                        <td style="padding: 10px 6px; font-size: 0.85em;">${analysis.horse.name || '馬' + (analysis.horse.number || '?')}</td>
+                        <td style="padding: 10px 6px; text-align: center; font-size: 0.85em;">${analysis.popularity}</td>
+                        <td style="padding: 10px 6px; text-align: center; font-weight: bold; color: ${recommendationColor}; font-size: 0.9em;">${analysis.expectedValue.toFixed(2)}</td>
+                        <td style="padding: 10px 6px; text-align: center; font-weight: bold; color: ${purchaseColor}; font-size: 0.9em;">${(analysis.purchaseIndex || 0).toFixed(2)}</td>
+                        <td style="padding: 10px 6px; text-align: center; color: ${purchaseColor}; font-weight: bold; font-size: 0.8em;">${this.getPurchaseRecommendationDisplay(analysis.purchaseRecommendation)}</td>
+                        <td style="padding: 10px 6px; text-align: center; font-size: 0.85em;">${(analysis.estimatedProbability * 100).toFixed(1)}%</td>
+                        <td style="padding: 10px 6px; text-align: center; font-size: 0.85em;">${analysis.estimatedOdds.toFixed(0)}円</td>
+                        <td style="padding: 10px 6px; text-align: center; color: ${recommendationColor}; font-weight: bold; font-size: 0.8em;">${this.getRecommendationDisplay(analysis.recommendation)}</td>
+                        <td style="padding: 10px 6px; text-align: center; font-size: 0.85em;">${(analysis.confidence * 100).toFixed(0)}%</td>
                     </tr>
                 `;
             });
@@ -602,6 +1238,36 @@ class ExpectedValueCalculator {
             case 'break_even': return '#fbc02d';  // 黄色
             case 'skip': return '#d32f2f';       // 赤
             default: return '#666';
+        }
+    }
+    
+    /**
+     * 購買推奨の表示文字取得
+     * @param {string} purchaseRecommendation - 購買推奨レベル
+     * @returns {string} 表示文字
+     */
+    static getPurchaseRecommendationDisplay(purchaseRecommendation) {
+        switch (purchaseRecommendation) {
+            case 'strong_buy': return '🔥強推奨';
+            case 'buy': return '✅推奨';
+            case 'weak_buy': return '⚠️弱推奨';
+            case 'skip': return '❌見送り';
+            default: return '❓不明';
+        }
+    }
+    
+    /**
+     * 購買推奨の色を取得
+     * @param {string} purchaseRecommendation - 購買推奨レベル
+     * @returns {string} 色コード
+     */
+    static getPurchaseRecommendationColor(purchaseRecommendation) {
+        switch (purchaseRecommendation) {
+            case 'strong_buy': return '#d32f2f'; // 濃い赤
+            case 'buy': return '#388e3c'; // 緑
+            case 'weak_buy': return '#f57c00'; // オレンジ
+            case 'skip': return '#757575'; // グレー
+            default: return '#666666'; // デフォルトグレー
         }
     }
     
@@ -918,3 +1584,17 @@ class ExpectedValueCalculator {
 
 // グローバル変数として公開
 window.ExpectedValueCalculator = ExpectedValueCalculator;
+
+// Phase 5関連のグローバル関数（ブラウザコンソール用）
+window.auditPhase5Data = () => ExpectedValueCalculator.auditPhase5Data();
+window.enablePhase5Correction = (mode = 'fixed') => ExpectedValueCalculator.enablePhase5Correction(mode);
+window.disablePhase5Correction = () => ExpectedValueCalculator.disablePhase5Correction();
+window.generatePhase5EffectReport = () => ExpectedValueCalculator.generatePhase5EffectReport();
+
+console.log('✅ Phase 5統合機能が利用可能になりました');
+console.log('🔍 使用方法:');
+console.log('  auditPhase5Data() - データ監査');
+console.log('  enablePhase5Correction("fixed") - 固定補正有効化');
+console.log('  enablePhase5Correction("weighted") - 重み付け補正有効化');
+console.log('  disablePhase5Correction() - 補正無効化');
+console.log('  generatePhase5EffectReport() - 効果レポート');

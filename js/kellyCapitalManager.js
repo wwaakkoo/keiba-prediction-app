@@ -5,9 +5,27 @@
 class KellyCapitalManager {
     constructor() {
         this.currentCapital = 100000; // 初期資金（10万円）
-        this.maxBetRatio = 0.10; // 最大投資比率（10%）
+        this.maxBetRatio = 0.10; // 最大投資比率（10%）- 安全性重視
+        this.minKellyThreshold = 0.01; // 最小ケリー閾値（1%）
         this.minBetAmount = 100; // 最小投資額
         this.maxBetAmount = 5000; // 最大投資額
+        
+        // ポートフォリオ制約設定
+        this.constraints = {
+            maxHorsesPerRace: 5,        // 1レース最大5頭
+            minKellyThreshold: 0.01,    // 最小ケリー閾値
+            minScoreThreshold: 0.015,   // 最小スコア閾値（ケリー×期待値）
+            
+            // オプショナルポートフォリオ設定
+            optionalExpectedValueThreshold: 1.05,  // 保険候補の期待値閾値
+            maxOptionalCandidates: 3,              // オプショナル候補最大数
+            optionalAllocationRatio: 0.02,         // オプショナル候補への最大配分比率（2%）
+            
+            // 競合制御設定
+            enableConflictResolution: true,         // 競合解決機能のON/OFF
+            maxBetsPerRace: 1,                     // 1レースあたり最大投資数（初期値は1）
+            conflictResolutionStrategy: 'highest_score'  // 'highest_score' | 'diversify' | 'kelly_priority'
+        };
         this.riskLevel = 'moderate'; // conservative, moderate, aggressive
         this.performanceHistory = this.loadPerformanceHistory();
         this.drawdownLimit = 0.20; // 最大ドローダウン20%
@@ -37,13 +55,19 @@ class KellyCapitalManager {
             return 0;
         }
         
-        if (typeof odds !== 'number' || isNaN(odds) || odds <= 1) {
-            console.warn('⚠️ オッズが不正:', odds);
+        if (typeof odds !== 'number' || isNaN(odds) || odds <= 1.05) {
+            console.warn('⚠️ オッズが不正または低すぎます:', odds);
             return 0;
         }
 
         // ケリー基準計算
         const b = odds - 1; // 純利益倍率
+        
+        // 純利益倍率の安全性チェック
+        if (b < 0.05) {
+            console.warn('⚠️ 純利益倍率が低すぎます:', b.toFixed(3));
+            return 0;
+        }
         const p = winProbability; // 勝率
         const q = 1 - p; // 負け率
         
@@ -180,7 +204,196 @@ class KellyCapitalManager {
     }
 
     /**
-     * 複数馬券の最適配分計算
+     * 候補分類関数（メイン/オプショナル/除外）
+     */
+    classifyCandidate(candidate) {
+        const { kellyRatio, expectedValue } = candidate;
+        
+        if (kellyRatio >= this.constraints.minKellyThreshold) {
+            return 'main';  // メイン候補
+        } else if (expectedValue >= this.constraints.optionalExpectedValueThreshold) {
+            return 'optional';  // オプショナル候補（保険枠）
+        } else {
+            return 'reject';  // 除外
+        }
+    }
+
+    /**
+     * 券種独立性判定（同レース内で共存可能か？）
+     */
+    static BET_TYPE_COMPATIBILITY = {
+        // 複勝は他の複勝と共存可能（異なる馬なら）
+        'place': {
+            'place': 'compatible_different_horse',
+            'win': 'conflicting',
+            'exacta': 'conflicting', 
+            'trifecta': 'conflicting'
+        },
+        // 単勝は排他的
+        'win': {
+            'place': 'conflicting',
+            'win': 'conflicting',
+            'exacta': 'conflicting',
+            'trifecta': 'conflicting'
+        },
+        // 馬連は排他的
+        'exacta': {
+            'place': 'conflicting',
+            'win': 'conflicting',
+            'exacta': 'conflicting',
+            'trifecta': 'conflicting'
+        },
+        // 3連複は排他的
+        'trifecta': {
+            'place': 'conflicting',
+            'win': 'conflicting',
+            'exacta': 'conflicting',
+            'trifecta': 'conflicting'
+        }
+    };
+
+    /**
+     * 競合チェック関数
+     */
+    checkConflict(candidate1, candidate2) {
+        // 異なるレースなら競合なし
+        if (candidate1.raceId !== candidate2.raceId) {
+            return { hasConflict: false, reason: 'different_race' };
+        }
+
+        const betType1 = candidate1.betType || 'place';
+        const betType2 = candidate2.betType || 'place';
+        
+        const compatibility = this.constructor.BET_TYPE_COMPATIBILITY[betType1]?.[betType2];
+        
+        if (compatibility === 'compatible_different_horse') {
+            // 複勝同士の場合、異なる馬なら共存可能
+            const horse1 = candidate1.horse?.number || candidate1.horse?.horseNumber;
+            const horse2 = candidate2.horse?.number || candidate2.horse?.horseNumber;
+            
+            if (horse1 !== horse2) {
+                return { hasConflict: false, reason: 'different_horse_compatible' };
+            } else {
+                return { hasConflict: true, reason: 'same_horse_same_bet_type' };
+            }
+        } else if (compatibility === 'conflicting') {
+            return { hasConflict: true, reason: 'bet_type_conflict' };
+        }
+        
+        return { hasConflict: false, reason: 'no_conflict_detected' };
+    }
+
+    /**
+     * 競合解決アルゴリズム
+     */
+    resolveConflicts(candidates) {
+        if (!this.constraints.enableConflictResolution || candidates.length <= 1) {
+            return candidates;
+        }
+
+        console.log('🔧 競合解決開始:', candidates.length, '候補');
+
+        // レース別グループ化
+        const raceGroups = {};
+        candidates.forEach(candidate => {
+            const raceId = candidate.raceId || 'default_race';
+            if (!raceGroups[raceId]) {
+                raceGroups[raceId] = [];
+            }
+            raceGroups[raceId].push(candidate);
+        });
+
+        let resolvedCandidates = [];
+
+        // レースごとに競合解決
+        for (const [raceId, raceCandidates] of Object.entries(raceGroups)) {
+            if (raceCandidates.length <= this.constraints.maxBetsPerRace) {
+                // 制限内なら全て採用
+                resolvedCandidates.push(...raceCandidates);
+                continue;
+            }
+
+            console.log(`🎯 レース${raceId}: ${raceCandidates.length}候補 → 最大${this.constraints.maxBetsPerRace}候補に削減`);
+
+            // 戦略別競合解決
+            const resolved = this.applyConflictStrategy(raceCandidates);
+            resolvedCandidates.push(...resolved);
+        }
+
+        console.log('✅ 競合解決完了:', candidates.length, '→', resolvedCandidates.length, '候補');
+        
+        return resolvedCandidates;
+    }
+
+    /**
+     * 戦略別競合解決実行
+     */
+    applyConflictStrategy(raceCandidates) {
+        const strategy = this.constraints.conflictResolutionStrategy;
+        const maxBets = this.constraints.maxBetsPerRace;
+
+        switch (strategy) {
+            case 'highest_score':
+                return raceCandidates
+                    .sort((a, b) => b.expectedValueScore - a.expectedValueScore)
+                    .slice(0, maxBets);
+
+            case 'kelly_priority':
+                return raceCandidates
+                    .sort((a, b) => b.kellyRatio - a.kellyRatio)
+                    .slice(0, maxBets);
+
+            case 'diversify':
+                // 異なる券種を優先しつつ、スコア順で選択
+                return this.diversifySelection(raceCandidates, maxBets);
+
+            default:
+                console.warn('❌ 不明な競合解決戦略:', strategy);
+                return raceCandidates.slice(0, maxBets);
+        }
+    }
+
+    /**
+     * 分散選択アルゴリズム
+     */
+    diversifySelection(candidates, maxBets) {
+        const selected = [];
+        const usedBetTypes = new Set();
+
+        // まず各券種から最高スコアを1つずつ選択
+        const candidatesByBetType = {};
+        candidates.forEach(candidate => {
+            const betType = candidate.betType || 'place';
+            if (!candidatesByBetType[betType]) {
+                candidatesByBetType[betType] = [];
+            }
+            candidatesByBetType[betType].push(candidate);
+        });
+
+        // 券種別に最高スコアを選択
+        for (const [betType, typeCandidates] of Object.entries(candidatesByBetType)) {
+            if (selected.length >= maxBets) break;
+            
+            const best = typeCandidates.sort((a, b) => b.expectedValueScore - a.expectedValueScore)[0];
+            selected.push(best);
+            usedBetTypes.add(betType);
+        }
+
+        // 残り枠があれば、全体からスコア順で追加
+        if (selected.length < maxBets) {
+            const remaining = candidates
+                .filter(c => !selected.includes(c))
+                .sort((a, b) => b.expectedValueScore - a.expectedValueScore)
+                .slice(0, maxBets - selected.length);
+            
+            selected.push(...remaining);
+        }
+
+        return selected.slice(0, maxBets);
+    }
+
+    /**
+     * 複数馬券の最適配分計算（ケリー×期待値スコア選別版）
      */
     calculatePortfolioAllocation(candidates) {
         console.log('📊 ポートフォリオ最適化開始:', candidates.length, '候補');
@@ -195,75 +408,171 @@ class KellyCapitalManager {
             };
         }
 
-        let validCandidates = [];
-        let totalKellyWeight = 0;
+        const maxHorses = this.constraints.maxHorsesPerRace;
+        const minKelly = this.constraints.minKellyThreshold;
+        const minScore = this.constraints.minScoreThreshold;
 
-        // 各候補のケリー比率計算
-        for (const candidate of candidates) {
+        // Step 1: ケリー比率と期待値スコア計算 + 候補分類
+        const scoredCandidates = candidates.map(c => {
             const kelly = this.calculateKellyRatio(
-                candidate.winProbability,
-                candidate.odds,
-                candidate.confidence || 1.0
+                c.winProbability,
+                c.odds,
+                c.confidence || 1.0
             );
+            const score = kelly * (c.expectedValue || 1.0);
+            
+            const candidateWithMetrics = {
+                ...c,
+                kellyRatio: kelly,
+                expectedValueScore: score,
+                weight: kelly
+            };
+            
+            candidateWithMetrics.category = this.classifyCandidate(candidateWithMetrics);
+            return candidateWithMetrics;
+        });
 
-            if (kelly > 0) {
-                validCandidates.push({
-                    ...candidate,
-                    kellyRatio: kelly,
-                    weight: kelly
-                });
-                totalKellyWeight += kelly;
-            }
-        }
+        // Step 2: カテゴリ別分類
+        const mainCandidates = scoredCandidates
+            .filter(c => c.category === 'main' && c.expectedValueScore > minScore)
+            .sort((a, b) => b.expectedValueScore - a.expectedValueScore);
+            
+        const optionalCandidates = scoredCandidates
+            .filter(c => c.category === 'optional')
+            .sort((a, b) => b.expectedValue - a.expectedValue)
+            .slice(0, this.constraints.maxOptionalCandidates);
 
-        if (validCandidates.length === 0) {
+        console.log('📈 候補分類結果:', {
+            main: mainCandidates.map(c => ({
+                name: c.horse?.name || c.name,
+                kelly: c.kellyRatio.toFixed(4),
+                expectedValue: (c.expectedValue || 1.0).toFixed(3),
+                score: c.expectedValueScore.toFixed(4),
+                category: c.category
+            })),
+            optional: optionalCandidates.map(c => ({
+                name: c.horse?.name || c.name,
+                kelly: c.kellyRatio.toFixed(4),
+                expectedValue: (c.expectedValue || 1.0).toFixed(3),
+                category: c.category
+            }))
+        });
+
+        if (mainCandidates.length === 0 && optionalCandidates.length === 0) {
             return {
                 totalAmount: 0,
                 allocations: [],
                 portfolioKelly: 0,
                 recommendation: 'skip',
-                reasoning: '全候補が負の期待値'
+                reasoning: '全候補が閾値未満'
             };
         }
 
-        // 総投資額制限
-        const maxTotalInvestment = this.currentCapital * this.maxBetRatio;
-        const portfolioKelly = Math.min(totalKellyWeight, this.maxBetRatio);
-        const totalBudget = this.currentCapital * portfolioKelly;
+        // Step 3: 競合解決処理
+        const conflictResolvedMain = this.resolveConflicts(mainCandidates);
+        const conflictResolvedOptional = this.resolveConflicts(optionalCandidates);
 
-        console.log('📈 ポートフォリオ概要:', {
-            validCandidates: validCandidates.length,
-            totalKellyWeight: totalKellyWeight.toFixed(4),
-            portfolioKelly: portfolioKelly.toFixed(4),
-            totalBudget: totalBudget.toFixed(0)
+        // Step 4: メイン候補選択（maxHorses制限）
+        const finalMainCandidates = conflictResolvedMain.slice(0, maxHorses);
+        const finalOptionalCandidates = conflictResolvedOptional;
+        const mainKellyWeight = finalMainCandidates.reduce((sum, c) => sum + c.kellyRatio, 0);
+
+        console.log('🎯 競合解決後の最終選択:', {
+            mainCandidates: finalMainCandidates.length,
+            optionalCandidates: finalOptionalCandidates.length,
+            maxAllowed: maxHorses,
+            mainKellyWeight: mainKellyWeight.toFixed(4),
+            topMainScores: finalMainCandidates.slice(0, 3).map(c => c.expectedValueScore.toFixed(4)),
+            conflictResolutionEnabled: this.constraints.enableConflictResolution
         });
 
-        // 比例配分計算
-        const allocations = validCandidates.map(candidate => {
-            const proportion = candidate.weight / totalKellyWeight;
-            const rawAmount = totalBudget * proportion;
-            const amount = Math.max(this.minBetAmount, Math.round(rawAmount));
+        // Step 5: 動的リスク調整適用
+        const recentStats = this.getRecentPerformance(20);
+        const riskAdjustment = this.calculateDynamicRiskMultiplier(recentStats);
+        
+        // Step 6: 2段階予算配分（動的リスク調整済み）
+        const baseMainPortfolioKelly = Math.min(mainKellyWeight, this.maxBetRatio * 0.9);
+        const adjustedMainPortfolioKelly = baseMainPortfolioKelly * riskAdjustment.multiplier;
+        const optionalBudget = this.currentCapital * this.constraints.optionalAllocationRatio * riskAdjustment.multiplier; // オプショナルにも適用
+        const mainBudget = this.currentCapital * adjustedMainPortfolioKelly;
 
-            return {
+        console.log('🔧 動的リスク調整適用:', {
+            基本ポートフォリオケリー: baseMainPortfolioKelly.toFixed(4),
+            調整後ポートフォリオケリー: adjustedMainPortfolioKelly.toFixed(4),
+            リスク倍率: riskAdjustment.multiplier.toFixed(3),
+            調整理由: riskAdjustment.reasons,
+            制限適用: riskAdjustment.isConstrained
+        });
+
+        let allocations = [];
+
+        // Step 6: メイン候補配分
+        if (finalMainCandidates.length > 0 && mainKellyWeight > 0) {
+            const mainAllocations = finalMainCandidates.map(candidate => {
+                const allocationRatio = candidate.kellyRatio / mainKellyWeight;
+                const rawAmount = mainBudget * allocationRatio;
+                const amount = Math.max(this.minBetAmount, Math.round(rawAmount));
+
+                return {
+                    horse: candidate.horse,
+                    betType: candidate.betType,
+                    amount: amount,
+                    proportion: allocationRatio,
+                    kellyRatio: candidate.kellyRatio,
+                    expectedValue: candidate.expectedValue,
+                    expectedValueScore: candidate.expectedValueScore,
+                    category: 'main',
+                    reasoning: `メイン: スコア${candidate.expectedValueScore.toFixed(3)}による選別`
+                };
+            });
+            allocations.push(...mainAllocations);
+        }
+
+        // Step 7: オプショナル候補配分（固定額）
+        if (finalOptionalCandidates.length > 0 && optionalBudget > 0) {
+            const optionalAmountPerHorse = Math.max(
+                this.minBetAmount, 
+                Math.floor(optionalBudget / finalOptionalCandidates.length)
+            );
+            
+            const optionalAllocations = finalOptionalCandidates.map(candidate => ({
                 horse: candidate.horse,
                 betType: candidate.betType,
-                amount: amount,
-                proportion: proportion,
+                amount: optionalAmountPerHorse,
+                proportion: optionalAmountPerHorse / (mainBudget + optionalBudget),
                 kellyRatio: candidate.kellyRatio,
                 expectedValue: candidate.expectedValue,
-                reasoning: `ケリー比率${(candidate.kellyRatio * 100).toFixed(2)}%による配分`
-            };
-        });
+                expectedValueScore: candidate.expectedValueScore,
+                category: 'optional',
+                reasoning: `保険: 期待値${candidate.expectedValue.toFixed(3)}による選別`
+            }));
+            allocations.push(...optionalAllocations);
+        }
 
         const actualTotal = allocations.reduce((sum, allocation) => sum + allocation.amount, 0);
+        const totalPortfolioKelly = actualTotal / this.currentCapital;
 
         return {
             totalAmount: actualTotal,
             allocations: allocations,
-            portfolioKelly: portfolioKelly,
-            recommendation: this.determinePortfolioRecommendation(portfolioKelly, validCandidates),
-            reasoning: `${validCandidates.length}候補のポートフォリオ最適化`,
-            efficiency: actualTotal <= maxTotalInvestment ? 'optimal' : 'constrained'
+            portfolioKelly: totalPortfolioKelly,
+            recommendation: this.determinePortfolioRecommendation(totalPortfolioKelly, [...finalMainCandidates, ...finalOptionalCandidates]),
+            reasoning: `競合解決済み2段階ポートフォリオ（メイン${finalMainCandidates.length}候補+保険${finalOptionalCandidates.length}候補）`,
+            efficiency: actualTotal <= this.currentCapital * this.maxBetRatio ? 'optimal' : 'constrained',
+            metrics: {
+                candidatesEvaluated: candidates.length,
+                mainCandidatesPreConflict: mainCandidates.length,
+                optionalCandidatesPreConflict: optionalCandidates.length,
+                mainCandidatesPostConflict: finalMainCandidates.length,
+                optionalCandidatesPostConflict: finalOptionalCandidates.length,
+                candidatesSelected: allocations.length,
+                mainBudget: mainBudget,
+                optionalBudget: optionalBudget,
+                conflictResolutionApplied: this.constraints.enableConflictResolution,
+                conflictResolutionStrategy: this.constraints.conflictResolutionStrategy,
+                averageMainScore: finalMainCandidates.length > 0 ? 
+                    finalMainCandidates.reduce((sum, c) => sum + c.expectedValueScore, 0) / finalMainCandidates.length : 0
+            }
         };
     }
 
@@ -407,7 +716,7 @@ class KellyCapitalManager {
     }
 
     /**
-     * 直近パフォーマンス分析
+     * 直近パフォーマンス分析（動的リスク調整対応版）
      */
     getRecentPerformance(count = 20) {
         const recentRaces = this.performanceHistory.slice(-count);
@@ -418,7 +727,10 @@ class KellyCapitalManager {
                 winRate: 0,
                 averageROI: 0,
                 totalReturn: 0,
-                maxDrawdown: 0
+                maxDrawdown: 0,
+                consecutiveLosses: 0,
+                consecutiveWins: 0,
+                volatility: 0
             };
         }
 
@@ -427,12 +739,138 @@ class KellyCapitalManager {
         const totalReturn = recentRaces.reduce((sum, race) => sum + race.return, 0);
         const maxDrawdown = Math.max(...recentRaces.map(race => race.drawdown));
 
+        // 連勝・連敗の計算
+        let consecutiveLosses = 0;
+        let consecutiveWins = 0;
+        let currentStreak = 0;
+        let isWinning = null;
+
+        for (let i = recentRaces.length - 1; i >= 0; i--) {
+            const isWin = recentRaces[i].netResult > 0;
+            
+            if (isWinning === null) {
+                isWinning = isWin;
+                currentStreak = 1;
+            } else if (isWinning === isWin) {
+                currentStreak++;
+            } else {
+                break;
+            }
+        }
+
+        if (isWinning === false) {
+            consecutiveLosses = currentStreak;
+        } else if (isWinning === true) {
+            consecutiveWins = currentStreak;
+        }
+
+        // ボラティリティ（ROIの標準偏差）
+        const rois = recentRaces.map(race => {
+            return race.investment > 0 ? (race.return / race.investment - 1) * 100 : 0;
+        });
+        const avgROI = rois.reduce((sum, roi) => sum + roi, 0) / rois.length;
+        const volatility = Math.sqrt(
+            rois.reduce((sum, roi) => sum + Math.pow(roi - avgROI, 2), 0) / rois.length
+        );
+
         return {
             totalRaces: recentRaces.length,
             winRate: wins / recentRaces.length,
             averageROI: totalInvestment > 0 ? (totalReturn / totalInvestment - 1) * 100 : 0,
             totalReturn: totalReturn,
-            maxDrawdown: maxDrawdown
+            maxDrawdown: maxDrawdown,
+            consecutiveLosses: consecutiveLosses,
+            consecutiveWins: consecutiveWins,
+            volatility: volatility
+        };
+    }
+
+    /**
+     * 動的リスクマルチプライヤー計算
+     */
+    calculateDynamicRiskMultiplier(recentStats) {
+        let multiplier = 1.0;
+        const adjustmentReasons = [];
+
+        console.log('🔧 動的リスク調整開始:', {
+            winRate: recentStats.winRate.toFixed(3),
+            averageROI: recentStats.averageROI.toFixed(2) + '%',
+            drawdown: (this.getCurrentDrawdown() * 100).toFixed(1) + '%',
+            consecutiveLosses: recentStats.consecutiveLosses,
+            consecutiveWins: recentStats.consecutiveWins
+        });
+
+        // 1. 勝率による調整
+        if (recentStats.winRate < 0.2) {
+            multiplier *= 0.7;
+            adjustmentReasons.push('低勝率による減額(-30%)');
+        } else if (recentStats.winRate > 0.4) {
+            multiplier *= 1.2;
+            adjustmentReasons.push('高勝率による増額(+20%)');
+        } else if (recentStats.winRate > 0.35) {
+            multiplier *= 1.1;
+            adjustmentReasons.push('良好勝率による増額(+10%)');
+        }
+
+        // 2. ROIによる調整
+        const roiMultiplier = 1 + (recentStats.averageROI / 100);
+        if (roiMultiplier < 1.0) {
+            multiplier *= 0.8;
+            adjustmentReasons.push('負ROIによる減額(-20%)');
+        } else if (roiMultiplier > 1.1) {
+            multiplier *= 1.1;
+            adjustmentReasons.push('高ROIによる増額(+10%)');
+        }
+
+        // 3. ドローダウンによる調整
+        const currentDrawdown = this.getCurrentDrawdown();
+        if (currentDrawdown > 0.2) {
+            multiplier *= 0.6;
+            adjustmentReasons.push('高ドローダウンによる大幅減額(-40%)');
+        } else if (currentDrawdown > 0.15) {
+            multiplier *= 0.8;
+            adjustmentReasons.push('中ドローダウンによる減額(-20%)');
+        } else if (currentDrawdown > 0.1) {
+            multiplier *= 0.9;
+            adjustmentReasons.push('軽度ドローダウンによる減額(-10%)');
+        }
+
+        // 4. 連敗による調整
+        if (recentStats.consecutiveLosses >= 5) {
+            multiplier *= 0.5;
+            adjustmentReasons.push('5連敗以上による大幅減額(-50%)');
+        } else if (recentStats.consecutiveLosses >= 3) {
+            multiplier *= 0.7;
+            adjustmentReasons.push('3連敗以上による減額(-30%)');
+        }
+
+        // 5. 連勝による調整（ただし過度なリスク増加は避ける）
+        if (recentStats.consecutiveWins >= 5) {
+            multiplier *= 1.1;
+            adjustmentReasons.push('5連勝以上による軽度増額(+10%)');
+        }
+
+        // 6. ボラティリティによる調整
+        if (recentStats.volatility > 50) {
+            multiplier *= 0.9;
+            adjustmentReasons.push('高ボラティリティによる減額(-10%)');
+        }
+
+        // 安全制限（0.3-1.5倍の範囲）
+        const finalMultiplier = Math.max(0.3, Math.min(multiplier, 1.5));
+        
+        console.log('📊 リスク調整結果:', {
+            基本倍率: multiplier.toFixed(3),
+            最終倍率: finalMultiplier.toFixed(3),
+            制限適用: multiplier !== finalMultiplier ? 'あり' : 'なし',
+            調整理由: adjustmentReasons.length > 0 ? adjustmentReasons : ['標準運用']
+        });
+
+        return {
+            multiplier: finalMultiplier,
+            reasons: adjustmentReasons,
+            rawMultiplier: multiplier,
+            isConstrained: multiplier !== finalMultiplier
         };
     }
 
@@ -589,6 +1027,75 @@ window.simulateKellyBet = (winProb, odds, expectedValue = null) => {
 /**
  * Phase 6パフォーマンス統計表示関数
  */
+/**
+ * ポートフォリオ最適化テスト関数
+ */
+window.testPortfolioOptimization = () => {
+    console.log('🧪 ポートフォリオ最適化テスト開始');
+    
+    const manager = new KellyCapitalManager();
+    
+    // 競合解決テスト用データ（異なるレース・券種を含む）
+    const testCandidates = [
+        // 第1レース メイン候補
+        { name: '1R-馬A', raceId: 'race_1', expectedValue: 1.4, winProbability: 0.40, odds: 3.5, horse: {name: '1R-馬A', number: 1}, betType: 'place' },
+        { name: '1R-馬B', raceId: 'race_1', expectedValue: 1.2, winProbability: 0.35, odds: 3.4, horse: {name: '1R-馬B', number: 2}, betType: 'win' },
+        { name: '1R-馬C', raceId: 'race_1', expectedValue: 1.6, winProbability: 0.25, odds: 6.4, horse: {name: '1R-馬C', number: 3}, betType: 'place' },
+        
+        // 第2レース メイン候補
+        { name: '2R-馬D', raceId: 'race_2', expectedValue: 1.3, winProbability: 0.45, odds: 2.9, horse: {name: '2R-馬D', number: 1}, betType: 'place' },
+        { name: '2R-馬E', raceId: 'race_2', expectedValue: 1.1, winProbability: 0.30, odds: 3.7, horse: {name: '2R-馬E', number: 2}, betType: 'place' },
+        
+        // 第1レース オプショナル候補（競合テスト）
+        { name: '1R-馬F', raceId: 'race_1', expectedValue: 1.08, winProbability: 0.18, odds: 6.0, horse: {name: '1R-馬F', number: 4}, betType: 'exacta' },
+        { name: '1R-馬G', raceId: 'race_1', expectedValue: 1.06, winProbability: 0.15, odds: 7.0, horse: {name: '1R-馬G', number: 5}, betType: 'place' },
+        
+        // 除外候補
+        { name: '3R-馬H', raceId: 'race_3', expectedValue: 0.95, winProbability: 0.50, odds: 1.9, horse: {name: '3R-馬H', number: 1}, betType: 'place' }
+    ];
+    
+    const result = manager.calculatePortfolioAllocation(testCandidates);
+    
+    console.log('📊 競合解決対応 2段階ポートフォリオ テスト結果:');
+    console.log('候補評価数:', result.metrics.candidatesEvaluated);
+    console.log('競合解決前 - メイン:', result.metrics.mainCandidatesPreConflict, '/ オプショナル:', result.metrics.optionalCandidatesPreConflict);
+    console.log('競合解決後 - メイン:', result.metrics.mainCandidatesPostConflict, '/ オプショナル:', result.metrics.optionalCandidatesPostConflict);
+    console.log('競合解決戦略:', result.metrics.conflictResolutionStrategy);
+    console.log('総投資額:', result.totalAmount.toLocaleString() + '円');
+    console.log('メイン予算:', result.metrics.mainBudget.toLocaleString() + '円');
+    console.log('オプショナル予算:', result.metrics.optionalBudget.toLocaleString() + '円');
+    
+    const mainAllocations = result.allocations.filter(c => c.category === 'main');
+    const optionalAllocations = result.allocations.filter(c => c.category === 'optional');
+    
+    if (mainAllocations.length > 0) {
+        console.log('\n🎯 メイン候補（競合解決済み）:');
+        console.table(mainAllocations.map(c => ({
+            馬名: c.horse.name,
+            レース: (c.name || '').split('-')[0] || 'N/A',
+            券種: c.betType,
+            ケリー比率: (c.kellyRatio * 100).toFixed(2) + '%',
+            期待値: c.expectedValue?.toFixed(3),
+            スコア: c.expectedValueScore.toFixed(4),
+            投資額: c.amount.toLocaleString() + '円'
+        })));
+    }
+    
+    if (optionalAllocations.length > 0) {
+        console.log('\n🛡️ オプショナル候補（保険枠・競合解決済み）:');
+        console.table(optionalAllocations.map(c => ({
+            馬名: c.horse.name,
+            レース: (c.name || '').split('-')[0] || 'N/A',
+            券種: c.betType,
+            ケリー比率: (c.kellyRatio * 100).toFixed(2) + '%',
+            期待値: c.expectedValue?.toFixed(3),
+            投資額: c.amount.toLocaleString() + '円'
+        })));
+    }
+    
+    return result;
+};
+
 window.showPhase6PerformanceStats = () => {
     try {
         const manager = new KellyCapitalManager();

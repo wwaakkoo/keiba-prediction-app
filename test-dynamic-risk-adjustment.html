@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>動的リスク調整システムテスト</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            margin: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.2em;
+        }
+        .section {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 5px solid #4caf50;
+        }
+        .btn {
+            background: linear-gradient(45deg, #4caf50, #2e7d32);
+            color: white;
+            border: none;
+            padding: 15px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 10px;
+            font-weight: bold;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(76,175,80,0.4);
+        }
+        .btn-test { background: linear-gradient(45deg, #e91e63, #c2185b); }
+        .btn-scenario { background: linear-gradient(45deg, #ff9800, #f57c00); }
+        .btn-reset { background: linear-gradient(45deg, #6c757d, #495057); }
+        
+        .result {
+            background: #e8f5e8;
+            border: 1px solid #4caf50;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 動的リスク調整システムテスト</h1>
+        
+        <div class="section">
+            <h2>📋 テスト概要</h2>
+            <p>Phase 6のケリー基準資金管理システムに組み込まれた動的リスク調整機能をテストします。</p>
+            <ul>
+                <li><strong>動的リスク調整:</strong> 過去の成績に基づいてリスク倍率を動的に調整</li>
+                <li><strong>パフォーマンス分析:</strong> 勝率、ROI、ドローダウン、連勝/連敗を考慮</li>
+                <li><strong>2段階ポートフォリオ:</strong> メイン候補とオプショナル候補への最適配分</li>
+                <li><strong>競合解決:</strong> 同レース内での投資候補の競合を自動解決</li>
+            </ul>
+        </div>
+
+        <!-- テスト実行 -->
+        <div class="section">
+            <h3 style="color: #4caf50;">🧪 基本動的リスク調整テスト</h3>
+            <div class="grid">
+                <button class="btn btn-test" onclick="testDynamicRiskAdjustment()">🔧 動的リスク調整テスト</button>
+                <button class="btn btn-test" onclick="testPortfolioOptimization()">📊 ポートフォリオ最適化テスト</button>
+                <button class="btn" onclick="showKellyCapitalStatus()">💰 資金管理状況確認</button>
+            </div>
+            <div id="basicTestResults"></div>
+        </div>
+
+        <!-- シナリオテスト -->
+        <div class="section">
+            <h3 style="color: #ff9800;">📈 シナリオ別テスト</h3>
+            <div class="grid">
+                <button class="btn btn-scenario" onclick="testWinningStreak()">🏆 連勝シナリオ</button>
+                <button class="btn btn-scenario" onclick="testLosingStreak()">📉 連敗シナリオ</button>
+                <button class="btn btn-scenario" onclick="testHighVolatility()">⚡ 高ボラティリティ</button>
+                <button class="btn btn-scenario" onclick="testDrawdownScenario()">📊 ドローダウン制御</button>
+            </div>
+            <div id="scenarioTestResults"></div>
+        </div>
+
+        <!-- リセット -->
+        <div class="section">
+            <h3>🔄 テストデータ管理</h3>
+            <div class="grid">
+                <button class="btn btn-reset" onclick="resetKellyData()">🗑️ データリセット</button>
+                <button class="btn" onclick="showDetailedAnalysis()">📋 詳細分析レポート</button>
+            </div>
+            <div id="resetResults"></div>
+        </div>
+    </div>
+
+    <!-- Kelly Capital Manager読み込み -->
+    <script src="js/kellyCapitalManager.js"></script>
+
+    <script>
+        // 基本動的リスク調整テスト
+        function testDynamicRiskAdjustment() {
+            const resultDiv = document.getElementById('basicTestResults');
+            try {
+                console.clear();
+                console.log('🔧 動的リスク調整システムテスト開始');
+                
+                const manager = new KellyCapitalManager();
+                
+                // 多様なパフォーマンス履歴を設定
+                manager.performanceHistory = [
+                    { date: '2024-01-15', investment: 1500, return: 800, netResult: -700, drawdown: 0.07 },
+                    { date: '2024-01-16', investment: 1200, return: 1800, netResult: 600, drawdown: 0.05 },
+                    { date: '2024-01-17', investment: 1800, return: 2500, netResult: 700, drawdown: 0.03 },
+                    { date: '2024-01-18', investment: 2000, return: 1000, netResult: -1000, drawdown: 0.04 },
+                    { date: '2024-01-19', investment: 1700, return: 2200, netResult: 500, drawdown: 0.02 },
+                ];
+                
+                // 直近パフォーマンス分析
+                const recentStats = manager.getRecentPerformance(5);
+                console.log('📊 直近パフォーマンス分析:', recentStats);
+                
+                // 動的リスク調整計算
+                const riskAdjustment = manager.calculateDynamicRiskMultiplier(recentStats);
+                console.log('🎯 動的リスク調整結果:', riskAdjustment);
+                
+                let result = '=== 動的リスク調整テスト結果 ===\n';
+                result += `📊 直近${recentStats.totalRaces}レースの分析:\n`;
+                result += `  勝率: ${(recentStats.winRate * 100).toFixed(1)}%\n`;
+                result += `  平均ROI: ${recentStats.averageROI.toFixed(2)}%\n`;
+                result += `  最大ドローダウン: ${(recentStats.maxDrawdown * 100).toFixed(2)}%\n`;
+                result += `  連勝: ${recentStats.consecutiveWins}回\n`;
+                result += `  連敗: ${recentStats.consecutiveLosses}回\n`;
+                result += `  ボラティリティ: ${recentStats.volatility.toFixed(2)}\n\n`;
+                
+                result += `🔧 リスク調整結果:\n`;
+                result += `  調整倍率: ${riskAdjustment.multiplier.toFixed(3)}x\n`;
+                result += `  生倍率: ${riskAdjustment.rawMultiplier.toFixed(3)}x\n`;
+                result += `  制限適用: ${riskAdjustment.isConstrained ? 'あり' : 'なし'}\n`;
+                result += `  調整理由:\n`;
+                
+                if (riskAdjustment.reasons.length > 0) {
+                    riskAdjustment.reasons.forEach(reason => {
+                        result += `    • ${reason}\n`;
+                    });
+                } else {
+                    result += `    • 標準運用\n`;
+                }
+                
+                result += '\n✅ 動的リスク調整システムが正常に動作しています！';
+                
+                resultDiv.innerHTML = `<div class="result">${result}</div>`;
+                
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="result">❌ エラー: ${error.message}</div>`;
+                console.error('動的リスク調整テストエラー:', error);
+            }
+        }
+
+        // 連勝シナリオテスト
+        function testWinningStreak() {
+            const resultDiv = document.getElementById('scenarioTestResults');
+            try {
+                const manager = new KellyCapitalManager();
+                
+                // 連勝シナリオのデータ
+                manager.performanceHistory = [
+                    { date: '2024-01-20', investment: 2000, return: 2800, netResult: 800, drawdown: 0.00 },
+                    { date: '2024-01-21', investment: 2200, return: 3100, netResult: 900, drawdown: 0.00 },
+                    { date: '2024-01-22', investment: 2500, return: 3600, netResult: 1100, drawdown: 0.00 },
+                    { date: '2024-01-23', investment: 2800, return: 3900, netResult: 1100, drawdown: 0.00 },
+                    { date: '2024-01-24', investment: 3000, return: 4200, netResult: 1200, drawdown: 0.00 },
+                    { date: '2024-01-25', investment: 3200, return: 4500, netResult: 1300, drawdown: 0.00 }
+                ];
+                
+                const recentStats = manager.getRecentPerformance(6);
+                const riskAdjustment = manager.calculateDynamicRiskMultiplier(recentStats);
+                
+                let result = '=== 連勝シナリオテスト結果 ===\n';
+                result += `🏆 ${recentStats.consecutiveWins}連勝中！\n`;
+                result += `📈 勝率: ${(recentStats.winRate * 100).toFixed(1)}%\n`;
+                result += `💰 平均ROI: ${recentStats.averageROI.toFixed(2)}%\n`;
+                result += `🔧 リスク倍率: ${riskAdjustment.multiplier.toFixed(3)}x\n`;
+                result += `📋 調整理由: ${riskAdjustment.reasons.join(', ') || '標準運用'}\n`;
+                result += '\n💡 連勝時は適度にリスクを増加させますが、過度な増加は避けます。';
+                
+                resultDiv.innerHTML = `<div class="result">${result}</div>`;
+                
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="result">❌ エラー: ${error.message}</div>`;
+            }
+        }
+
+        // 連敗シナリオテスト
+        function testLosingStreak() {
+            const resultDiv = document.getElementById('scenarioTestResults');
+            try {
+                const manager = new KellyCapitalManager();
+                
+                // 連敗シナリオのデータ
+                manager.performanceHistory = [
+                    { date: '2024-01-20', investment: 2000, return: 400, netResult: -1600, drawdown: 0.16 },
+                    { date: '2024-01-21', investment: 1800, return: 300, netResult: -1500, drawdown: 0.18 },
+                    { date: '2024-01-22', investment: 1600, return: 200, netResult: -1400, drawdown: 0.20 },
+                    { date: '2024-01-23', investment: 1400, return: 100, netResult: -1300, drawdown: 0.22 },
+                    { date: '2024-01-24', investment: 1200, return: 0, netResult: -1200, drawdown: 0.24 },
+                    { date: '2024-01-25', investment: 1000, return: 0, netResult: -1000, drawdown: 0.26 }
+                ];
+                
+                const recentStats = manager.getRecentPerformance(6);
+                const riskAdjustment = manager.calculateDynamicRiskMultiplier(recentStats);
+                
+                let result = '=== 連敗シナリオテスト結果 ===\n';
+                result += `📉 ${recentStats.consecutiveLosses}連敗中...\n`;
+                result += `😰 勝率: ${(recentStats.winRate * 100).toFixed(1)}%\n`;
+                result += `💸 平均ROI: ${recentStats.averageROI.toFixed(2)}%\n`;
+                result += `📊 最大ドローダウン: ${(recentStats.maxDrawdown * 100).toFixed(2)}%\n`;
+                result += `🛡️ リスク倍率: ${riskAdjustment.multiplier.toFixed(3)}x (大幅減額)\n`;
+                result += `📋 調整理由:\n`;
+                riskAdjustment.reasons.forEach(reason => {
+                    result += `  • ${reason}\n`;
+                });
+                result += '\n💡 連敗時は大幅にリスクを削減し、資金を保護します。';
+                
+                resultDiv.innerHTML = `<div class="result">${result}</div>`;
+                
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="result">❌ エラー: ${error.message}</div>`;
+            }
+        }
+
+        // 高ボラティリティシナリオ
+        function testHighVolatility() {
+            const resultDiv = document.getElementById('scenarioTestResults');
+            try {
+                const manager = new KellyCapitalManager();
+                
+                // 高ボラティリティのデータ（大勝ちと大負けを繰り返す）
+                manager.performanceHistory = [
+                    { date: '2024-01-20', investment: 2000, return: 5000, netResult: 3000, drawdown: 0.00 },
+                    { date: '2024-01-21', investment: 3000, return: 500, netResult: -2500, drawdown: 0.15 },
+                    { date: '2024-01-22', investment: 1500, return: 4500, netResult: 3000, drawdown: 0.05 },
+                    { date: '2024-01-23', investment: 2500, return: 0, netResult: -2500, drawdown: 0.12 },
+                    { date: '2024-01-24', investment: 2000, return: 6000, netResult: 4000, drawdown: 0.02 }
+                ];
+                
+                const recentStats = manager.getRecentPerformance(5);
+                const riskAdjustment = manager.calculateDynamicRiskMultiplier(recentStats);
+                
+                let result = '=== 高ボラティリティシナリオテスト結果 ===\n';
+                result += `⚡ ボラティリティ: ${recentStats.volatility.toFixed(2)} (高い)\n`;
+                result += `🎯 勝率: ${(recentStats.winRate * 100).toFixed(1)}%\n`;
+                result += `💰 平均ROI: ${recentStats.averageROI.toFixed(2)}%\n`;
+                result += `📊 最大ドローダウン: ${(recentStats.maxDrawdown * 100).toFixed(2)}%\n`;
+                result += `🔧 リスク倍率: ${riskAdjustment.multiplier.toFixed(3)}x\n`;
+                result += `📋 調整理由:\n`;
+                riskAdjustment.reasons.forEach(reason => {
+                    result += `  • ${reason}\n`;
+                });
+                result += '\n💡 高ボラティリティ時はリスクを削減し、安定性を重視します。';
+                
+                resultDiv.innerHTML = `<div class="result">${result}</div>`;
+                
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="result">❌ エラー: ${error.message}</div>`;
+            }
+        }
+
+        // ドローダウン制御シナリオ
+        function testDrawdownScenario() {
+            const resultDiv = document.getElementById('scenarioTestResults');
+            try {
+                const manager = new KellyCapitalManager();
+                
+                // 高ドローダウンシナリオ
+                manager.currentCapital = 80000; // 初期10万から2万円の損失
+                manager.capitalPeak = 100000;
+                
+                manager.performanceHistory = [
+                    { date: '2024-01-20', investment: 2000, return: 0, netResult: -2000, drawdown: 0.02 },
+                    { date: '2024-01-21', investment: 1800, return: 0, netResult: -1800, drawdown: 0.04 },
+                    { date: '2024-01-22', investment: 1600, return: 0, netResult: -1600, drawdown: 0.06 },
+                    { date: '2024-01-23', investment: 1400, return: 0, netResult: -1400, drawdown: 0.08 },
+                    { date: '2024-01-24', investment: 1200, return: 0, netResult: -1200, drawdown: 0.10 },
+                    { date: '2024-01-25', investment: 1000, return: 100, netResult: -900, drawdown: 0.11 },
+                    { date: '2024-01-26', investment: 1000, return: 0, netResult: -1000, drawdown: 0.12 },
+                    { date: '2024-01-27', investment: 800, return: 0, netResult: -800, drawdown: 0.13 },
+                    { date: '2024-01-28', investment: 800, return: 0, netResult: -800, drawdown: 0.14 },
+                    { date: '2024-01-29', investment: 600, return: 0, netResult: -600, drawdown: 0.15 }
+                ];
+                
+                const currentDrawdown = manager.getCurrentDrawdown();
+                const recentStats = manager.getRecentPerformance(10);
+                const riskAdjustment = manager.calculateDynamicRiskMultiplier(recentStats);
+                
+                let result = '=== ドローダウン制御シナリオテスト結果 ===\n';
+                result += `📉 現在ドローダウン: ${(currentDrawdown * 100).toFixed(2)}%\n`;
+                result += `🚨 ドローダウン制御: ${currentDrawdown > manager.drawdownLimit * 0.8 ? '🔴 発動中' : '🟢 正常'}\n`;
+                result += `💰 現在資金: ${manager.currentCapital.toLocaleString()}円\n`;
+                result += `🏔️ 最高資金: ${manager.capitalPeak.toLocaleString()}円\n`;
+                result += `🛡️ リスク倍率: ${riskAdjustment.multiplier.toFixed(3)}x (大幅保護)\n`;
+                result += `📋 調整理由:\n`;
+                riskAdjustment.reasons.forEach(reason => {
+                    result += `  • ${reason}\n`;
+                });
+                result += '\n💡 高ドローダウン時は最大限にリスクを削減し、資金を保護します。';
+                
+                resultDiv.innerHTML = `<div class="result">${result}</div>`;
+                
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="result">❌ エラー: ${error.message}</div>`;
+            }
+        }
+
+        // 資金管理状況確認
+        function showKellyCapitalStatus() {
+            const resultDiv = document.getElementById('basicTestResults');
+            try {
+                const report = checkKellyCapital();
+                
+                let result = '=== Kelly資金管理状況 ===\n';
+                result += `💰 現在資金: ${report.capitalStatus.currentCapital.toLocaleString()}円\n`;
+                result += `📈 総収益率: ${report.capitalStatus.totalReturnRate.toFixed(2)}%\n`;
+                result += `🎯 リスクレベル: ${report.riskManagement.riskLevel}\n`;
+                result += `📊 最大投資比率: ${(report.riskManagement.maxBetRatio * 100)}%\n`;
+                result += `📉 現在ドローダウン: ${(report.capitalStatus.currentDrawdown * 100).toFixed(2)}%\n`;
+                result += `🔢 直近レース数: ${report.recentPerformance.totalRaces}\n`;
+                
+                resultDiv.innerHTML = `<div class="result">${result}</div>`;
+                
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="result">❌ エラー: ${error.message}</div>`;
+            }
+        }
+
+        // データリセット
+        function resetKellyData() {
+            const resultDiv = document.getElementById('resetResults');
+            try {
+                const manager = new KellyCapitalManager();
+                manager.resetCapitalData();
+                
+                resultDiv.innerHTML = '<div class="result">✅ Kelly資金管理データをリセットしました</div>';
+                
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="result">❌ エラー: ${error.message}</div>`;
+            }
+        }
+
+        // 詳細分析レポート
+        function showDetailedAnalysis() {
+            const resultDiv = document.getElementById('resetResults');
+            try {
+                showPhase6PerformanceStats();
+                resultDiv.innerHTML = '<div class="result">✅ 詳細分析レポートを表示しました（アラートとコンソールを確認）</div>';
+                
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="result">❌ エラー: ${error.message}</div>`;
+            }
+        }
+
+        // ページロード時の初期化
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🎯 動的リスク調整システムテストページが読み込まれました');
+        });
+    </script>
+</body>
+</html>

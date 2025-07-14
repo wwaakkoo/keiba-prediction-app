@@ -1082,6 +1082,11 @@ class PredictionEngine {
             html += `<div style="font-weight: bold; color: ${placeColor};">🎯 期待値: 複勝${(placeAnalysis.expectedValue || 0).toFixed(2)} / 単勝${(winAnalysis.expectedValue || 0).toFixed(2)}</div>`;
             html += `<div style="font-size: 0.9em; color: ${placeColor};">推奨: ${this.getRecommendationDisplay(placeAnalysis.recommendation)} (信頼度: ${((placeAnalysis.confidence || 0) * 100).toFixed(0)}%)</div>`;
             
+            // 購買指数と購買推奨を追加
+            const purchaseColor = this.getPurchaseRecommendationColor(placeAnalysis.purchaseRecommendation);
+            html += `<div style="font-size: 0.9em; color: ${purchaseColor};">💰 購買指数: ${(placeAnalysis.purchaseIndex || 0).toFixed(2)} → ${this.getPurchaseRecommendationDisplay(placeAnalysis.purchaseRecommendation)}</div>`;
+            html += `<div style="font-size: 0.85em; color: #555;">信頼度スコア: ${(placeAnalysis.confidenceScore || 0).toFixed(2)}</div>`;
+            
             // 人気層とアドバイス
             const popularityDisplay = this.getPopularityDisplay(placeAnalysis.popularity);
             html += `<div style="font-size: 0.85em; color: #666;">人気層: ${popularityDisplay}</div>`;
@@ -1112,6 +1117,28 @@ class PredictionEngine {
             case 'break_even': return '➖ 損益分岐';
             case 'skip': return '❌ 見送り';
             default: return '❓ 不明';
+        }
+    }
+    
+    // 購買推奨の表示文字取得
+    static getPurchaseRecommendationDisplay(purchaseRecommendation) {
+        switch (purchaseRecommendation) {
+            case 'strong_buy': return '🔥 強く購入推奨';
+            case 'buy': return '✅ 購入推奨';
+            case 'weak_buy': return '⚠️ 弱い購入推奨';
+            case 'skip': return '❌ 購入見送り';
+            default: return '❓ 判定不能';
+        }
+    }
+    
+    // 購買推奨の色を取得
+    static getPurchaseRecommendationColor(purchaseRecommendation) {
+        switch (purchaseRecommendation) {
+            case 'strong_buy': return '#d32f2f'; // 濃い赤
+            case 'buy': return '#388e3c'; // 緑
+            case 'weak_buy': return '#f57c00'; // オレンジ
+            case 'skip': return '#757575'; // グレー
+            default: return '#666666'; // デフォルトグレー
         }
     }
     
