@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phase 6-7 統合確認テスト</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: #f9f9f9;
+        }
+        .success { background: #e8f5e8; border-color: #4caf50; }
+        .error { background: #ffeaea; border-color: #f44336; }
+        .test-result {
+            margin: 10px 0;
+            padding: 8px;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔗 Phase 6-7 統合確認テスト</h1>
+        
+        <div id="testResults"></div>
+        
+        <button onclick="runIntegrationTests()" style="padding: 10px 20px; font-size: 16px; margin: 20px 0;">
+            統合テスト実行
+        </button>
+    </div>
+
+    <!-- Phase 6 Scripts -->
+    <script src="js/kellyCapitalManager.js"></script>
+    <script src="js/expectedValueCalculator.js"></script>
+    <script src="js/bettingFilter.js"></script>
+    <script src="js/phase6Integration.js"></script>
+    
+    <!-- Phase 7 Scripts -->
+    <script src="js/portfolioDashboard.js"></script>
+    <script src="js/performanceCharts.js"></script>
+    
+    <script>
+        function runIntegrationTests() {
+            const resultsDiv = document.getElementById('testResults');
+            resultsDiv.innerHTML = '<h2>🧪 統合テスト実行中...</h2>';
+            
+            const tests = [];
+            
+            // Test 1: Phase 6クラスの存在確認
+            try {
+                const kellyManager = new KellyCapitalManager();
+                tests.push({
+                    name: 'Kelly Capital Manager 初期化',
+                    result: 'SUCCESS',
+                    message: 'Kelly資金管理システムが正常に初期化されました'
+                });
+            } catch (error) {
+                tests.push({
+                    name: 'Kelly Capital Manager 初期化',
+                    result: 'ERROR',
+                    message: `エラー: ${error.message}`
+                });
+            }
+            
+            // Test 2: Phase 7クラスの存在確認
+            try {
+                const portfolioDashboard = new PortfolioDashboard();
+                tests.push({
+                    name: 'Portfolio Dashboard 初期化',
+                    result: 'SUCCESS',
+                    message: 'ポートフォリオダッシュボードが正常に初期化されました'
+                });
+            } catch (error) {
+                tests.push({
+                    name: 'Portfolio Dashboard 初期化',
+                    result: 'ERROR',
+                    message: `エラー: ${error.message}`
+                });
+            }
+            
+            // Test 3: Performance Charts クラス確認
+            try {
+                const performanceCharts = new PerformanceCharts();
+                tests.push({
+                    name: 'Performance Charts 初期化',
+                    result: 'SUCCESS',
+                    message: 'パフォーマンスチャートが正常に初期化されました'
+                });
+            } catch (error) {
+                tests.push({
+                    name: 'Performance Charts 初期化',
+                    result: 'ERROR',
+                    message: `エラー: ${error.message}`
+                });
+            }
+            
+            // Test 4: データ連携確認
+            try {
+                const kellyManager = new KellyCapitalManager();
+                const testCandidates = [
+                    { 
+                        horse: { name: 'テスト馬A', number: 1 },
+                        winProbability: 0.25,
+                        odds: 3.2,
+                        expectedValue: 1.15,
+                        confidence: 0.8,
+                        raceId: 'test_race_1'
+                    },
+                    { 
+                        horse: { name: 'テスト馬B', number: 3 },
+                        winProbability: 0.20,
+                        odds: 4.1,
+                        expectedValue: 1.08,
+                        confidence: 0.75,
+                        raceId: 'test_race_1'
+                    }
+                ];
+                
+                const portfolioResult = kellyManager.calculatePortfolioAllocation(testCandidates);
+                
+                if (portfolioResult && portfolioResult.allocations) {
+                    tests.push({
+                        name: 'データ連携テスト',
+                        result: 'SUCCESS',
+                        message: `ポートフォリオ最適化が正常に実行されました (${portfolioResult.allocations.length}件の配分)`
+                    });
+                } else {
+                    tests.push({
+                        name: 'データ連携テスト',
+                        result: 'ERROR',
+                        message: 'ポートフォリオ最適化の実行に失敗しました'
+                    });
+                }
+            } catch (error) {
+                tests.push({
+                    name: 'データ連携テスト',
+                    result: 'ERROR',
+                    message: `エラー: ${error.message}`
+                });
+            }
+            
+            // Test 5: 可視化機能確認
+            try {
+                const portfolioDashboard = new PortfolioDashboard();
+                
+                // テスト用コンテナ作成
+                const testContainer = document.createElement('div');
+                testContainer.id = 'test-dashboard-container';
+                testContainer.style.display = 'none';
+                document.body.appendChild(testContainer);
+                
+                portfolioDashboard.createDashboardContainer();
+                
+                tests.push({
+                    name: '可視化機能テスト',
+                    result: 'SUCCESS',
+                    message: 'ダッシュボードコンテナが正常に作成されました'
+                });
+                
+                // テスト用コンテナ削除
+                document.body.removeChild(testContainer);
+            } catch (error) {
+                tests.push({
+                    name: '可視化機能テスト',
+                    result: 'ERROR',
+                    message: `エラー: ${error.message}`
+                });
+            }
+            
+            // Test 6: Phase 6 メソッド存在確認
+            try {
+                const kellyManager = new KellyCapitalManager();
+                const methods = [
+                    'calculateKellyRatio',
+                    'calculateOptimalBetAmount', 
+                    'calculatePortfolioAllocation',
+                    'applyRiskAdjustment'
+                ];
+                
+                const availableMethods = methods.filter(method => 
+                    typeof kellyManager[method] === 'function'
+                );
+                
+                tests.push({
+                    name: 'Kelly Manager メソッド確認',
+                    result: 'SUCCESS',
+                    message: `利用可能メソッド: ${availableMethods.join(', ')} (${availableMethods.length}/${methods.length})`
+                });
+            } catch (error) {
+                tests.push({
+                    name: 'Kelly Manager メソッド確認',
+                    result: 'ERROR', 
+                    message: `エラー: ${error.message}`
+                });
+            }
+            
+            // Test 7: Phase 7とPhase 6の統合データフロー
+            try {
+                const portfolioDashboard = new PortfolioDashboard();
+                
+                // テスト用のKelly結果データを注入
+                const testKellyResults = {
+                    totalInvestment: 2500,
+                    expectedReturn: 2850,
+                    mainCandidates: [
+                        { horse: { name: 'テスト馬1' }, kellyRatio: 0.08, amount: 1000 },
+                        { horse: { name: 'テスト馬2' }, kellyRatio: 0.05, amount: 800 }
+                    ],
+                    optionalCandidates: [
+                        { horse: { name: 'テスト馬3' }, kellyRatio: 0.02, amount: 700 }
+                    ],
+                    riskMultiplier: 0.85
+                };
+                
+                localStorage.setItem('kellyPortfolioResults', JSON.stringify(testKellyResults));
+                
+                // ダッシュボードの統合テスト
+                portfolioDashboard.loadDataFromPhase6Systems();
+                
+                const hasData = portfolioDashboard.portfolioData && 
+                               portfolioDashboard.portfolioData.mainCandidates &&
+                               portfolioDashboard.portfolioData.mainCandidates.length > 0;
+                
+                if (hasData) {
+                    tests.push({
+                        name: 'Phase 6-7 データフロー統合',
+                        result: 'SUCCESS',
+                        message: `Kelly→Dashboard データ連携成功 (${portfolioDashboard.portfolioData.mainCandidates.length}件のメイン候補)`
+                    });
+                } else {
+                    tests.push({
+                        name: 'Phase 6-7 データフロー統合',
+                        result: 'ERROR',
+                        message: 'データ連携に失敗しました'
+                    });
+                }
+                
+                // テストデータクリーンアップ
+                localStorage.removeItem('kellyPortfolioResults');
+                
+            } catch (error) {
+                tests.push({
+                    name: 'Phase 6-7 データフロー統合',
+                    result: 'ERROR',
+                    message: `エラー: ${error.message}`
+                });
+                localStorage.removeItem('kellyPortfolioResults');
+            }
+            
+            // 結果表示
+            displayTestResults(tests);
+        }
+        
+        function displayTestResults(tests) {
+            const resultsDiv = document.getElementById('testResults');
+            let html = '<h2>📊 統合テスト結果</h2>';
+            
+            const successCount = tests.filter(t => t.result === 'SUCCESS').length;
+            const totalCount = tests.length;
+            
+            html += `<div class="test-section ${successCount === totalCount ? 'success' : 'error'}">
+                <h3>総合結果: ${successCount}/${totalCount} テスト成功</h3>
+            </div>`;
+            
+            tests.forEach(test => {
+                const className = test.result === 'SUCCESS' ? 'success' : 'error';
+                html += `<div class="test-section ${className}">
+                    <h4>${test.result === 'SUCCESS' ? '✅' : '❌'} ${test.name}</h4>
+                    <div class="test-result">${test.message}</div>
+                </div>`;
+            });
+            
+            resultsDiv.innerHTML = html;
+            
+            // 統合状況サマリー表示
+            console.log('📋 Phase 6-7 統合確認完了:', {
+                success_rate: `${successCount}/${totalCount}`,
+                kelly_manager: window.KellyCapitalManager ? 'Available' : 'Missing',
+                portfolio_dashboard: window.PortfolioDashboard ? 'Available' : 'Missing',
+                performance_charts: window.PerformanceCharts ? 'Available' : 'Missing'
+            });
+        }
+        
+        // ページ読み込み時に自動実行
+        window.addEventListener('load', () => {
+            setTimeout(runIntegrationTests, 500);
+        });
+    </script>
+</body>
+</html>

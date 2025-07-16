@@ -485,7 +485,10 @@ function processUnifiedLearningWithAnalysisData(firstHorse, secondHorse, thirdHo
             // 実際の投資結果を構築
             const actualResults = {
                 finishing_order: {},
-                payouts: { place: {} }
+                payouts: { place: {} },
+                first: firstHorse?.name,
+                second: secondHorse?.name,
+                third: thirdHorse?.name
             };
             
             // 着順設定（安全なプロパティアクセス）
@@ -495,6 +498,7 @@ function processUnifiedLearningWithAnalysisData(firstHorse, secondHorse, thirdHo
                     const horseNumber = firstHorse.number || firstHorse.horseNumber || (firstIndex + 1);
                     actualResults.finishing_order[horseNumber] = 1;
                     actualResults.payouts.place[horseNumber] = (firstHorse.placeOdds || firstHorse.odds || 1.5) * 100;
+                    console.log(`🥇 1着馬設定: ${firstHorse.name} = 馬番号${horseNumber}、着順1位`);
                 }
             }
             if (secondHorse) {
@@ -503,6 +507,7 @@ function processUnifiedLearningWithAnalysisData(firstHorse, secondHorse, thirdHo
                     const horseNumber = secondHorse.number || secondHorse.horseNumber || (secondIndex + 1);
                     actualResults.finishing_order[horseNumber] = 2;
                     actualResults.payouts.place[horseNumber] = (secondHorse.placeOdds || secondHorse.odds || 1.3) * 100;
+                    console.log(`🥈 2着馬設定: ${secondHorse.name} = 馬番号${horseNumber}、着順2位`);
                 }
             }
             if (thirdHorse) {
@@ -511,6 +516,7 @@ function processUnifiedLearningWithAnalysisData(firstHorse, secondHorse, thirdHo
                     const horseNumber = thirdHorse.number || thirdHorse.horseNumber || (thirdIndex + 1);
                     actualResults.finishing_order[horseNumber] = 3;
                     actualResults.payouts.place[horseNumber] = (thirdHorse.placeOdds || thirdHorse.odds || 1.2) * 100;
+                    console.log(`🥉 3着馬設定: ${thirdHorse.name} = 馬番号${horseNumber}、着順3位`);
                 }
             }
             

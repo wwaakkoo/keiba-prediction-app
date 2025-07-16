@@ -214,15 +214,23 @@ class DynamicBettingManager {
                     const minBet = expectedValue >= 1.5 ? 100 : 200;
                     
                     if (betAmount >= minBet) {
+                        // 馬の情報を正しく構造化
+                        const horseInfo = {
+                            name: horse.horse?.name || horse.name || `${index + 1}番馬`,
+                            number: horse.horse?.number || horse.number || horse.horseNumber || (index + 1),
+                            id: horse.horse?.id || horse.id || (index + 1),
+                            odds: horse.horse?.odds || horse.odds || odds
+                        };
+                        
                         kellyBets.push({
-                            horse: horse.horse,
+                            horse: horseInfo,
                             kellyFraction: adjustedKelly,
                             amount: betAmount,
                             expectedValue: expectedValue,
                             confidence: horse.confidence || 50,
                             type: 'place'
                         });
-                        console.log(`✅ ${index + 1}番馬 Kelly買い目追加`);
+                        console.log(`✅ ${index + 1}番馬 Kelly買い目追加:`, horseInfo);
                     } else {
                         console.log(`❌ ${index + 1}番馬 投資額不足 (${betAmount}円 < ${minBet}円)`);
                     }
