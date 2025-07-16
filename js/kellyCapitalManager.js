@@ -219,6 +219,74 @@ class KellyCapitalManager {
     }
 
     /**
+     * 惜しい候補のログ生成
+     */
+    generateNearMissLog(candidates, minKelly, minScore) {
+        const nearMissThreshold = 0.85; // 基準の85%以上で「惜しい」と判定
+        const nearMissCandidates = [];
+        
+        candidates.forEach(candidate => {
+            const { kellyRatio, expectedValue, expectedValueScore, horse } = candidate;
+            const horseName = horse?.name || candidate.name || 'Unknown';
+            
+            // 惜しい候補の判定
+            const isNearMissKelly = kellyRatio >= (minKelly * nearMissThreshold);
+            const isNearMissScore = expectedValueScore >= (minScore * nearMissThreshold);
+            const isNearMissExpectedValue = expectedValue >= (this.constraints.optionalExpectedValueThreshold * nearMissThreshold);
+            
+            if (candidate.category === 'reject' && (isNearMissKelly || isNearMissScore || isNearMissExpectedValue)) {
+                const reasons = [];
+                
+                // 具体的な不足理由を分析
+                if (kellyRatio < minKelly) {
+                    const shortfall = ((minKelly - kellyRatio) / minKelly * 100).toFixed(1);
+                    reasons.push(`Kelly比率不足: ${(kellyRatio * 100).toFixed(2)}% (基準${(minKelly * 100).toFixed(1)}%まで${shortfall}%不足)`);
+                }
+                
+                if (expectedValue < this.constraints.optionalExpectedValueThreshold) {
+                    const shortfall = ((this.constraints.optionalExpectedValueThreshold - expectedValue) / this.constraints.optionalExpectedValueThreshold * 100).toFixed(1);
+                    reasons.push(`期待値不足: ${expectedValue.toFixed(3)} (基準${this.constraints.optionalExpectedValueThreshold.toFixed(2)}まで${shortfall}%不足)`);
+                }
+                
+                if (expectedValueScore < minScore) {
+                    const shortfall = ((minScore - expectedValueScore) / minScore * 100).toFixed(1);
+                    reasons.push(`総合スコア不足: ${expectedValueScore.toFixed(4)} (基準${minScore.toFixed(3)}まで${shortfall}%不足)`);
+                }
+                
+                // 惜しさレベルの判定
+                let nearMissLevel = 'low';
+                if (isNearMissKelly && isNearMissExpectedValue) {
+                    nearMissLevel = 'high';
+                } else if (isNearMissKelly || isNearMissExpectedValue) {
+                    nearMissLevel = 'medium';
+                }
+                
+                nearMissCandidates.push({
+                    horseName,
+                    kellyRatio: kellyRatio,
+                    expectedValue: expectedValue,
+                    expectedValueScore: expectedValueScore,
+                    reasons: reasons,
+                    nearMissLevel: nearMissLevel,
+                    gap: {
+                        kellyRatio: Math.max(0, minKelly - kellyRatio),
+                        expectedValue: Math.max(0, this.constraints.optionalExpectedValueThreshold - expectedValue),
+                        totalScore: Math.max(0, minScore - expectedValueScore)
+                    }
+                });
+            }
+        });
+        
+        // 惜しさレベルでソート（高い順）
+        nearMissCandidates.sort((a, b) => {
+            const levelOrder = { high: 3, medium: 2, low: 1 };
+            return levelOrder[b.nearMissLevel] - levelOrder[a.nearMissLevel];
+        });
+        
+        return nearMissCandidates.slice(0, 5); // 上位5件まで
+    }
+
+    /**
      * 券種独立性判定（同レース内で共存可能か？）
      */
     static BET_TYPE_COMPATIBILITY = {
@@ -458,13 +526,31 @@ class KellyCapitalManager {
             }))
         });
 
+        // 惜しい候補のログ生成
+        const nearMissCandidates = this.generateNearMissLog(scoredCandidates, minKelly, minScore);
+        
         if (mainCandidates.length === 0 && optionalCandidates.length === 0) {
+            // 惜しい候補情報をLocalStorageに保存
+            const evaluationResult = {
+                status: 'no_recommendations',
+                timestamp: new Date().toISOString(),
+                nearMissCandidates: nearMissCandidates,
+                totalEvaluated: scoredCandidates.length,
+                criteria: {
+                    mainKellyThreshold: minKelly,
+                    minScoreThreshold: minScore,
+                    optionalExpectedValueThreshold: this.constraints.optionalExpectedValueThreshold
+                }
+            };
+            localStorage.setItem('lastKellyEvaluationDetails', JSON.stringify(evaluationResult));
+            
             return {
                 totalAmount: 0,
                 allocations: [],
                 portfolioKelly: 0,
                 recommendation: 'skip',
-                reasoning: '全候補が閾値未満'
+                reasoning: '全候補が閾値未満',
+                nearMissCandidates: nearMissCandidates
             };
         }
 

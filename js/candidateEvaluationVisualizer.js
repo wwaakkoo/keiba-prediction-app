@@ -87,7 +87,7 @@ class CandidateEvaluationVisualizer {
         try {
             // Phase 6のKellyシステムから評価データを取得
             const kellyResults = localStorage.getItem('kellyPortfolioResults');
-            const lastEvaluationLog = localStorage.getItem('lastEvaluationProcess');
+            const lastEvaluationDetails = localStorage.getItem('lastKellyEvaluationDetails');
             
             if (kellyResults) {
                 const parsedResults = JSON.parse(kellyResults);
@@ -95,6 +95,17 @@ class CandidateEvaluationVisualizer {
             } else {
                 // Kelly計算が実行されていない場合の適切な処理
                 this.currentEvaluationData = this.generateNoDataMessage();
+                
+                // 惜しい候補の詳細情報を取得
+                if (lastEvaluationDetails) {
+                    try {
+                        const evaluationDetails = JSON.parse(lastEvaluationDetails);
+                        this.currentEvaluationData.nearMissCandidates = evaluationDetails.nearMissCandidates || [];
+                        this.currentEvaluationData.evaluationDetails = evaluationDetails;
+                    } catch (error) {
+                        console.warn('惜しい候補データの読み込みに失敗:', error);
+                    }
+                }
             }
 
             console.log('📊 評価データ読み込み完了:', {
@@ -337,6 +348,9 @@ class CandidateEvaluationVisualizer {
      * 推奨なしメッセージの表示
      */
     renderNoRecommendationsMessage() {
+        const nearMissCandidates = this.currentEvaluationData.nearMissCandidates || [];
+        const evaluationDetails = this.currentEvaluationData.evaluationDetails;
+        
         return `
             <div class="no-recommendations-message">
                 <div class="message-header">
@@ -349,8 +363,16 @@ class CandidateEvaluationVisualizer {
                             <h4>Kelly基準を満たす候補がありません</h4>
                             <p>現在のレースでは、ケリー基準を満たす投資推奨がありません。</p>
                             <p>期待値が負または投資リスクが高すぎるため、投資を見送ることが推奨されます。</p>
+                            ${evaluationDetails ? `
+                                <div class="evaluation-stats">
+                                    <small>評価対象: ${evaluationDetails.totalEvaluated}頭 | 
+                                    評価日時: ${new Date(evaluationDetails.timestamp).toLocaleString()}</small>
+                                </div>
+                            ` : ''}
                         </div>
                     </div>
+                    
+                    ${nearMissCandidates.length > 0 ? this.renderNearMissCandidates(nearMissCandidates) : ''}
                     
                     <div class="guidance-section">
                         <h4>💡 候補評価プロセスを表示するには:</h4>
@@ -364,8 +386,8 @@ class CandidateEvaluationVisualizer {
                     <div class="technical-info">
                         <h4>🔍 Kelly推奨基準:</h4>
                         <ul class="criteria-list">
-                            <li><strong>メイン候補:</strong> Kelly比率 ≥ 3.0% かつ 期待値 ≥ 1.20</li>
-                            <li><strong>オプショナル候補:</strong> Kelly比率 ≥ 1.0% かつ 期待値 ≥ 1.05</li>
+                            <li><strong>メイン候補:</strong> Kelly比率 ≥ 1.0%</li>
+                            <li><strong>オプショナル候補:</strong> 期待値 ≥ 1.05</li>
                             <li><strong>投資対象外:</strong> 上記基準未満</li>
                         </ul>
                     </div>
@@ -373,6 +395,50 @@ class CandidateEvaluationVisualizer {
                     <div class="demo-note">
                         <p><strong>📊 デモモード:</strong> 開発・テスト用にサンプルデータを表示するには、開発者ツールで <code>candidateEvaluationVisualizer.currentEvaluationData = candidateEvaluationVisualizer.generateSampleEvaluationData()</code> を実行してください。</p>
                     </div>
+                </div>
+            </div>
+        `;
+    }
+
+    /**
+     * 惜しい候補の表示
+     */
+    renderNearMissCandidates(nearMissCandidates) {
+        return `
+            <div class="near-miss-section">
+                <h4>🔍 惜しい候補 (基準の85%以上)</h4>
+                <div class="near-miss-candidates">
+                    ${nearMissCandidates.map(candidate => `
+                        <div class="near-miss-card ${candidate.nearMissLevel}">
+                            <div class="candidate-header">
+                                <span class="horse-name">${candidate.horseName}</span>
+                                <span class="near-miss-level ${candidate.nearMissLevel}">
+                                    ${candidate.nearMissLevel === 'high' ? '🔥 惜しい！' : 
+                                      candidate.nearMissLevel === 'medium' ? '⚠️ 惜しい' : '💡 やや惜しい'}
+                                </span>
+                            </div>
+                            <div class="candidate-metrics">
+                                <div class="metric">
+                                    <span class="metric-label">Kelly比率</span>
+                                    <span class="metric-value">${(candidate.kellyRatio * 100).toFixed(2)}%</span>
+                                </div>
+                                <div class="metric">
+                                    <span class="metric-label">期待値</span>
+                                    <span class="metric-value">${candidate.expectedValue.toFixed(3)}</span>
+                                </div>
+                                <div class="metric">
+                                    <span class="metric-label">総合スコア</span>
+                                    <span class="metric-value">${candidate.expectedValueScore.toFixed(4)}</span>
+                                </div>
+                            </div>
+                            <div class="rejection-reasons">
+                                <div class="reasons-title">❌ 不採用理由:</div>
+                                <ul class="reasons-list">
+                                    ${candidate.reasons.map(reason => `<li>${reason}</li>`).join('')}
+                                </ul>
+                            </div>
+                        </div>
+                    `).join('')}
                 </div>
             </div>
         `;
@@ -1240,6 +1306,146 @@ class CandidateEvaluationVisualizer {
                 font-size: 0.8rem;
             }
 
+            /* 惜しい候補セクションのスタイル */
+            .near-miss-section {
+                background: #fff8e1;
+                border: 1px solid #ffb74d;
+                border-radius: 8px;
+                padding: 20px;
+                margin-bottom: 20px;
+            }
+
+            .near-miss-section h4 {
+                margin: 0 0 15px 0;
+                color: #f57c00;
+                font-size: 1.1rem;
+            }
+
+            .near-miss-candidates {
+                display: grid;
+                gap: 15px;
+            }
+
+            .near-miss-card {
+                background: white;
+                border-radius: 8px;
+                padding: 15px;
+                border-left: 4px solid #ff9800;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }
+
+            .near-miss-card.high {
+                border-left-color: #f44336;
+                background: #ffebee;
+            }
+
+            .near-miss-card.medium {
+                border-left-color: #ff9800;
+                background: #fff3e0;
+            }
+
+            .near-miss-card.low {
+                border-left-color: #ffb74d;
+                background: #fff8e1;
+            }
+
+            .candidate-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 10px;
+            }
+
+            .candidate-header .horse-name {
+                font-weight: bold;
+                font-size: 1.1rem;
+                color: #2c3e50;
+            }
+
+            .near-miss-level {
+                padding: 4px 8px;
+                border-radius: 12px;
+                font-size: 0.8rem;
+                font-weight: bold;
+            }
+
+            .near-miss-level.high {
+                background: #ffcdd2;
+                color: #c62828;
+            }
+
+            .near-miss-level.medium {
+                background: #ffe0b2;
+                color: #f57c00;
+            }
+
+            .near-miss-level.low {
+                background: #fff3e0;
+                color: #ef6c00;
+            }
+
+            .candidate-metrics {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+                gap: 10px;
+                margin-bottom: 12px;
+            }
+
+            .candidate-metrics .metric {
+                text-align: center;
+                padding: 8px;
+                background: #f8f9fa;
+                border-radius: 4px;
+            }
+
+            .candidate-metrics .metric-label {
+                display: block;
+                font-size: 0.8rem;
+                color: #6c757d;
+                margin-bottom: 4px;
+            }
+
+            .candidate-metrics .metric-value {
+                display: block;
+                font-size: 1rem;
+                font-weight: bold;
+                color: #2c3e50;
+            }
+
+            .rejection-reasons {
+                margin-top: 12px;
+            }
+
+            .reasons-title {
+                font-size: 0.9rem;
+                font-weight: bold;
+                color: #c62828;
+                margin-bottom: 8px;
+            }
+
+            .reasons-list {
+                margin: 0;
+                padding-left: 20px;
+            }
+
+            .reasons-list li {
+                margin-bottom: 4px;
+                font-size: 0.9rem;
+                color: #6c757d;
+                line-height: 1.4;
+            }
+
+            .evaluation-stats {
+                margin-top: 10px;
+                padding-top: 10px;
+                border-top: 1px solid #e9ecef;
+            }
+
+            .evaluation-stats small {
+                color: #6c757d;
+                font-size: 0.8rem;
+            }
+
             /* レスポンシブ対応 */
             @media (max-width: 768px) {
                 .candidate-evaluation-dashboard {
@@ -1291,6 +1497,21 @@ class CandidateEvaluationVisualizer {
 
                 .guidance-section, .technical-info {
                     text-align: left;
+                }
+
+                .near-miss-section {
+                    padding: 15px;
+                    margin: 15px 0;
+                }
+
+                .candidate-metrics {
+                    grid-template-columns: repeat(2, 1fr);
+                }
+
+                .candidate-header {
+                    flex-direction: column;
+                    align-items: flex-start;
+                    gap: 8px;
                 }
             }
         `;
