@@ -90,9 +90,11 @@ class CandidateEvaluationVisualizer {
             const lastEvaluationLog = localStorage.getItem('lastEvaluationProcess');
             
             if (kellyResults) {
-                this.currentEvaluationData = this.parseEvaluationData(JSON.parse(kellyResults));
+                const parsedResults = JSON.parse(kellyResults);
+                this.currentEvaluationData = this.parseEvaluationData(parsedResults);
             } else {
-                this.currentEvaluationData = this.generateSampleEvaluationData();
+                // Kelly計算が実行されていない場合の適切な処理
+                this.currentEvaluationData = this.generateNoDataMessage();
             }
 
             console.log('📊 評価データ読み込み完了:', {
@@ -102,7 +104,7 @@ class CandidateEvaluationVisualizer {
             });
         } catch (error) {
             console.error('❌ 評価データ読み込みエラー:', error);
-            this.currentEvaluationData = this.generateSampleEvaluationData();
+            this.currentEvaluationData = this.generateNoDataMessage();
         }
     }
 
@@ -314,6 +316,12 @@ class CandidateEvaluationVisualizer {
             return;
         }
 
+        // Kelly推奨なしの場合の特別表示
+        if (this.currentEvaluationData.noDataReason === 'kelly_no_recommendations') {
+            contentDiv.innerHTML = this.renderNoRecommendationsMessage();
+            return;
+        }
+
         const { candidates, portfolioSummary } = this.currentEvaluationData;
 
         contentDiv.innerHTML = `
@@ -323,6 +331,51 @@ class CandidateEvaluationVisualizer {
         `;
 
         this.attachEventListeners();
+    }
+
+    /**
+     * 推奨なしメッセージの表示
+     */
+    renderNoRecommendationsMessage() {
+        return `
+            <div class="no-recommendations-message">
+                <div class="message-header">
+                    <h3>📋 Phase 6-7 候補評価プロセス</h3>
+                </div>
+                <div class="message-content">
+                    <div class="status-info">
+                        <div class="status-icon">⚠️</div>
+                        <div class="status-text">
+                            <h4>Kelly基準を満たす候補がありません</h4>
+                            <p>現在のレースでは、ケリー基準を満たす投資推奨がありません。</p>
+                            <p>期待値が負または投資リスクが高すぎるため、投資を見送ることが推奨されます。</p>
+                        </div>
+                    </div>
+                    
+                    <div class="guidance-section">
+                        <h4>💡 候補評価プロセスを表示するには:</h4>
+                        <ol class="guidance-list">
+                            <li><strong>Phase 6でKelly計算を実行</strong>してください</li>
+                            <li>実際の<strong>馬データを入力</strong>してください</li>
+                            <li>期待値とKelly比率が<strong>推奨基準を満たす</strong>馬が必要です</li>
+                        </ol>
+                    </div>
+                    
+                    <div class="technical-info">
+                        <h4>🔍 Kelly推奨基準:</h4>
+                        <ul class="criteria-list">
+                            <li><strong>メイン候補:</strong> Kelly比率 ≥ 3.0% かつ 期待値 ≥ 1.20</li>
+                            <li><strong>オプショナル候補:</strong> Kelly比率 ≥ 1.0% かつ 期待値 ≥ 1.05</li>
+                            <li><strong>投資対象外:</strong> 上記基準未満</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="demo-note">
+                        <p><strong>📊 デモモード:</strong> 開発・テスト用にサンプルデータを表示するには、開発者ツールで <code>candidateEvaluationVisualizer.currentEvaluationData = candidateEvaluationVisualizer.generateSampleEvaluationData()</code> を実行してください。</p>
+                    </div>
+                </div>
+            </div>
+        `;
     }
 
     /**
@@ -583,7 +636,28 @@ class CandidateEvaluationVisualizer {
     }
 
     /**
-     * サンプル評価データの生成
+     * データなしメッセージの生成
+     */
+    generateNoDataMessage() {
+        return {
+            evaluationTimestamp: new Date().toISOString(),
+            totalCandidates: 0,
+            mainCandidates: [],
+            optionalCandidates: [],
+            rejectedCandidates: [],
+            candidates: [],
+            portfolioSummary: {
+                totalInvestment: 0,
+                expectedReturn: 0,
+                riskMultiplier: 1.0,
+                conflictResolutions: []
+            },
+            noDataReason: 'kelly_no_recommendations'
+        };
+    }
+
+    /**
+     * サンプル評価データの生成（開発・デモ用）
      */
     generateSampleEvaluationData() {
         const sampleCandidates = [];
@@ -1069,6 +1143,103 @@ class CandidateEvaluationVisualizer {
                 color: #6c757d;
             }
 
+            /* 推奨なしメッセージのスタイル */
+            .no-recommendations-message {
+                background: white;
+                border-radius: 8px;
+                padding: 30px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                text-align: center;
+                max-width: 800px;
+                margin: 0 auto;
+            }
+
+            .message-header h3 {
+                color: #2c3e50;
+                margin-bottom: 20px;
+                font-size: 1.5rem;
+            }
+
+            .status-info {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 20px;
+                margin-bottom: 30px;
+                padding: 20px;
+                background: #fff3cd;
+                border-radius: 8px;
+                border-left: 4px solid #ffc107;
+            }
+
+            .status-icon {
+                font-size: 3rem;
+            }
+
+            .status-text {
+                text-align: left;
+                flex-grow: 1;
+            }
+
+            .status-text h4 {
+                margin: 0 0 10px 0;
+                color: #856404;
+                font-size: 1.2rem;
+            }
+
+            .status-text p {
+                margin: 5px 0;
+                color: #6c757d;
+                line-height: 1.5;
+            }
+
+            .guidance-section, .technical-info {
+                background: #f8f9fa;
+                padding: 20px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+                text-align: left;
+            }
+
+            .guidance-section h4, .technical-info h4 {
+                margin: 0 0 15px 0;
+                color: #495057;
+                font-size: 1.1rem;
+            }
+
+            .guidance-list, .criteria-list {
+                margin: 0;
+                padding-left: 20px;
+                line-height: 1.6;
+            }
+
+            .guidance-list li, .criteria-list li {
+                margin-bottom: 8px;
+                color: #6c757d;
+            }
+
+            .demo-note {
+                background: #e7f3ff;
+                border: 1px solid #b3d9ff;
+                border-radius: 6px;
+                padding: 15px;
+                margin-top: 20px;
+            }
+
+            .demo-note p {
+                margin: 0;
+                font-size: 0.9rem;
+                color: #495057;
+            }
+
+            .demo-note code {
+                background: #f8f9fa;
+                padding: 2px 6px;
+                border-radius: 3px;
+                font-family: monospace;
+                font-size: 0.8rem;
+            }
+
             /* レスポンシブ対応 */
             @media (max-width: 768px) {
                 .candidate-evaluation-dashboard {
@@ -1101,6 +1272,25 @@ class CandidateEvaluationVisualizer {
                 .step-arrow {
                     transform: rotate(90deg);
                     margin: 5px 0;
+                }
+
+                .no-recommendations-message {
+                    padding: 20px;
+                    margin: 10px;
+                }
+
+                .status-info {
+                    flex-direction: column;
+                    text-align: center;
+                    gap: 15px;
+                }
+
+                .status-text {
+                    text-align: center;
+                }
+
+                .guidance-section, .technical-info {
+                    text-align: left;
                 }
             }
         `;
