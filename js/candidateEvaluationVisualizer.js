@@ -369,6 +369,7 @@ class CandidateEvaluationVisualizer {
                                     評価日時: ${new Date(evaluationDetails.timestamp).toLocaleString()}</small>
                                 </div>
                             ` : ''}
+                            ${this.renderCurrentSystemStatus()}
                         </div>
                     </div>
                     
@@ -377,8 +378,9 @@ class CandidateEvaluationVisualizer {
                     <div class="guidance-section">
                         <h4>💡 候補評価プロセスを表示するには:</h4>
                         <ol class="guidance-list">
-                            <li><strong>Phase 6でKelly計算を実行</strong>してください</li>
-                            <li>実際の<strong>馬データを入力</strong>してください</li>
+                            <li><strong>馬データを入力</strong>してください</li>
+                            <li><strong>予測を実行</strong>してください</li>
+                            <li><strong>Phase 6のKelly計算を実行</strong>してください</li>
                             <li>期待値とKelly比率が<strong>推奨基準を満たす</strong>馬が必要です</li>
                         </ol>
                     </div>
@@ -398,6 +400,68 @@ class CandidateEvaluationVisualizer {
                 </div>
             </div>
         `;
+    }
+
+    /**
+     * 現在のシステム状況を表示
+     */
+    renderCurrentSystemStatus() {
+        const hasHorseData = this.checkHorseDataExists();
+        const hasPredictions = this.checkPredictionsExist();
+        const hasKellyResults = this.checkKellyResultsExist();
+        
+        return `
+            <div class="system-status">
+                <h5>🔍 現在のシステム状況:</h5>
+                <div class="status-checks">
+                    <div class="status-check ${hasHorseData ? 'completed' : 'pending'}">
+                        <span class="check-icon">${hasHorseData ? '✅' : '⏳'}</span>
+                        <span class="check-text">馬データ入力</span>
+                    </div>
+                    <div class="status-check ${hasPredictions ? 'completed' : 'pending'}">
+                        <span class="check-icon">${hasPredictions ? '✅' : '⏳'}</span>
+                        <span class="check-text">予測実行</span>
+                    </div>
+                    <div class="status-check ${hasKellyResults ? 'completed' : 'pending'}">
+                        <span class="check-icon">${hasKellyResults ? '✅' : '⏳'}</span>
+                        <span class="check-text">Kelly計算実行</span>
+                    </div>
+                </div>
+                ${this.renderNextStepGuidance(hasHorseData, hasPredictions, hasKellyResults)}
+            </div>
+        `;
+    }
+
+    /**
+     * 次のステップガイダンス
+     */
+    renderNextStepGuidance(hasHorseData, hasPredictions, hasKellyResults) {
+        if (!hasHorseData) {
+            return '<div class="next-step">👆 まず馬データを入力してください</div>';
+        } else if (!hasPredictions) {
+            return '<div class="next-step">👆 「予測実行」ボタンを押してください</div>';
+        } else if (!hasKellyResults) {
+            return '<div class="next-step">👆 「Phase 6: Kelly計算」を実行してください</div>';
+        } else {
+            return '<div class="next-step">✅ 全ステップ完了済み - Kelly推奨なし状態</div>';
+        }
+    }
+
+    /**
+     * システム状況チェック
+     */
+    checkHorseDataExists() {
+        return (window.horses && window.horses.length > 0) || 
+               (typeof HorseManager !== 'undefined' && HorseManager.getAllHorses && HorseManager.getAllHorses().length > 0);
+    }
+
+    checkPredictionsExist() {
+        return (window.lastPredictions && window.lastPredictions.length > 0) ||
+               (typeof PredictionEngine !== 'undefined' && PredictionEngine.getCurrentPredictions && PredictionEngine.getCurrentPredictions().length > 0);
+    }
+
+    checkKellyResultsExist() {
+        return localStorage.getItem('kellyPortfolioResults') !== null;
     }
 
     /**
@@ -1446,6 +1510,68 @@ class CandidateEvaluationVisualizer {
                 font-size: 0.8rem;
             }
 
+            /* システム状況セクションのスタイル */
+            .system-status {
+                background: #f8f9fa;
+                border: 1px solid #dee2e6;
+                border-radius: 8px;
+                padding: 15px;
+                margin-top: 15px;
+            }
+
+            .system-status h5 {
+                margin: 0 0 12px 0;
+                color: #495057;
+                font-size: 1rem;
+            }
+
+            .status-checks {
+                display: flex;
+                gap: 20px;
+                margin-bottom: 12px;
+                flex-wrap: wrap;
+            }
+
+            .status-check {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                padding: 8px 12px;
+                border-radius: 6px;
+                background: white;
+                border: 1px solid #e9ecef;
+            }
+
+            .status-check.completed {
+                background: #d4edda;
+                border-color: #c3e6cb;
+            }
+
+            .status-check.pending {
+                background: #fff3cd;
+                border-color: #ffeaa7;
+            }
+
+            .check-icon {
+                font-size: 1.1rem;
+            }
+
+            .check-text {
+                font-size: 0.9rem;
+                color: #495057;
+                font-weight: 500;
+            }
+
+            .next-step {
+                background: #e7f3ff;
+                border: 1px solid #b3d9ff;
+                border-radius: 6px;
+                padding: 10px 12px;
+                font-size: 0.9rem;
+                color: #0c5460;
+                font-weight: 500;
+            }
+
             /* レスポンシブ対応 */
             @media (max-width: 768px) {
                 .candidate-evaluation-dashboard {
@@ -1512,6 +1638,15 @@ class CandidateEvaluationVisualizer {
                     flex-direction: column;
                     align-items: flex-start;
                     gap: 8px;
+                }
+
+                .status-checks {
+                    flex-direction: column;
+                    gap: 8px;
+                }
+
+                .status-check {
+                    justify-content: center;
                 }
             }
         `;
