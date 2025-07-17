@@ -10,11 +10,16 @@ class ActionableInsightsManager {
         this.insightHistory = [];
         this.userPreferences = this.loadUserPreferences();
         
-        // コア分析モジュール
-        this.performanceAnalyzer = new PerformanceAnalyzer();
-        this.riskAdvisor = new RiskAdjustmentAdvisor();
-        this.portfolioOptimizer = new PortfolioOptimizer();
-        this.scenarioAnalyzer = new ScenarioAnalyzer();
+        // コア分析モジュール（遅延読み込み対応）
+        this.performanceAnalyzer = null;
+        this.riskAdvisor = null;
+        this.portfolioOptimizer = null;
+        this.scenarioAnalyzer = null;
+        
+        // 遅延初期化（読み込み順序を考慮）
+        setTimeout(() => {
+            this.initializeAnalysisModules();
+        }, 500);
         
         // 提案設定
         this.insightSettings = {
@@ -40,6 +45,43 @@ class ActionableInsightsManager {
         };
         
         console.log('💡 アクショナブルインサイトマネージャー初期化');
+    }
+
+    /**
+     * 分析モジュールの初期化
+     */
+    initializeAnalysisModules() {
+        try {
+            if (typeof PerformanceAnalyzer !== 'undefined') {
+                this.performanceAnalyzer = new PerformanceAnalyzer();
+                console.log('✅ PerformanceAnalyzer 初期化完了');
+            } else {
+                console.warn('⚠️ PerformanceAnalyzer が見つかりません');
+            }
+            
+            if (typeof RiskAdjustmentAdvisor !== 'undefined') {
+                this.riskAdvisor = new RiskAdjustmentAdvisor();
+                console.log('✅ RiskAdjustmentAdvisor 初期化完了');
+            } else {
+                console.warn('⚠️ RiskAdjustmentAdvisor が見つかりません');
+            }
+            
+            if (typeof PortfolioOptimizer !== 'undefined') {
+                this.portfolioOptimizer = new PortfolioOptimizer();
+                console.log('✅ PortfolioOptimizer 初期化完了');
+            } else {
+                console.warn('⚠️ PortfolioOptimizer が見つかりません');
+            }
+            
+            if (typeof ScenarioAnalyzer !== 'undefined') {
+                this.scenarioAnalyzer = new ScenarioAnalyzer();
+                console.log('✅ ScenarioAnalyzer 初期化完了');
+            } else {
+                console.warn('⚠️ ScenarioAnalyzer が見つかりません');
+            }
+        } catch (error) {
+            console.error('❌ 分析モジュール初期化エラー:', error);
+        }
     }
 
     /**
@@ -119,26 +161,26 @@ class ActionableInsightsManager {
             const newInsights = [];
             
             // パフォーマンス分析
-            if (this.insightSettings.enablePerformanceAnalysis) {
-                const performanceInsights = await this.performanceAnalyzer.analyzePerformance();
+            if (this.insightSettings.enablePerformanceAnalysis && this.performanceAnalyzer) {
+                const performanceInsights = await this.performanceAnalyzer.performAnalysis();
                 newInsights.push(...performanceInsights);
             }
             
             // リスク調整分析
-            if (this.insightSettings.enableRiskAdjustment) {
-                const riskInsights = await this.riskAdvisor.analyzeRisk();
+            if (this.insightSettings.enableRiskAdjustment && this.riskAdvisor) {
+                const riskInsights = await this.riskAdvisor.performAnalysis();
                 newInsights.push(...riskInsights);
             }
             
             // ポートフォリオ最適化
-            if (this.insightSettings.enablePortfolioOptimization) {
-                const portfolioInsights = await this.portfolioOptimizer.analyzePortfolio();
+            if (this.insightSettings.enablePortfolioOptimization && this.portfolioOptimizer) {
+                const portfolioInsights = await this.portfolioOptimizer.performAnalysis();
                 newInsights.push(...portfolioInsights);
             }
             
             // シナリオ分析
-            if (this.insightSettings.enableScenarioAnalysis) {
-                const scenarioInsights = await this.scenarioAnalyzer.analyzeScenarios();
+            if (this.insightSettings.enableScenarioAnalysis && this.scenarioAnalyzer) {
+                const scenarioInsights = await this.scenarioAnalyzer.performAnalysis();
                 newInsights.push(...scenarioInsights);
             }
             

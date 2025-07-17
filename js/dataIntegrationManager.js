@@ -146,7 +146,15 @@ class DataIntegrationManager {
      * 結果データの取得
      */
     getResultData() {
-        return this.loadData(this.integrationSettings.resultHistoryKey);
+        const resultData = this.loadData(this.integrationSettings.resultHistoryKey);
+        
+        // 結果データが存在しない場合は空配列を返す
+        if (!resultData || !Array.isArray(resultData)) {
+            console.log('📊 投資結果データが未入力のため、空配列を返します');
+            return [];
+        }
+        
+        return resultData;
     }
 
     /**
@@ -206,7 +214,12 @@ class DataIntegrationManager {
      */
     validateResultData(resultData) {
         if (!resultData || !Array.isArray(resultData)) {
-            console.warn('⚠️ 結果データが無効です');
+            console.log('📊 結果データが空のため、空配列を返します');
+            return [];
+        }
+        
+        if (resultData.length === 0) {
+            console.log('📊 結果データが0件のため、空配列を返します');
             return [];
         }
         
@@ -477,7 +490,7 @@ class DataIntegrationManager {
             
             // 候補評価システムの更新
             if (window.candidateEvaluationVisualizer) {
-                window.candidateEvaluationVisualizer.refreshAnalysis();
+                window.candidateEvaluationVisualizer.refreshEvaluation();
                 console.log('🔄 候補評価システム更新完了');
             }
             

@@ -78,10 +78,17 @@ class Phase6To7Bridge {
             console.warn('⚠️ DataIntegrationManager が見つかりません');
         }
         
-        // 投資結果記録システム
+        // 投資結果記録システム（遅延読み込み対応）
         this.investmentResultRecorder = window.investmentResultRecorder;
         if (!this.investmentResultRecorder) {
-            console.warn('⚠️ InvestmentResultRecorder が見つかりません');
+            console.warn('⚠️ InvestmentResultRecorder が見つかりません - 遅延読み込みを待機中');
+            // 遅延読み込みを試行
+            setTimeout(() => {
+                this.investmentResultRecorder = window.investmentResultRecorder;
+                if (this.investmentResultRecorder) {
+                    console.log('✅ InvestmentResultRecorder 遅延読み込み成功');
+                }
+            }, 100);
         }
         
         // 結果入力UI
@@ -285,11 +292,12 @@ class Phase6To7Bridge {
         
         // 候補評価システム
         if (window.candidateEvaluationVisualizer) {
-            updatePromises.push(
-                window.candidateEvaluationVisualizer.refreshAnalysis().catch(error => {
-                    console.warn('⚠️ 候補評価システム更新エラー:', error);
-                })
-            );
+            try {
+                window.candidateEvaluationVisualizer.refreshEvaluation();
+                console.log('✅ 候補評価システム更新完了');
+            } catch (error) {
+                console.warn('⚠️ 候補評価システム更新エラー:', error);
+            }
         }
         
         // パフォーマンスチャート
@@ -745,10 +753,13 @@ class Phase6To7Bridge {
 // グローバル公開
 window.Phase6To7Bridge = Phase6To7Bridge;
 
-// 自動初期化
+// 自動初期化（遅延対応）
 window.addEventListener('DOMContentLoaded', () => {
     if (!window.phase6To7Bridge) {
-        window.phase6To7Bridge = new Phase6To7Bridge();
-        window.phase6To7Bridge.initialize();
+        // 他のシステムの初期化完了を待つ
+        setTimeout(() => {
+            window.phase6To7Bridge = new Phase6To7Bridge();
+            window.phase6To7Bridge.initialize();
+        }, 200);
     }
 });

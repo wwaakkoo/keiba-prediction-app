@@ -422,6 +422,32 @@
                     </p>
                 </div>
                 <div id="learningFeedback" style="margin-top: 15px;"></div>
+            </div>
+            
+            <!-- Phase 7: 投資結果記録 -->
+            <div style="background: #f3e5f5; padding: 15px; border-radius: 8px; margin-top: 20px; border-left: 4px solid #9c27b0;">
+                <h4 style="color: #7b1fa2; margin: 0 0 10px 0;">📝 Phase 7: 投資結果記録</h4>
+                <p style="margin: 0 0 15px 0; font-size: 0.9em; color: #555;">
+                    Kelly推奨結果を実際の投資に活用した後、その結果を記録してシステムの学習・改善に活用します。
+                </p>
+                <div class="btn-grid">
+                    <button class="btn" style="background: linear-gradient(45deg, #9c27b0, #7b1fa2);" onclick="window.resultInputUI && window.resultInputUI.showResultInput()">
+                        📊 投資結果を入力
+                    </button>
+                    <button class="btn" style="background: linear-gradient(45deg, #2196f3, #1976d2);" onclick="window.actionableInsightsManager && window.actionableInsightsManager.refreshInsights()">
+                        💡 分析を更新
+                    </button>
+                    <button class="btn" style="background: linear-gradient(45deg, #ff9800, #f57c00);" onclick="showInvestmentHistory()">
+                        📋 投資履歴
+                    </button>
+                    <button class="btn" style="background: linear-gradient(45deg, #4caf50, #2e7d32);" onclick="window.dataIntegrationManager && window.dataIntegrationManager.manualIntegration()">
+                        🔄 データ統合
+                    </button>
+                    <button class="btn" style="background: linear-gradient(45deg, #795548, #5d4037);" onclick="window.phase6To7Bridge && window.phase6To7Bridge.manualBridgeExecution()">
+                        🌉 ブリッジ実行
+                    </button>
+                </div>
+            </div>
                 
                 <!-- AI判断分析グラフ表示エリア -->
                 <div id="learningGraphsSection" class="section" style="display: none; background: #f8f9fa; border-left: 4px solid #ff9800; margin-top: 20px;">
@@ -573,31 +599,6 @@
             
             <!-- パフォーマンス分析 -->
             <div id="capitalPerformanceAnalysis"></div>
-            
-            <!-- Phase 7: 投資結果記録 -->
-            <div style="background: #f3e5f5; padding: 15px; border-radius: 8px; margin-top: 20px; border-left: 4px solid #9c27b0;">
-                <h4 style="color: #7b1fa2; margin: 0 0 10px 0;">📝 Phase 7: 投資結果記録</h4>
-                <p style="margin: 0 0 15px 0; font-size: 0.9em; color: #555;">
-                    Kelly推奨結果を実際の投資に活用した後、その結果を記録してシステムの学習・改善に活用します。
-                </p>
-                <div class="btn-grid">
-                    <button class="btn" style="background: linear-gradient(45deg, #9c27b0, #7b1fa2);" onclick="window.resultInputUI && window.resultInputUI.showResultInput()">
-                        📊 投資結果を入力
-                    </button>
-                    <button class="btn" style="background: linear-gradient(45deg, #2196f3, #1976d2);" onclick="window.actionableInsightsManager && window.actionableInsightsManager.refreshInsights()">
-                        💡 分析を更新
-                    </button>
-                    <button class="btn" style="background: linear-gradient(45deg, #ff9800, #f57c00);" onclick="showInvestmentHistory()">
-                        📋 投資履歴
-                    </button>
-                    <button class="btn" style="background: linear-gradient(45deg, #4caf50, #2e7d32);" onclick="window.dataIntegrationManager && window.dataIntegrationManager.manualIntegration()">
-                        🔄 データ統合
-                    </button>
-                    <button class="btn" style="background: linear-gradient(45deg, #795548, #5d4037);" onclick="window.phase6To7Bridge && window.phase6To7Bridge.manualBridgeExecution()">
-                        🌉 ブリッジ実行
-                    </button>
-                </div>
-            </div>
         </div>
     </div>
 
@@ -666,15 +667,17 @@
     <script src="js/candidateEvaluationVisualizer.js"></script>
     <script src="js/realTimeUpdateManager.js"></script>
     <script src="js/responsiveManager.js"></script>
-    <script src="js/performanceAnalyzer.js"></script>
-    <script src="js/riskAdjustmentAdvisor.js"></script>
-    <script src="js/portfolioOptimizer.js"></script>
-    <script src="js/scenarioAnalyzer.js"></script>
     <script src="js/investmentResultRecorder.js"></script>
     <script src="js/resultInputUI.js"></script>
     <script src="js/dataIntegrationManager.js"></script>
     <script src="js/phase6To7Bridge.js"></script>
+    <!-- AnalysisModule定義後に分析モジュールを読み込み -->
     <script src="js/actionableInsightsManager.js"></script>
+    <script src="js/performanceAnalyzer.js"></script>
+    <script src="js/riskAdjustmentAdvisor.js"></script>
+    <script src="js/portfolioOptimizer.js"></script>
+    <script src="js/scenarioAnalyzer.js"></script>
+    <script src="js/kellyFlexibilityUI.js"></script>
     <!-- ブラウザ互換性・安全性システム -->
     <script src="js/browserCompatibility.js"></script>
     <script src="js/main.js"></script>

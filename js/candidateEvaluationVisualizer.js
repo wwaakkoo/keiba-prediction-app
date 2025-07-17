@@ -36,6 +36,7 @@ class CandidateEvaluationVisualizer {
         this.createEvaluationContainer();
         this.loadEvaluationData();
         this.renderEvaluationProcess();
+        this.setupKellyDataListener();
         
         console.log('✅ 候補評価プロセス可視化初期化完了');
     }
@@ -91,9 +92,28 @@ class CandidateEvaluationVisualizer {
             
             if (kellyResults) {
                 const parsedResults = JSON.parse(kellyResults);
-                this.currentEvaluationData = this.parseEvaluationData(parsedResults);
+                console.log('🔍 Kelly結果データ確認:', parsedResults);
+                
+                // データ構造の詳細確認
+                const hasMainCandidates = parsedResults.mainCandidates && parsedResults.mainCandidates.length > 0;
+                const hasOptionalCandidates = parsedResults.optionalCandidates && parsedResults.optionalCandidates.length > 0;
+                const hasRecommendations = parsedResults.recommendations && parsedResults.recommendations.length > 0;
+                
+                console.log('🔍 候補データ確認:', {
+                    mainCandidates: hasMainCandidates ? parsedResults.mainCandidates.length : 0,
+                    optionalCandidates: hasOptionalCandidates ? parsedResults.optionalCandidates.length : 0,
+                    recommendations: hasRecommendations ? parsedResults.recommendations.length : 0
+                });
+                
+                if (hasMainCandidates || hasOptionalCandidates || hasRecommendations) {
+                    this.currentEvaluationData = this.parseEvaluationData(parsedResults);
+                } else {
+                    console.log('⚠️ Kelly結果にデータがありません');
+                    this.currentEvaluationData = this.generateNoDataMessage();
+                }
             } else {
                 // Kelly計算が実行されていない場合の適切な処理
+                console.log('⚠️ Kelly計算結果がありません');
                 this.currentEvaluationData = this.generateNoDataMessage();
                 
                 // 惜しい候補の詳細情報を取得
@@ -123,18 +143,65 @@ class CandidateEvaluationVisualizer {
      * Kelly結果データを評価プロセス用に変換
      */
     parseEvaluationData(kellyResults) {
-        const allCandidates = [
-            ...(kellyResults.mainCandidates || []),
-            ...(kellyResults.optionalCandidates || []),
-            ...(kellyResults.rejectedCandidates || [])
-        ];
+        console.log('🔍 Kelly結果データ解析開始:', kellyResults);
+        
+        // Phase 6のデータ構造に対応
+        let mainCandidates = [];
+        let optionalCandidates = [];
+        let rejectedCandidates = [];
+        
+        // recommendations配列からデータを抽出
+        if (kellyResults.recommendations && Array.isArray(kellyResults.recommendations)) {
+            kellyResults.recommendations.forEach(rec => {
+                const candidate = {
+                    horse: {
+                        name: rec.horse?.name || rec.horseName || `${rec.number}番`,
+                        number: rec.number || rec.horse?.number
+                    },
+                    kellyRatio: rec.kellyRatio || 0,
+                    expectedValue: rec.expectedValue || 0,
+                    winProbability: rec.winProbability || 0,
+                    odds: rec.odds || 0,
+                    investment: rec.investment || 0,
+                    recommendation: rec.recommendation || 'skip'
+                };
+                
+                if (rec.recommendation === 'strong' || rec.recommendation === 'moderate') {
+                    mainCandidates.push(candidate);
+                } else if (rec.recommendation === 'light') {
+                    optionalCandidates.push(candidate);
+                } else {
+                    rejectedCandidates.push(candidate);
+                }
+            });
+        }
+        
+        // 既存のmainCandidates/optionalCandidatesがある場合はそれも使用
+        if (kellyResults.mainCandidates) {
+            mainCandidates = [...mainCandidates, ...kellyResults.mainCandidates];
+        }
+        if (kellyResults.optionalCandidates) {
+            optionalCandidates = [...optionalCandidates, ...kellyResults.optionalCandidates];
+        }
+        if (kellyResults.rejectedCandidates) {
+            rejectedCandidates = [...rejectedCandidates, ...kellyResults.rejectedCandidates];
+        }
+        
+        const allCandidates = [...mainCandidates, ...optionalCandidates, ...rejectedCandidates];
+        
+        console.log('📊 解析結果:', {
+            mainCandidates: mainCandidates.length,
+            optionalCandidates: optionalCandidates.length,
+            rejectedCandidates: rejectedCandidates.length,
+            total: allCandidates.length
+        });
 
         return {
             evaluationTimestamp: new Date().toISOString(),
             totalCandidates: allCandidates.length,
-            mainCandidates: kellyResults.mainCandidates || [],
-            optionalCandidates: kellyResults.optionalCandidates || [],
-            rejectedCandidates: kellyResults.rejectedCandidates || [],
+            mainCandidates: mainCandidates,
+            optionalCandidates: optionalCandidates,
+            rejectedCandidates: rejectedCandidates,
             candidates: allCandidates.map(candidate => this.enrichCandidateData(candidate)),
             portfolioSummary: {
                 totalInvestment: kellyResults.totalInvestment || 0,
@@ -327,13 +394,28 @@ class CandidateEvaluationVisualizer {
             return;
         }
 
+        console.log('🔍 評価プロセスレンダリング開始:', {
+            currentEvaluationData: this.currentEvaluationData,
+            noDataReason: this.currentEvaluationData?.noDataReason,
+            totalCandidates: this.currentEvaluationData?.totalCandidates,
+            mainCandidates: this.currentEvaluationData?.mainCandidates?.length,
+            optionalCandidates: this.currentEvaluationData?.optionalCandidates?.length,
+            candidates: this.currentEvaluationData?.candidates?.length
+        });
+
         // Kelly推奨なしの場合の特別表示
         if (this.currentEvaluationData.noDataReason === 'kelly_no_recommendations') {
+            console.log('🔍 No data reason検出、NoRecommendationsMessage表示');
             contentDiv.innerHTML = this.renderNoRecommendationsMessage();
             return;
         }
 
         const { candidates, portfolioSummary } = this.currentEvaluationData;
+
+        console.log('🔍 候補データで詳細表示:', {
+            candidates: candidates?.length || 0,
+            portfolioSummary: portfolioSummary
+        });
 
         contentDiv.innerHTML = `
             ${this.renderEvaluationSummary()}
@@ -388,10 +470,17 @@ class CandidateEvaluationVisualizer {
                     <div class="technical-info">
                         <h4>🔍 Kelly推奨基準:</h4>
                         <ul class="criteria-list">
-                            <li><strong>メイン候補:</strong> Kelly比率 ≥ 1.0%</li>
-                            <li><strong>オプショナル候補:</strong> 期待値 ≥ 1.05</li>
+                            <li><strong>メイン候補:</strong> Kelly比率 ≥ ${this.getCurrentKellyThreshold()}%</li>
+                            <li><strong>オプショナル候補:</strong> 期待値 ≥ ${this.getCurrentExpectedValueThreshold()}</li>
                             <li><strong>投資対象外:</strong> 上記基準未満</li>
                         </ul>
+                        <div class="criteria-mode">
+                            <span class="mode-label">現在のモード:</span>
+                            <span class="mode-value">${this.getCurrentFlexibilityMode()}</span>
+                            <button onclick="kellyFlexibilityUI.initialize(); kellyFlexibilityUI.renderFlexibilitySettings();" class="mode-settings-btn">
+                                ⚙️ 基準設定
+                            </button>
+                        </div>
                     </div>
                     
                     <div class="demo-note">
@@ -451,17 +540,76 @@ class CandidateEvaluationVisualizer {
      * システム状況チェック
      */
     checkHorseDataExists() {
-        return (window.horses && window.horses.length > 0) || 
-               (typeof HorseManager !== 'undefined' && HorseManager.getAllHorses && HorseManager.getAllHorses().length > 0);
+        // 複数の馬データ存在パターンをチェック
+        const patterns = [
+            // HorseManagerの馬データ
+            typeof HorseManager !== 'undefined' && HorseManager.horses && HorseManager.horses.length > 0,
+            // HorseManagerのgetAllHorses
+            typeof HorseManager !== 'undefined' && HorseManager.getAllHorses && HorseManager.getAllHorses().length > 0,
+            // グローバル変数のhorsesまたはcurrentHorses
+            (typeof window !== 'undefined' && window.horses && window.horses.length > 0),
+            (typeof window !== 'undefined' && window.currentHorses && window.currentHorses.length > 0),
+            // lastPredictionsがある場合は馬データもあるとみなす
+            (typeof window !== 'undefined' && window.lastPredictions && window.lastPredictions.length > 0)
+        ];
+        
+        const hasData = patterns.some(pattern => pattern);
+        console.log('🔍 馬データ存在チェック:', {
+            HorseManager_horses: typeof HorseManager !== 'undefined' && HorseManager.horses?.length || 0,
+            HorseManager_getAllHorses: typeof HorseManager !== 'undefined' && HorseManager.getAllHorses?.()?.length || 0,
+            window_horses: window.horses?.length || 0,
+            window_currentHorses: window.currentHorses?.length || 0,
+            window_lastPredictions: window.lastPredictions?.length || 0,
+            result: hasData
+        });
+        
+        return hasData;
     }
 
     checkPredictionsExist() {
-        return (window.lastPredictions && window.lastPredictions.length > 0) ||
-               (typeof PredictionEngine !== 'undefined' && PredictionEngine.getCurrentPredictions && PredictionEngine.getCurrentPredictions().length > 0);
+        const hasPredictions = (window.lastPredictions && window.lastPredictions.length > 0) ||
+                              (typeof PredictionEngine !== 'undefined' && PredictionEngine.getCurrentPredictions && PredictionEngine.getCurrentPredictions().length > 0);
+        
+        console.log('🔍 予測データ存在チェック:', {
+            lastPredictions: window.lastPredictions?.length || 0,
+            PredictionEngine: typeof PredictionEngine !== 'undefined' && PredictionEngine.getCurrentPredictions?.()?.length || 0,
+            result: hasPredictions
+        });
+        
+        return hasPredictions;
     }
 
+
     checkKellyResultsExist() {
-        return localStorage.getItem('kellyPortfolioResults') !== null;
+        const kellyResults = localStorage.getItem('kellyPortfolioResults');
+        if (!kellyResults) {
+            console.log('🔍 Kelly結果チェック: データなし');
+            return false;
+        }
+        
+        try {
+            const parsedResults = JSON.parse(kellyResults);
+            console.log('🔍 Kelly結果チェック:', parsedResults);
+            
+            // 複数のパターンをチェック
+            const hasMainCandidates = parsedResults.mainCandidates && parsedResults.mainCandidates.length > 0;
+            const hasOptionalCandidates = parsedResults.optionalCandidates && parsedResults.optionalCandidates.length > 0;
+            const hasRecommendations = parsedResults.recommendations && parsedResults.recommendations.length > 0;
+            
+            console.log('🔍 Kelly結果詳細:', {
+                mainCandidates: hasMainCandidates ? parsedResults.mainCandidates.length : 0,
+                optionalCandidates: hasOptionalCandidates ? parsedResults.optionalCandidates.length : 0,
+                recommendations: hasRecommendations ? parsedResults.recommendations.length : 0
+            });
+            
+            const hasResults = hasMainCandidates || hasOptionalCandidates || hasRecommendations;
+            console.log('🔍 Kelly結果判定:', hasResults);
+            
+            return hasResults;
+        } catch (error) {
+            console.warn('⚠️ Kelly結果の解析に失敗:', error);
+            return false;
+        }
     }
 
     /**
@@ -565,15 +713,17 @@ class CandidateEvaluationVisualizer {
      * 候補カードのレンダリング
      */
     renderCandidateCard(candidate) {
-        const isExpanded = this.expandedCandidates.has(candidate.horse.number);
+        // 馬番号の安全な取得
+        const horseNumber = candidate.horse?.number || candidate.horse?.horseNumber || candidate.horse?.num || 'undefined';
+        const isExpanded = this.expandedCandidates.has(horseNumber);
         const decision = candidate.decision;
         
         return `
-            <div class="candidate-card ${decision.class}" data-horse-number="${candidate.horse.number}">
-                <div class="card-header" onclick="candidateEvaluationVisualizer.toggleCandidateDetails(${candidate.horse.number})">
+            <div class="candidate-card ${decision.class}" data-horse-number="${horseNumber}">
+                <div class="card-header" onclick="candidateEvaluationVisualizer.toggleCandidateDetails('${horseNumber}')">
                     <div class="horse-info">
                         <span class="horse-name">${candidate.horse.name}</span>
-                        <span class="horse-number">#${candidate.horse.number}</span>
+                        <span class="horse-number">#${horseNumber}</span>
                     </div>
                     <div class="decision-badge ${decision.class}">
                         ${decision.label}
@@ -783,6 +933,72 @@ class CandidateEvaluationVisualizer {
                 conflictResolutions: []
             },
             noDataReason: 'kelly_no_recommendations'
+        };
+    }
+
+    /**
+     * 現在のKelly閾値を取得
+     */
+    getCurrentKellyThreshold() {
+        try {
+            const kellyManager = new KellyCapitalManager();
+            return (kellyManager.constraints.minKellyThreshold * 100).toFixed(1);
+        } catch (error) {
+            return '1.0';
+        }
+    }
+
+    /**
+     * 現在の期待値閾値を取得
+     */
+    getCurrentExpectedValueThreshold() {
+        try {
+            const kellyManager = new KellyCapitalManager();
+            return kellyManager.constraints.optionalExpectedValueThreshold.toFixed(2);
+        } catch (error) {
+            return '1.05';
+        }
+    }
+
+    /**
+     * 現在の柔軟化モードを取得
+     */
+    getCurrentFlexibilityMode() {
+        try {
+            const kellyManager = new KellyCapitalManager();
+            const mode = kellyManager.flexibilitySettings[kellyManager.currentFlexibilityMode];
+            return mode ? mode.description : '厳格基準';
+        } catch (error) {
+            return '厳格基準';
+        }
+    }
+
+    /**
+     * Kelly計算完了の監視とPhase 7自動更新
+     */
+    setupKellyDataListener() {
+        // localStorageの変更を監視
+        window.addEventListener('storage', (event) => {
+            if (event.key === 'kellyPortfolioResults') {
+                console.log('🔄 Kelly計算完了を検出、Phase 7を自動更新');
+                setTimeout(() => {
+                    this.refreshEvaluation();
+                }, 500);
+            }
+        });
+        
+        // 同じページ内でのlocalStorage変更を監視
+        const originalSetItem = localStorage.setItem;
+        localStorage.setItem = function(key, value) {
+            if (key === 'kellyPortfolioResults') {
+                console.log('🔄 Kelly計算完了を検出、Phase 7を自動更新');
+                setTimeout(() => {
+                    if (window.candidateEvaluationVisualizer) {
+                        window.candidateEvaluationVisualizer.refreshEvaluation();
+                    }
+                }, 500);
+            }
+            return originalSetItem.call(this, key, value);
         };
     }
 

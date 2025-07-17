@@ -74,8 +74,8 @@ class ExpectedValueCalculator {
         // リスク係数計算（1.0〜2.0）
         const riskFactor = this.calculateRiskFactor(horse, analysis);
         
-        // 新期待値計算式
-        const rawExpectedValue = (analysis.estimatedOdds / 100) * logisticProbability * analysis.confidenceScore;
+        // 新期待値計算式（修正版）
+        const rawExpectedValue = horse.odds * logisticProbability;
         
         // 超高オッズ馬の期待値制限を強化（段階的制限）
         let oddsBasedCap;
@@ -96,18 +96,26 @@ class ExpectedValueCalculator {
         analysis.expectedValue = Math.min(rawExpectedValue, oddsBasedCap) / riskFactor;
         
         // ケリー係数チェック（最適賭け率）
-        analysis.kellyRatio = this.calculateKellyRatio(analysis.expectedValue, horse.odds, logisticProbability);
+        // Phase6で計算された正規化勝率を優先使用
+        const winProbability = horse.winProbability || logisticProbability;
+        analysis.kellyRatio = this.calculateKellyRatio(analysis.expectedValue, horse.odds, winProbability);
         
-        // 超高オッズ馬のケリー係数閾値を強化
-        let kellyThreshold;
-        if (horse.odds >= 50) {
-            kellyThreshold = 0.05;  // 50倍以上：5%以上必要
-        } else if (horse.odds >= 20) {
-            kellyThreshold = 0.03;  // 20-49倍：3%以上必要
-        } else if (horse.odds >= 10) {
-            kellyThreshold = 0.02;  // 10-19倍：2%以上必要
-        } else {
-            kellyThreshold = 0.01;  // 10倍未満：1%以上必要
+        // Kelly閾値の動的設定（柔軟化設定を優先）
+        let kellyThreshold = 0.01;
+        
+        // Kelly基準柔軟化システムから現在の基準を取得
+        try {
+            if (typeof KellyCapitalManager !== 'undefined') {
+                const kellyManager = new KellyCapitalManager();
+                kellyThreshold = kellyManager.constraints.minKellyThreshold;
+                console.log(`📊 現在のKelly閾値: ${(kellyThreshold * 100).toFixed(2)}% (${kellyManager.currentFlexibilityMode})`);
+            } else {
+                throw new Error('KellyCapitalManager未定義');
+            }
+        } catch (error) {
+            console.warn('⚠️ Kelly柔軟化設定の取得に失敗、基本閾値を使用');
+            // フォールバック：基本閾値（超厳格基準を考慮）
+            kellyThreshold = 0.02;  // デフォルト2%（超厳格相当）
         }
         
         analysis.shouldDisplay = analysis.kellyRatio >= kellyThreshold;
@@ -271,10 +279,11 @@ class ExpectedValueCalculator {
         // ケリー基準: f = (bp - q) / b
         const kellyRatio = (b * p - q) / b;
         
-        // 期待値による補正
-        const adjustedKelly = kellyRatio * Math.min(1.0, expectedValue);
+        // デバッグ情報を出力
+        console.log(`🔍 ケリー計算詳細: オッズ=${odds}, 勝率=${(p*100).toFixed(2)}%, b=${b.toFixed(2)}, bp-q=${(b*p-q).toFixed(4)}, ケリー=${(kellyRatio*100).toFixed(4)}%`);
         
-        return Math.max(0, adjustedKelly);
+        // ケリー係数が負の場合は投資しない
+        return Math.max(0, kellyRatio);
     }
     
     /**

@@ -257,6 +257,45 @@ class PredictionEngine {
             EnhancedRecommendationSystem.displayEnhancedRecommendations(predictions);
             this.updateLearningInputMode();
         }
+        
+        // Phase 4-6の自動実行
+        console.log('🚀 Phase 4-6自動実行開始');
+        
+        // Phase 4: 詳細分析
+        if (typeof generateDetailedAnalysis === 'function') {
+            setTimeout(() => {
+                console.log('📊 Phase 4: 詳細分析実行中...');
+                generateDetailedAnalysis();
+                console.log('✅ Phase 4: 詳細分析完了');
+                
+                // Phase 5: 拡張推奨
+                setTimeout(() => {
+                    if (typeof generateEnhancedRecommendations === 'function') {
+                        console.log('🔍 Phase 5: 拡張推奨実行中...');
+                        generateEnhancedRecommendations();
+                        console.log('✅ Phase 5: 拡張推奨完了');
+                        
+                        // Phase 6: Kelly計算
+                        setTimeout(() => {
+                            if (typeof generateKellyPortfolio === 'function') {
+                                console.log('💰 Phase 6: Kelly計算実行中...');
+                                generateKellyPortfolio();
+                                console.log('✅ Phase 6: Kelly計算完了');
+                                
+                                // 候補評価プロセスの更新
+                                setTimeout(() => {
+                                    if (typeof candidateEvaluationVisualizer !== 'undefined') {
+                                        candidateEvaluationVisualizer.refreshEvaluation();
+                                        console.log('✅ 候補評価プロセス更新完了');
+                                    }
+                                    console.log('🎉 Phase 4-6自動実行完了');
+                                }, 300);
+                            }
+                        }, 500);
+                    }
+                }, 500);
+            }, 500);
+        }
     }
 
     static calculateHorsePredictions(horses) {

@@ -12,10 +12,49 @@ class ResultInputUI {
         this.payoutInputs = [];
         this.isRecording = false; // 重複実行防止フラグ
         
-        // 投資結果記録システムとの連携
+        // 投資結果記録システムとの連携（遅延初期化対応）
         this.recorder = window.investmentResultRecorder;
         
+        // 記録システムが未初期化の場合の対処
+        if (!this.recorder) {
+            console.log('⚠️ 投資結果記録システムが未初期化、緊急システムを作成');
+            this.createEmergencyRecorder();
+        }
+        
         console.log('📝 結果入力UI初期化完了');
+    }
+
+    /**
+     * 投資結果記録システムの遅延初期化
+     */
+    initializeRecorderLater() {
+        const maxAttempts = 10;
+        let attempts = 0;
+        
+        const checkRecorder = () => {
+            attempts++;
+            if (window.investmentResultRecorder) {
+                this.recorder = window.investmentResultRecorder;
+                console.log('✅ 投資結果記録システムの遅延初期化成功');
+                return;
+            }
+            
+            if (attempts < maxAttempts) {
+                setTimeout(checkRecorder, 500);
+            } else {
+                console.warn('⚠️ 投資結果記録システムの初期化に失敗（タイムアウト）');
+                // 手動初期化を試行
+                try {
+                    window.investmentResultRecorder = new InvestmentResultRecorder();
+                    this.recorder = window.investmentResultRecorder;
+                    console.log('✅ 投資結果記録システムの手動初期化成功');
+                } catch (error) {
+                    console.error('❌ 投資結果記録システムの手動初期化失敗:', error);
+                }
+            }
+        };
+        
+        setTimeout(checkRecorder, 100);
     }
 
     /**
@@ -600,19 +639,32 @@ class ResultInputUI {
 
         let html = '';
         
-        if (kellyResults.candidates && kellyResults.candidates.length > 0) {
-            kellyResults.candidates.forEach(candidate => {
+        // Kelly推奨候補の取得（複数のデータ構造に対応）
+        const candidates = kellyResults.candidates || 
+                          kellyResults.recommendations || 
+                          kellyResults.mainCandidates || 
+                          [];
+        
+        if (candidates && candidates.length > 0) {
+            candidates.forEach(candidate => {
+                // 候補データの正規化
+                const horseName = candidate.horse?.name || candidate.name || '未定義';
+                const horseNumber = candidate.horse?.number || candidate.horse?.horseNumber || candidate.horse?.num || 'undefined';
+                const kellyRatio = candidate.kellyResult?.kellyRatio || candidate.kellyRatio || 0;
+                const expectedValue = candidate.expectedValue || candidate.kellyResult?.expectedValue || 0;
+                const allocation = candidate.kellyResult?.amount || candidate.allocation || 0;
+                
                 html += `
                     <div class="kelly-recommendation-item">
                         <div class="recommendation-info">
-                            <div class="recommendation-name">${candidate.name || '候補' + candidate.id}</div>
+                            <div class="recommendation-name">${horseName} (${horseNumber}番)</div>
                             <div class="recommendation-details">
-                                Kelly比率: ${(candidate.kellyRatio * 100).toFixed(1)}% | 
-                                期待値: ${candidate.expectedValue?.toFixed(2) || 'N/A'}
+                                Kelly比率: ${(kellyRatio * 100).toFixed(1)}% | 
+                                期待値: ${expectedValue?.toFixed(2) || 'N/A'}
                             </div>
                         </div>
                         <div class="recommendation-amount">
-                            ${candidate.allocation?.toFixed(0) || 0}円
+                            ${allocation?.toFixed(0) || 0}円
                         </div>
                     </div>
                 `;
@@ -643,24 +695,35 @@ class ResultInputUI {
             </div>
         `;
         
-        // Kelly推奨候補の入力行
-        if (kellyResults.candidates && kellyResults.candidates.length > 0) {
-            kellyResults.candidates.forEach((candidate, index) => {
+        // Kelly推奨候補の入力行（統一化）
+        const inputCandidates = kellyResults.candidates || 
+                               kellyResults.recommendations || 
+                               kellyResults.mainCandidates || 
+                               [];
+        
+        if (inputCandidates && inputCandidates.length > 0) {
+            inputCandidates.forEach((candidate, index) => {
+                // 候補データの正規化
+                const horseName = candidate.horse?.name || candidate.name || '未定義';
+                const horseNumber = candidate.horse?.number || candidate.horse?.horseNumber || candidate.horse?.num || 'undefined';
+                const allocation = candidate.kellyResult?.amount || candidate.allocation || 0;
+                const candidateId = candidate.id || candidate.horse?.id || index;
+                
                 html += `
                     <div class="result-input-row">
-                        <div class="candidate-name">${candidate.name || '候補' + candidate.id}</div>
+                        <div class="candidate-name">${horseName} (${horseNumber}番)</div>
                         <input type="number" 
                                placeholder="投資額" 
-                               value="${candidate.allocation?.toFixed(0) || ''}"
-                               data-candidate-id="${candidate.id || index}"
+                               value="${allocation?.toFixed(0) || ''}"
+                               data-candidate-id="${candidateId}"
                                data-type="investment"
                                class="investment-input">
                         <input type="number" 
                                placeholder="配当額" 
-                               data-candidate-id="${candidate.id || index}"
+                               data-candidate-id="${candidateId}"
                                data-type="payout"
                                class="payout-input">
-                        <select data-candidate-id="${candidate.id || index}" 
+                        <select data-candidate-id="${candidateId}" 
                                 data-type="result"
                                 class="result-select">
                             <option value="">選択</option>
@@ -675,6 +738,105 @@ class ResultInputUI {
         }
 
         container.innerHTML = html;
+    }
+
+    /**
+     * 緊急対応：簡易記録システムの作成
+     */
+    createEmergencyRecorder() {
+        console.log('🚨 緊急対応：簡易記録システムを作成中...');
+        
+        // 既に作成されている場合はスキップ
+        if (this.recorder && this.recorder.constructor.name === 'EmergencyRecorder') {
+            console.log('✅ 緊急記録システムは既に作成済み');
+            return;
+        }
+        
+        // 簡易記録システムクラス
+        const EmergencyRecorder = class {
+            constructor() {
+                this.resultHistory = JSON.parse(localStorage.getItem('emergencyResultHistory') || '[]');
+                console.log('🚨 緊急記録システム初期化完了');
+            }
+            
+            recordRaceResult(resultData) {
+                try {
+                    const raceId = resultData.raceId || `race_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+                    
+                    // 重複記録チェック
+                    const existingRecord = this.resultHistory.find(r => r.raceId === raceId);
+                    if (existingRecord) {
+                        console.warn('⚠️ 重複記録をスキップ:', raceId);
+                        return { success: false, error: '既に記録済みのレースです' };
+                    }
+                    
+                    const record = {
+                        timestamp: new Date().toISOString(),
+                        raceId: raceId,
+                        raceName: resultData.raceName || '記録レース',
+                        raceDate: resultData.raceDate || new Date().toISOString().split('T')[0],
+                        candidates: resultData.candidates || [],
+                        totalInvestment: resultData.totalInvestment || 0,
+                        totalPayout: resultData.totalPayout || 0,
+                        netProfit: (resultData.totalPayout || 0) - (resultData.totalInvestment || 0),
+                        roi: resultData.totalInvestment > 0 ? 
+                             ((resultData.totalPayout - resultData.totalInvestment) / resultData.totalInvestment * 100) : 0
+                    };
+                    
+                    this.resultHistory.push(record);
+                    localStorage.setItem('emergencyResultHistory', JSON.stringify(this.resultHistory));
+                    
+                    console.log('🚨 緊急記録完了:', record);
+                    console.log('📝 記録履歴詳細:', this.resultHistory.map(r => ({
+                        race: r.raceName,
+                        date: r.raceDate,
+                        investment: r.totalInvestment,
+                        payout: r.totalPayout,
+                        profit: r.netProfit,
+                        candidates: r.candidates?.length || 0
+                    })));
+                    
+                    return {
+                        success: true,
+                        analysis: {
+                            totalInvestment: record.totalInvestment,
+                            totalPayout: record.totalPayout,
+                            netProfit: record.netProfit,
+                            roi: record.roi
+                        }
+                    };
+                } catch (error) {
+                    console.error('🚨 緊急記録エラー:', error);
+                    return { success: false, error: error.message };
+                }
+            }
+            
+            getStatistics() {
+                const totalInvestment = this.resultHistory.reduce((sum, r) => sum + (r.totalInvestment || 0), 0);
+                const totalPayout = this.resultHistory.reduce((sum, r) => sum + (r.totalPayout || 0), 0);
+                const totalProfit = totalPayout - totalInvestment;
+                const averageROI = totalInvestment > 0 ? (totalProfit / totalInvestment * 100) : 0;
+                const winCount = this.resultHistory.filter(r => (r.netProfit || 0) > 0).length;
+                const winRate = this.resultHistory.length > 0 ? (winCount / this.resultHistory.length * 100) : 0;
+                
+                return {
+                    totalRaces: this.resultHistory.length,
+                    totalInvestment: totalInvestment,
+                    totalPayout: totalPayout,
+                    totalProfit: totalProfit,
+                    averageROI: averageROI,
+                    winCount: winCount,
+                    winRate: winRate
+                };
+            }
+        };
+        
+        // 緊急記録システムを設定
+        this.recorder = new EmergencyRecorder();
+        window.investmentResultRecorder = this.recorder;
+        
+        console.log('✅ 緊急記録システム作成完了');
+        this.updateStatus('⚠️ 緊急記録システムで動作中', 'warning');
     }
 
     /**
@@ -742,6 +904,14 @@ class ResultInputUI {
         }
         
         this.isRecording = true;
+        let resultData = null; // resultDataをtry文の外で宣言
+        
+        // デバッグ情報の出力
+        console.log('🔍 記録開始時デバッグ情報:', {
+            recorderExists: !!this.recorder,
+            windowRecorderExists: !!window.investmentResultRecorder,
+            classExists: typeof InvestmentResultRecorder !== 'undefined'
+        });
         
         try {
             // 記録ボタンを無効化
@@ -752,7 +922,7 @@ class ResultInputUI {
                 recordBtn.style.opacity = '0.6';
             }
             
-            const resultData = this.collectResultData();
+            resultData = this.collectResultData();
             
             // データ収集でエラーが発生した場合
             if (!resultData.isValid) {
@@ -766,11 +936,33 @@ class ResultInputUI {
                 return;
             }
             
-            // 投資結果記録システムに送信
+            // 投資結果記録システムに送信（動的確認・強制初期化）
             if (!this.recorder) {
-                this.updateStatus('❌ 投資結果記録システムが利用できません', 'error');
-                this.resetRecordingState();
-                return;
+                // 再度チェック
+                this.recorder = window.investmentResultRecorder;
+                
+                // まだ存在しない場合は強制初期化
+                if (!this.recorder) {
+                    console.log('🔄 投資結果記録システムの強制初期化を実行');
+                    try {
+                        // スクリプト読み込み確認
+                        console.log('🔍 スクリプト読み込み確認:', {
+                            InvestmentResultRecorder: typeof InvestmentResultRecorder,
+                            windowInvestmentResultRecorder: typeof window.InvestmentResultRecorder,
+                            allWindowKeys: Object.keys(window).filter(key => key.includes('Investment')),
+                            allWindowKeys2: Object.keys(window).filter(key => key.includes('Result'))
+                        });
+                        
+                        // 直接緊急記録システムを作成
+                        console.log('🚨 元のクラスが利用できないため、緊急記録システムを作成');
+                        this.createEmergencyRecorder();
+                    } catch (error) {
+                        console.error('❌ 投資結果記録システムの強制初期化失敗:', error);
+                        this.updateStatus('❌ 投資結果記録システムが利用できません', 'error');
+                        this.resetRecordingState();
+                        return;
+                    }
+                }
             }
             
             // 記録実行
@@ -942,10 +1134,31 @@ class ResultInputUI {
             };
         }
         
+        // 総投資額・総配当額計算
+        const totalInvestment = actualInvestments.reduce((sum, inv) => sum + inv.amount, 0);
+        const totalPayout = actualPayouts.reduce((sum, pay) => sum + pay.amount, 0);
+        
+        // 候補データを構築
+        const candidates = actualInvestments.map(inv => {
+            const payout = actualPayouts.find(pay => pay.candidateId === inv.candidateId);
+            return {
+                candidateId: inv.candidateId,
+                candidateName: inv.candidateName,
+                investment: inv.amount,
+                payout: payout ? payout.amount : 0,
+                odds: inv.odds,
+                popularity: inv.popularity,
+                ticketType: inv.ticketType
+            };
+        });
+        
         const resultData = {
             ...this.currentRaceData,
             actualInvestments: actualInvestments,
             actualPayouts: actualPayouts,
+            candidates: candidates,
+            totalInvestment: totalInvestment,
+            totalPayout: totalPayout,
             isValid: true
         };
         
@@ -1210,9 +1423,9 @@ class ResultInputUI {
         
         const summary = `
             記録完了 | 
-            投資額: ${analysis.summary.totalInvestment}円 | 
-            配当: ${analysis.summary.totalPayout}円 | 
-            ROI: ${analysis.summary.roi.toFixed(1)}%
+            投資額: ${analysis.totalInvestment}円 | 
+            配当: ${analysis.totalPayout}円 | 
+            ROI: ${analysis.roi.toFixed(1)}%
         `;
         
         this.updateStatus(summary, 'success');
@@ -1335,10 +1548,22 @@ window.ResultInputUI = ResultInputUI;
 
 // 投資履歴表示機能
 function showInvestmentHistory() {
-    const recorder = window.investmentResultRecorder;
+    let recorder = window.investmentResultRecorder;
     if (!recorder) {
-        alert('投資結果記録システムが利用できません');
-        return;
+        // 手動初期化を試行
+        try {
+            if (typeof InvestmentResultRecorder !== 'undefined') {
+                window.investmentResultRecorder = new InvestmentResultRecorder();
+                recorder = window.investmentResultRecorder;
+            } else {
+                alert('投資結果記録システムが利用できません（クラス未定義）');
+                return;
+            }
+        } catch (error) {
+            console.error('投資結果記録システム初期化エラー:', error);
+            alert('投資結果記録システムが利用できません');
+            return;
+        }
     }
     
     const statistics = recorder.getStatistics();

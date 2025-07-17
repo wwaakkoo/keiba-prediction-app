@@ -147,6 +147,25 @@ function executePhase6Analysis(horses, predictions) {
             capital: kellyCapitalManager.currentCapital
         };
 
+        // Phase 7用のlocalStorage保存処理を追加
+        const phase7KellyData = {
+            mainCandidates: kellyRecommendations.filter(rec => rec.kellyResult.recommendation === 'strong_buy' || rec.kellyResult.recommendation === 'buy'),
+            optionalCandidates: kellyRecommendations.filter(rec => rec.kellyResult.recommendation === 'weak_buy' || rec.kellyResult.recommendation === 'consider'),
+            recommendations: kellyRecommendations,
+            portfolio: portfolioAnalysis,
+            performance: performanceAnalysis,
+            capital: kellyCapitalManager.currentCapital,
+            timestamp: new Date().toISOString()
+        };
+
+        // localStorageに保存
+        try {
+            localStorage.setItem('kellyPortfolioResults', JSON.stringify(phase7KellyData));
+            console.log('✅ Kelly結果をlocalStorageに保存しました:', phase7KellyData);
+        } catch (error) {
+            console.error('❌ Kelly結果の保存に失敗:', error);
+        }
+
         showMessage('Phase 6ケリー基準資金管理分析が完了しました', 'success');
 
     } catch (error) {
@@ -182,9 +201,12 @@ function generateSimpleExpectedValueAnalysis(predictions) {
             odds = pred.odds;
         }
         
-        console.log(`🐎 ${index + 1}: ${pred.horse?.name || 'N/A'} - オッズ:${odds}, スコア:${score}`);
+        // 馬名の安全な取得
+        const horseName = pred.horse?.name || pred.name || `${index + 1}番`;
+        console.log(`🐎 ${index + 1}: ${horseName} - オッズ:${odds}, スコア:${score}`);
         
-        const rawProbability = 1 / odds; // オッズから理論勝率
+        // スコアベースの勝率計算（一時的な計算、後で正規化）
+        const rawProbability = score / 100; // スコア0-100を0-1の勝率に変換
         
         return {
             horse: pred.horse,
@@ -194,21 +216,44 @@ function generateSimpleExpectedValueAnalysis(predictions) {
         };
     });
     
-    // Step 2: 全馬の理論勝率合計を計算
-    const totalRawProbability = horsesWithRawProbability.reduce((sum, h) => sum + h.rawProbability, 0);
-    console.log('📊 理論勝率合計:', (totalRawProbability * 100).toFixed(1) + '%');
+    // Step 2: 全馬のスコア合計を計算
+    const totalScore = horsesWithRawProbability.reduce((sum, h) => sum + h.score, 0);
+    console.log('📊 スコア合計:', totalScore);
     
-    // Step 3: 正規化して100%に調整
+    // Step 3: スコアベースの勝率を正規化して100%に調整
+    const normalizedHorses = horsesWithRawProbability.map(h => ({
+        ...h,
+        rawProbability: h.score / totalScore // スコア比率から真の勝率を計算
+    }));
+    
+    const totalRawProbability = normalizedHorses.reduce((sum, h) => sum + h.rawProbability, 0);
+    console.log('📊 正規化後勝率合計:', (totalRawProbability * 100).toFixed(1) + '%');
+    
+    // Step 4: 期待値計算用の分析
     return {
-        analyzedHorses: horsesWithRawProbability.map((h, index) => {
-            // 正規化勝率 = 理論勝率 / 合計理論勝率
-            const normalizedProbability = h.rawProbability / totalRawProbability;
+        analyzedHorses: normalizedHorses.map((h, index) => {
+            // 正規化勝率はすでに計算済み（スコア比率）
+            const normalizedProbability = h.rawProbability;
             
             // スコアによる微調整（±20%程度）
             const scoreFactor = Math.max(0.8, Math.min(1.2, h.score / 50));
             const adjustedProbability = Math.max(0.005, Math.min(0.95, normalizedProbability * scoreFactor));
             
-            const expectedValue = adjustedProbability * h.odds;
+            // デバッグ出力
+            if (index < 3) { // 最初の3頭のみ詳細出力
+                console.log(`🔍 詳細計算 ${index + 1}番:`, {
+                    score: h.score,
+                    scoreFactor: scoreFactor.toFixed(3),
+                    rawProb: h.rawProbability.toFixed(4),
+                    normProb: normalizedProbability.toFixed(4),
+                    adjProb: adjustedProbability.toFixed(4),
+                    odds: h.odds,
+                    expectedValue: (h.odds * h.rawProbability).toFixed(4)
+                });
+            }
+            
+            // 期待値計算: 正規化済みスコアベース勝率を使用
+            const expectedValue = h.odds * h.rawProbability;
             
             const horseName = h.horse?.name || h.horse?.number || `${index + 1}番`;
             console.log('🐎', horseName, 
@@ -216,7 +261,8 @@ function generateSimpleExpectedValueAnalysis(predictions) {
                 '理論勝率:', (h.rawProbability * 100).toFixed(1) + '%',
                 '正規化勝率:', (normalizedProbability * 100).toFixed(1) + '%',
                 '調整後勝率:', (adjustedProbability * 100).toFixed(1) + '%',
-                '期待値:', expectedValue.toFixed(2)
+                '期待値:', expectedValue.toFixed(2),
+                '(計算: ', h.odds, '×', h.rawProbability.toFixed(4), '=', expectedValue.toFixed(4), ')'
             );
             
             return {
