@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>買い目推奨学習表示テスト</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f0f2f5;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        .test-header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .test-btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            min-width: 160px;
+        }
+        .test-btn.primary { background: #007bff; color: white; }
+        .test-btn.success { background: #28a745; color: white; }
+        .test-btn.warning { background: #ffc107; color: #212529; }
+        .test-btn.info { background: #17a2b8; color: white; }
+        .test-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+        .test-section {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .scenario-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .scenario-card {
+            padding: 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            background: #f8f9fa;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .scenario-card:hover {
+            border-color: #007bff;
+            background: #e7f3ff;
+        }
+        .scenario-title {
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #2c3e50;
+        }
+        .scenario-desc {
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="test-header">
+            <h1>🎯 買い目推奨学習表示テスト</h1>
+            <p>統合学習での買い目推奨結果表示の修正をテスト</p>
+        </div>
+
+        <div class="test-controls">
+            <button class="test-btn primary" onclick="initializeTest()">
+                🚀 テスト初期化
+            </button>
+            <button class="test-btn success" onclick="simulateRecommendations()">
+                📊 推奨ありシナリオ
+            </button>
+            <button class="test-btn warning" onclick="simulateSkipScenario()">
+                ⏭️ 見送りシナリオ
+            </button>
+            <button class="test-btn info" onclick="clearTestData()">
+                🗑️ データクリア
+            </button>
+        </div>
+
+        <div class="test-section">
+            <h3>📋 テストシナリオ</h3>
+            <div class="scenario-grid">
+                <div class="scenario-card" onclick="testScenario('high_performance')">
+                    <div class="scenario-title">高成績シナリオ</div>
+                    <div class="scenario-desc">すべての印で高い的中率</div>
+                </div>
+                <div class="scenario-card" onclick="testScenario('mixed_performance')">
+                    <div class="scenario-title">混合成績シナリオ</div>
+                    <div class="scenario-desc">印により成績にバラつき</div>
+                </div>
+                <div class="scenario-card" onclick="testScenario('poor_performance')">
+                    <div class="scenario-title">低成績シナリオ</div>
+                    <div class="scenario-desc">全体的に的中率が低い</div>
+                </div>
+                <div class="scenario-card" onclick="testScenario('no_recommendations')">
+                    <div class="scenario-title">推奨なしシナリオ</div>
+                    <div class="scenario-desc">見送りケースの表示テスト</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 学習結果表示エリア -->
+        <div id="results"></div>
+        
+    </div>
+
+    <!-- 必要なスクリプト -->
+    <script src="js/bettingRecommender.js"></script>
+    <script src="js/main.js"></script>
+    
+    <script>
+        /**
+         * テスト初期化
+         */
+        function initializeTest() {
+            console.log('🚀 買い目推奨学習表示テスト初期化');
+            
+            // BettingRecommenderを初期化
+            if (typeof BettingRecommender !== 'undefined') {
+                BettingRecommender.initialize();
+                showMessage('✅ BettingRecommender初期化完了', 'success');
+            } else {
+                showMessage('❌ BettingRecommenderが見つかりません', 'error');
+                return;
+            }
+            
+            // 表示関数の存在確認
+            if (typeof displayBettingRecommendationLearningResult !== 'undefined') {
+                showMessage('✅ 学習結果表示関数が利用可能', 'success');
+            } else {
+                showMessage('❌ 学習結果表示関数が見つかりません', 'error');
+            }
+        }
+        
+        /**
+         * 推奨ありシナリオのテスト
+         */
+        function simulateRecommendations() {
+            console.log('📊 推奨ありシナリオテスト開始');
+            
+            // テスト用の推奨データを作成
+            const testRecommendations = [
+                {
+                    mark: '◎',
+                    category: '単勝',
+                    horse: 'テスト馬A（1）',
+                    confidence: 0.8
+                },
+                {
+                    mark: '○',
+                    category: '複勝',
+                    horse: 'テスト馬B（3）',
+                    confidence: 0.7
+                },
+                {
+                    mark: '▲',
+                    category: '単勝',
+                    horse: 'テスト馬C（7）',
+                    confidence: 0.6
+                }
+            ];
+            
+            // グローバル変数に設定
+            window.lastBettingRecommendations = testRecommendations;
+            
+            // 実際の結果をシミュレート
+            const actualResult = {
+                winner: 'テスト馬A',
+                place: ['テスト馬A', 'テスト馬D', 'テスト馬B']
+            };
+            
+            // 学習処理を実行
+            BettingRecommender.recordBettingRecommendation(testRecommendations, actualResult);
+            const learningResult = BettingRecommender.analyzeBettingPerformance();
+            
+            // 結果を表示
+            displayBettingRecommendationLearningResult(learningResult);
+            showMessage('📊 推奨ありシナリオテスト完了', 'success');
+        }
+        
+        /**
+         * 見送りシナリオのテスト
+         */
+        function simulateSkipScenario() {
+            console.log('⏭️ 見送りシナリオテスト開始');
+            
+            // 推奨なしの状態を設定
+            window.lastBettingRecommendations = [];
+            
+            // 見送り用の学習結果を作成
+            const skipLearningResult = {
+                status: 'skip',
+                reason: '統合推奨買い目が見送りとなったため',
+                message: '推奨基準に満たない馬がなかったため、今回は投資を見送りました'
+            };
+            
+            // 結果を表示
+            displayBettingRecommendationLearningResult(skipLearningResult);
+            showMessage('⏭️ 見送りシナリオテスト完了', 'warning');
+        }
+        
+        /**
+         * 特定シナリオのテスト
+         */
+        function testScenario(scenarioType) {
+            console.log(`🎯 シナリオテスト: ${scenarioType}`);
+            
+            let learningResult;
+            
+            switch (scenarioType) {
+                case 'high_performance':
+                    learningResult = {
+                        totalRaces: 20,
+                        honmeiHitRate: 0.4,
+                        taikouHitRate: 0.15,
+                        tananaHitRate: 0.25,
+                        renpukuHitRate: 0.8,
+                        currentThresholds: {
+                            winProbabilityMin: 12,
+                            expectedValueMin: 0.15,
+                            placeProbabilityMin: 35
+                        }
+                    };
+                    break;
+                    
+                case 'mixed_performance':
+                    learningResult = {
+                        totalRaces: 20,
+                        honmeiHitRate: 0.2,
+                        taikouHitRate: 0.1,
+                        tananaHitRate: 0.15,
+                        renpukuHitRate: 0.6,
+                        currentThresholds: {
+                            winProbabilityMin: 10,
+                            expectedValueMin: 0.12,
+                            placeProbabilityMin: 30
+                        }
+                    };
+                    break;
+                    
+                case 'poor_performance':
+                    learningResult = {
+                        totalRaces: 20,
+                        honmeiHitRate: 0.05,
+                        taikouHitRate: 0.0,
+                        tananaHitRate: 0.05,
+                        renpukuHitRate: 0.3,
+                        currentThresholds: {
+                            winProbabilityMin: 8,
+                            expectedValueMin: 0.08,
+                            placeProbabilityMin: 25
+                        }
+                    };
+                    break;
+                    
+                case 'no_recommendations':
+                    learningResult = {
+                        status: 'skip',
+                        reason: 'テスト: 全候補が推奨基準未達',
+                        message: 'すべての馬の期待値と勝率が設定基準を下回ったため、リスク回避により投資を見送りました'
+                    };
+                    break;
+            }
+            
+            displayBettingRecommendationLearningResult(learningResult);
+            showMessage(`✅ ${scenarioType}シナリオ表示完了`, 'info');
+        }
+        
+        /**
+         * テストデータクリア
+         */
+        function clearTestData() {
+            localStorage.removeItem('keibaAppBettingHistory');
+            BettingRecommender.bettingHistory = [];
+            
+            const resultsContainer = document.getElementById('results');
+            if (resultsContainer) {
+                resultsContainer.innerHTML = '';
+            }
+            
+            showMessage('🗑️ テストデータをクリアしました', 'info');
+        }
+        
+        /**
+         * メッセージ表示
+         */
+        function showMessage(message, type = 'info') {
+            const existingMessage = document.querySelector('.test-message');
+            if (existingMessage) {
+                existingMessage.remove();
+            }
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `test-message ${type}`;
+            messageDiv.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 12px 20px;
+                border-radius: 8px;
+                color: white;
+                font-weight: bold;
+                z-index: 10000;
+                max-width: 400px;
+                animation: slideIn 0.3s ease;
+            `;
+            
+            const colors = {
+                success: '#28a745',
+                error: '#dc3545',
+                warning: '#ffc107',
+                info: '#17a2b8'
+            };
+            messageDiv.style.background = colors[type] || colors.info;
+            
+            messageDiv.textContent = message;
+            document.body.appendChild(messageDiv);
+            
+            setTimeout(() => {
+                if (messageDiv.parentNode) {
+                    messageDiv.remove();
+                }
+            }, 3000);
+        }
+        
+        // CSS アニメーション
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideIn {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+        `;
+        document.head.appendChild(style);
+        
+        // 自動初期化
+        window.addEventListener('load', () => {
+            setTimeout(initializeTest, 1000);
+        });
+    </script>
+</body>
+</html>

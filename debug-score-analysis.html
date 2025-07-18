@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>スコア別的中率分析ツール</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 1000px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; }
+        .section { background: #f8f9fa; padding: 15px; margin: 10px 0; border-radius: 8px; border-left: 4px solid #007bff; }
+        .btn { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin: 5px; }
+        .btn:hover { background: #0056b3; }
+        .result { background: #e8f5e8; border: 1px solid #4caf50; padding: 15px; margin: 10px 0; border-radius: 8px; white-space: pre-wrap; font-family: monospace; }
+        .error { background: #ffebee; border: 1px solid #f44336; padding: 15px; margin: 10px 0; border-radius: 8px; color: #c62828; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 スコア別的中率・期待値分析ツール</h1>
+        
+        <div class="section">
+            <h3>📊 1. スコア別複勝的中率分析</h3>
+            <button class="btn" onclick="analyzeScoreHitRates()">スコア別的中率を分析</button>
+            <div id="scoreAnalysisResult"></div>
+        </div>
+        
+        <div class="section">
+            <h3>🎯 2. 期待値上位馬の結果分析</h3>
+            <button class="btn" onclick="analyzeExpectedValueResults()">期待値上位馬の成績を分析</button>
+            <div id="expectedValueResult"></div>
+        </div>
+        
+        <div class="section">
+            <h3>⚙️ 3. 信頼度スコア構成詳細</h3>
+            <button class="btn" onclick="analyzeConfidenceScore()">信頼度計算の内訳を分析</button>
+            <div id="confidenceAnalysisResult"></div>
+        </div>
+        
+        <div class="section">
+            <h3>🔧 4. 期待値計算テスト</h3>
+            <p>テスト用データで期待値計算をシミュレーション</p>
+            <button class="btn" onclick="testExpectedValueCalculation()">期待値計算をテスト</button>
+            <div id="calculationTestResult"></div>
+        </div>
+    </div>
+
+    <script>
+        function analyzeScoreHitRates() {
+            const resultDiv = document.getElementById('scoreAnalysisResult');
+            
+            try {
+                let result = '=== スコア別複勝的中率分析 ===\n\n';
+                
+                // LearningSystemから学習データを取得
+                if (typeof LearningSystem !== 'undefined' && LearningSystem.learningData) {
+                    const learningData = LearningSystem.learningData;
+                    
+                    result += `総学習データ数: ${learningData.accuracy?.totalPredictions || 0}レース\n`;
+                    result += `複勝的中数: ${learningData.accuracy?.placePredictions || 0}回\n`;
+                    result += `複勝的中率: ${learningData.accuracy?.totalPredictions > 0 ? ((learningData.accuracy.placePredictions / learningData.accuracy.totalPredictions) * 100).toFixed(1) : 0}%\n\n`;
+                    
+                    // 履歴データからスコア別分析
+                    if (learningData.history && learningData.history.length > 0) {
+                        const scoreRanges = [
+                            { min: 90, max: 100, label: '90-100' },
+                            { min: 80, max: 89, label: '80-89' },
+                            { min: 70, max: 79, label: '70-79' },
+                            { min: 60, max: 69, label: '60-69' },
+                            { min: 50, max: 59, label: '50-59' },
+                            { min: 0, max: 49, label: '0-49' }
+                        ];
+                        
+                        result += '【スコア別的中率分析】\n';
+                        
+                        scoreRanges.forEach(range => {
+                            const rangeData = analyzeScoreRange(learningData.history, range.min, range.max);
+                            if (rangeData.total > 0) {
+                                result += `スコア${range.label}: ${rangeData.hits}/${rangeData.total} = ${((rangeData.hits/rangeData.total)*100).toFixed(1)}%\n`;
+                            }
+                        });
+                    } else {
+                        result += '履歴データが不足しています。より多くのレースデータが必要です。\n';
+                    }
+                } else {
+                    result += 'LearningSystemが利用できません。\n';
+                }
+                
+                resultDiv.innerHTML = `<div class="result">${result}</div>`;
+                
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">エラー: ${error.message}</div>`;
+            }
+        }
+        
+        function analyzeScoreRange(history, minScore, maxScore) {
+            let hits = 0;
+            let total = 0;
+            
+            history.forEach(entry => {
+                if (entry.predictedWinner && entry.actualWinner) {
+                    const score = entry.predictedWinner.score || entry.predictedWinner.placeProbability || 0;
+                    if (score >= minScore && score <= maxScore) {
+                        total++;
+                        // 複勝的中判定（1-3着）
+                        if (entry.placeCorrect || entry.winCorrect) {
+                            hits++;
+                        }
+                    }
+                }
+            });
+            
+            return { hits, total };
+        }
+        
+        function analyzeExpectedValueResults() {
+            const resultDiv = document.getElementById('expectedValueResult');
+            
+            try {
+                let result = '=== 期待値上位馬の結果分析 ===\n\n';
+                
+                // Phase 4やPerformanceTrackerからデータを取得
+                if (typeof PerformanceTracker !== 'undefined') {
+                    const tracker = new PerformanceTracker();
+                    const recentRaces = tracker.performanceHistory || [];
+                    
+                    result += `パフォーマンス履歴: ${recentRaces.length}件\n\n`;
+                    
+                    if (recentRaces.length > 0) {
+                        const recent = recentRaces.slice(-10); // 直近10レース
+                        result += '【直近10レースの期待値分析】\n';
+                        
+                        recent.forEach((race, index) => {
+                            result += `レース${index + 1}: 投資${race.investment}円 → 回収${race.return}円 (ROI: ${((race.return/race.investment - 1) * 100).toFixed(1)}%)\n`;
+                        });
+                    }
+                } else {
+                    result += 'PerformanceTrackerが利用できません。\n';
+                }
+                
+                // Kelly資金管理からも情報取得
+                if (typeof KellyCapitalManager !== 'undefined') {
+                    const manager = new KellyCapitalManager();
+                    const report = manager.generateCapitalReport();
+                    
+                    result += '\n【Kelly資金管理統計】\n';
+                    result += `現在資金: ${report.capitalStatus.currentCapital.toLocaleString()}円\n`;
+                    result += `総収益率: ${report.capitalStatus.totalReturnRate.toFixed(2)}%\n`;
+                    result += `直近勝率: ${(report.recentPerformance.winRate * 100).toFixed(1)}%\n`;
+                }
+                
+                resultDiv.innerHTML = `<div class="result">${result}</div>`;
+                
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">エラー: ${error.message}</div>`;
+            }
+        }
+        
+        function analyzeConfidenceScore() {
+            const resultDiv = document.getElementById('confidenceAnalysisResult');
+            
+            try {
+                let result = '=== 信頼度スコア構成詳細分析 ===\n\n';
+                
+                // テスト用の馬データで信頼度計算をシミュレーション
+                const testHorses = [
+                    { name: '高スコア人気馬', score: 90, odds: 2.5, popularity: 'favorite' },
+                    { name: '中スコア中人気', score: 70, odds: 5.0, popularity: 'midrange' },
+                    { name: '低スコア穴馬', score: 40, odds: 15.0, popularity: 'outsider' }
+                ];
+                
+                if (typeof ExpectedValueCalculator !== 'undefined') {
+                    result += '【信頼度スコア計算テスト】\n\n';
+                    
+                    testHorses.forEach(horse => {
+                        const analysis = { popularity: horse.popularity, estimatedProbability: 0.3 };
+                        const confidenceScore = ExpectedValueCalculator.calculateConfidenceScore(horse, analysis);
+                        
+                        result += `${horse.name}:\n`;
+                        result += `  スコア: ${horse.score} → スコア補正: ${getScoreMultiplier(horse.score)}倍\n`;
+                        result += `  オッズ: ${horse.odds} → オッズ補正: ${getOddsMultiplier(horse.odds)}倍\n`;
+                        result += `  人気: ${horse.popularity} → 人気補正: ${getPopularityMultiplier(horse.popularity)}倍\n`;
+                        result += `  最終信頼度スコア: ${confidenceScore.toFixed(3)}\n\n`;
+                    });
+                    
+                    result += '【信頼度計算式の詳細】\n';
+                    result += '基準値: 1.0\n';
+                    result += 'スコア補正: 90以上→×1.3, 80以上→×1.2, 70以上→×1.1, 60以上→×1.0, 50以上→×0.9, 40以上→×0.8, 40未満→×0.7\n';
+                    result += '人気補正: favorite→×1.15, midrange→×1.0, outsider→×0.85\n';
+                    result += 'オッズ補正: 1.5未満→×0.9, 3.0以下→×1.1, 7.0以下→×1.0, 15.0以下→×0.95, 30.0以下→×0.85, 30.0超→×0.7\n';
+                    result += '整合性チェック: オッズと確率の不整合→×0.9\n';
+                    result += '範囲制限: 0.5～1.5\n';
+                    
+                } else {
+                    result += 'ExpectedValueCalculatorが利用できません。\n';
+                }
+                
+                resultDiv.innerHTML = `<div class="result">${result}</div>`;
+                
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">エラー: ${error.message}</div>`;
+            }
+        }
+        
+        function getScoreMultiplier(score) {
+            if (score >= 90) return 1.3;
+            if (score >= 80) return 1.2;
+            if (score >= 70) return 1.1;
+            if (score >= 60) return 1.0;
+            if (score >= 50) return 0.9;
+            if (score >= 40) return 0.8;
+            return 0.7;
+        }
+        
+        function getOddsMultiplier(odds) {
+            if (odds < 1.5) return 0.9;
+            if (odds <= 3.0) return 1.1;
+            if (odds <= 7.0) return 1.0;
+            if (odds <= 15.0) return 0.95;
+            if (odds <= 30.0) return 0.85;
+            return 0.7;
+        }
+        
+        function getPopularityMultiplier(popularity) {
+            switch (popularity) {
+                case 'favorite': return 1.15;
+                case 'midrange': return 1.0;
+                case 'outsider': return 0.85;
+                default: return 1.0;
+            }
+        }
+        
+        function testExpectedValueCalculation() {
+            const resultDiv = document.getElementById('calculationTestResult');
+            
+            try {
+                let result = '=== 期待値計算テスト ===\n\n';
+                
+                if (typeof ExpectedValueCalculator !== 'undefined') {
+                    const testHorses = [
+                        { name: 'ハイゼンスレイ', score: 85, odds: 2.0, placeProbability: 85 },
+                        { name: 'ケングロリア', score: 45, odds: 8.0, placeProbability: 45 },
+                        { name: 'ジーティーレイナ', score: 50, odds: 12.0, placeProbability: 50 }
+                    ];
+                    
+                    result += '【期待値計算の詳細分析】\n\n';
+                    
+                    testHorses.forEach(horse => {
+                        const analysis = ExpectedValueCalculator.calculateHorseExpectedValue(horse, 'place');
+                        
+                        result += `${horse.name}の計算詳細:\n`;
+                        result += `  入力: スコア${horse.score}, オッズ${horse.odds}倍\n`;
+                        result += `  推定確率: ${(analysis.estimatedProbability * 100).toFixed(1)}%\n`;
+                        result += `  推定配当: ${analysis.estimatedOdds}円\n`;
+                        result += `  信頼度スコア: ${analysis.confidenceScore.toFixed(3)}\n`;
+                        result += `  期待値: ${analysis.expectedValue.toFixed(3)}\n`;
+                        result += `  ケリー係数: ${(analysis.kellyRatio * 100).toFixed(2)}%\n`;
+                        result += `  推奨: ${analysis.recommendation}\n\n`;
+                    });
+                    
+                    result += '【計算プロセスの問題点】\n';
+                    result += '1. オッズ係数が低すぎる可能性（0.25-0.45）\n';
+                    result += '2. 確率係数も保守的（0.4+0.1）\n';
+                    result += '3. 胴元手数料20%が過大\n';
+                    result += '4. 複数の補正の積み重ねで期待値が大幅減少\n';
+                    
+                } else {
+                    result += 'ExpectedValueCalculatorが利用できません。\n';
+                }
+                
+                resultDiv.innerHTML = `<div class="result">${result}</div>`;
+                
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">エラー: ${error.message}</div>`;
+            }
+        }
+        
+        // ページロード時にメッセージ表示
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🔍 スコア別的中率分析ツールが読み込まれました');
+        });
+    </script>
+</body>
+</html>

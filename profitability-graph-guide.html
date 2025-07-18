@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📊 収益性グラフの見方ガイド</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; line-height: 1.6; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        h1 { color: #2e8b57; text-align: center; border-bottom: 3px solid #2e8b57; padding-bottom: 15px; }
+        h2 { color: #1976d2; border-left: 4px solid #1976d2; padding-left: 15px; margin-top: 30px; }
+        h3 { color: #d32f2f; margin-top: 25px; }
+        .chart-section { background: #f8f9fa; padding: 20px; margin: 15px 0; border-radius: 8px; border-left: 4px solid #28a745; }
+        .example { background: #e8f5e8; padding: 15px; margin: 10px 0; border-radius: 5px; border: 1px solid #c3e6cb; }
+        .warning { background: #fff3cd; padding: 15px; margin: 10px 0; border-radius: 5px; border: 1px solid #ffeaa7; color: #856404; }
+        .tip { background: #d1ecf1; padding: 15px; margin: 10px 0; border-radius: 5px; border: 1px solid #bee5eb; color: #0c5460; }
+        .color-guide { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 15px 0; }
+        .color-item { padding: 10px; border-radius: 5px; text-align: center; color: white; font-weight: bold; }
+        .profit { background: #2E8B57; }
+        .loss { background: #E74C3C; }
+        .excellent { background: #2E8B57; }
+        .good { background: #FFD700; color: #333; }
+        .average { background: #FF8C00; }
+        .poor { background: #DC143C; }
+        .data-period { background: #e3f2fd; padding: 20px; margin: 15px 0; border-radius: 8px; border: 1px solid #b3d9ff; }
+        .step-list { counter-reset: step-counter; list-style: none; padding: 0; }
+        .step-list li { counter-increment: step-counter; background: #f8f9fa; margin: 10px 0; padding: 15px; border-radius: 5px; border-left: 4px solid #007bff; }
+        .step-list li::before { content: "ステップ " counter(step-counter); font-weight: bold; color: #007bff; display: block; margin-bottom: 5px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📊 収益性グラフの見方ガイド</h1>
+        
+        <div class="warning">
+            <strong>📅 データ期間について</strong><br>
+            現在のシステムは<strong>累積データ</strong>として全ての投資記録を表示します。期間フィルター機能は今後追加予定です。
+        </div>
+
+        <h2>📈 主要グラフの種類と見方</h2>
+        
+        <div class="chart-section">
+            <h3>1. 💰 ROI推移チャート</h3>
+            <p><strong>何が表示される？</strong> 投資収益率（ROI）の推移</p>
+            <ul>
+                <li><strong>横軸</strong>: 投資回数（時系列）</li>
+                <li><strong>縦軸</strong>: ROI（%）</li>
+                <li><strong>0%ライン</strong>: 損益分岐点</li>
+                <li><strong>グラフの傾き</strong>: 収益性の改善/悪化傾向</li>
+            </ul>
+            
+            <div class="color-guide">
+                <div class="color-item profit">プラス領域（利益）</div>
+                <div class="color-item loss">マイナス領域（損失）</div>
+            </div>
+            
+            <div class="example">
+                <strong>📖 読み方例:</strong><br>
+                • グラフが右上がり → 収益性が改善<br>
+                • グラフが右下がり → 収益性が悪化<br>
+                • 0%より上 → トータルで利益<br>
+                • 0%より下 → トータルで損失
+            </div>
+        </div>
+
+        <div class="chart-section">
+            <h3>2. 📊 オッズ帯別パフォーマンス</h3>
+            <p><strong>何が表示される？</strong> オッズ範囲ごとの投資成績</p>
+            <ul>
+                <li><strong>低オッズ（1-3倍）</strong>: 人気馬への投資</li>
+                <li><strong>中オッズ（3-10倍）</strong>: 中堅馬への投資</li>
+                <li><strong>高オッズ（10倍以上）</strong>: 穴馬への投資</li>
+            </ul>
+            
+            <div class="example">
+                <strong>📖 活用方法:</strong><br>
+                • どのオッズ帯が得意かを把握<br>
+                • 不得意な範囲への投資を見直し<br>
+                • 得意な範囲への投資比重を増加
+            </div>
+        </div>
+
+        <div class="chart-section">
+            <h3>3. 🎯 人気度別分析</h3>
+            <p><strong>何が表示される？</strong> 人気順ごとの投資成績</p>
+            <ul>
+                <li><strong>1-3番人気</strong>: 本命馬</li>
+                <li><strong>4-6番人気</strong>: 対抗馬</li>
+                <li><strong>7-10番人気</strong>: 穴馬</li>
+                <li><strong>11番人気以下</strong>: 大穴馬</li>
+            </ul>
+        </div>
+
+        <div class="chart-section">
+            <h3>4. 💎 穴馬効率分析</h3>
+            <p><strong>何が表示される？</strong> 穴馬投資の効率性</p>
+            <ul>
+                <li><strong>穴馬的中率</strong>: 穴馬投資の成功率</li>
+                <li><strong>穴馬ROI</strong>: 穴馬投資の収益率</li>
+                <li><strong>大的中回数</strong>: 15倍以上の的中数</li>
+                <li><strong>貢献度</strong>: 全体利益への穴馬の貢献</li>
+            </ul>
+        </div>
+
+        <h2>🎨 グラフの色分けガイド</h2>
+        
+        <div class="color-guide">
+            <div class="color-item excellent">優秀（50%以上）</div>
+            <div class="color-item good">良好（20-49%）</div>
+            <div class="color-item average">普通（0-19%）</div>
+            <div class="color-item poor">不良（マイナス）</div>
+        </div>
+
+        <h2>📅 データ期間とリセット</h2>
+        
+        <div class="data-period">
+            <h3>📊 現在のデータ仕様</h3>
+            <ul>
+                <li><strong>データ保存</strong>: ブラウザのlocalStorageに保存</li>
+                <li><strong>継続性</strong>: ブラウザを閉じても データは保持される</li>
+                <li><strong>累積表示</strong>: 初回データ入力から現在まで全て表示</li>
+                <li><strong>リセット方法</strong>: 学習セクションの「🔄 全学習データリセット」ボタン</li>
+            </ul>
+            
+            <div class="warning">
+                <strong>⚠️ 注意:</strong> データリセットは元に戻せません。必要に応じてエクスポート機能でバックアップを取ってください。
+            </div>
+        </div>
+
+        <h2>🔧 グラフの操作方法</h2>
+        
+        <ol class="step-list">
+            <li>
+                <strong>グラフ表示</strong><br>
+                メインページ下部の「📊 AI判断パターン分析グラフ」セクションで「💰 収益性分析」ボタンをクリック
+            </li>
+            <li>
+                <strong>グラフ切り替え</strong><br>
+                表示されたボタンで異なるグラフタイプを選択
+                <ul>
+                    <li>📈 ROI推移チャート</li>
+                    <li>📊 オッズ帯別パフォーマンス</li>
+                    <li>🎯 人気度別分析</li>
+                    <li>💎 穴馬効率分析</li>
+                </ul>
+            </li>
+            <li>
+                <strong>データ更新</strong><br>
+                レース結果を入力すると自動的にグラフが更新される
+            </li>
+        </ol>
+
+        <h2>📊 グラフから読み取れる重要指標</h2>
+        
+        <div class="chart-section">
+            <h3>✅ 良い傾向のサイン</h3>
+            <ul>
+                <li>ROI推移が右上がり</li>
+                <li>的中率が安定している</li>
+                <li>得意なオッズ帯が明確</li>
+                <li>穴馬からの大きな利益がある</li>
+            </ul>
+        </div>
+
+        <div class="chart-section">
+            <h3>⚠️ 注意が必要なサイン</h3>
+            <ul>
+                <li>ROIが継続的に下降</li>
+                <li>特定のオッズ帯で大きな損失</li>
+                <li>的中率の急激な悪化</li>
+                <li>連続した損失記録</li>
+            </ul>
+        </div>
+
+        <h2>🎯 実践的な活用方法</h2>
+        
+        <div class="tip">
+            <h3>💡 投資戦略の改善</h3>
+            <ol>
+                <li><strong>得意分野を特定</strong>: どのオッズ帯・人気度で成功しているかを確認</li>
+                <li><strong>不得意分野を回避</strong>: 損失が大きいカテゴリーへの投資を控える</li>
+                <li><strong>投資額の調整</strong>: 得意分野には多め、不得意分野には少なめに投資</li>
+                <li><strong>定期的な見直し</strong>: 月次でグラフを確認して戦略を調整</li>
+            </ol>
+        </div>
+
+        <div class="tip">
+            <h3>📈 長期的な成功のために</h3>
+            <ul>
+                <li><strong>データの蓄積</strong>: 最低30レース以上のデータで傾向を判断</li>
+                <li><strong>感情的判断の排除</strong>: グラフの客観的データに基づいた投資</li>
+                <li><strong>リスク管理</strong>: 一度に大きな金額を投資しない</li>
+                <li><strong>継続的学習</strong>: システムの学習機能を活用して精度を向上</li>
+            </ul>
+        </div>
+
+        <div class="warning">
+            <strong>🔄 データ期間フィルター機能（今後追加予定）</strong><br>
+            • 直近30日間のデータ表示<br>
+            • 月別・年別の期間指定<br>
+            • 特定期間のパフォーマンス比較<br>
+            • カスタム期間設定
+        </div>
+    </div>
+</body>
+</html>

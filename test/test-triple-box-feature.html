@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3連複・3連単機能テスト</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 8px; }
+        .test-result { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .success { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+        .error { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+        .info { background: #d1ecf1; border: 1px solid #bee5eb; color: #0c5460; }
+        .horse-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; margin: 15px 0; }
+        .horse-card { background: white; border: 1px solid #ddd; border-radius: 8px; padding: 12px; }
+        .recommendation-card { background: #f8f9fa; border-left: 4px solid #007bff; padding: 15px; margin: 10px 0; }
+        button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin: 5px; }
+        button:hover { background: #0056b3; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 5px; overflow-x: auto; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <h1>🎯 3連複・3連単推奨機能テスト</h1>
+    
+    <div class="test-section">
+        <h2>📋 テスト概要</h2>
+        <p>新しく実装した3連複・3連単推奨機能の動作確認を行います。</p>
+        <ul>
+            <li>4頭以上の印がある場合の3連複推奨生成</li>
+            <li>3連単（着順固定）推奨生成</li>
+            <li>期待値計算ロジックの検証</li>
+            <li>推奨条件（3連複:15%以上、3連単:8%以上）の確認</li>
+            <li>表示形式の確認</li>
+        </ul>
+    </div>
+    
+    <div class="test-section">
+        <h2>🏇 テスト用データ設定</h2>
+        <button onclick="setupTestData()">テストデータを設定</button>
+        <button onclick="runTripleBoxTest()">3連複・3連単推奨テスト実行</button>
+        <button onclick="clearResults()">結果クリア</button>
+        
+        <div id="testDataDisplay" class="info test-result" style="display: none;">
+            <h4>設定されたテストデータ</h4>
+            <div id="horseList"></div>
+        </div>
+    </div>
+    
+    <div class="test-section">
+        <h2>🎯 3連複・3連単推奨結果</h2>
+        <div id="tripleBoxResults"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>🔍 詳細ログ</h2>
+        <div id="detailLogs">
+            <pre id="logDisplay">ログがここに表示されます...</pre>
+        </div>
+    </div>
+
+    <!-- 必要なスクリプトファイル（モックバージョン） -->
+    <script>
+        // モックコンフィグ
+        const CONFIG = {
+            ODDS_THRESHOLDS: {
+                VERY_LOW: 2.0,
+                LOW: 4.0,
+                MEDIUM: 10.0,
+                HIGH: 25.0,
+                VERY_HIGH: 50.0
+            }
+        };
+        
+        // モック学習システム
+        class LearningSystem {
+            static getLearningData() {
+                return {
+                    adjustments: { oddsWeight: 1.0, timeWeight: 1.0, jockeyWeight: 1.0 }
+                };
+            }
+        }
+        
+        // テストデータ格納
+        let testPredictions = [];
+        let testLogs = [];
+        
+        // ログ関数をオーバーライド
+        const originalConsoleLog = console.log;
+        console.log = function(...args) {
+            testLogs.push(args.join(' '));
+            originalConsoleLog.apply(console, args);
+            updateLogDisplay();
+        };
+        
+        function updateLogDisplay() {
+            document.getElementById('logDisplay').textContent = testLogs.slice(-20).join('\n');
+        }
+        
+        // テストデータ設定
+        function setupTestData() {
+            testPredictions = [
+                {
+                    name: "サンライズホープ",
+                    odds: 2.1,
+                    winProbability: 25.3,
+                    placeProbability: 65.2,
+                    winExpectedValue: 1.2
+                },
+                {
+                    name: "ミラクルスター",
+                    odds: 4.5,
+                    winProbability: 18.7,
+                    placeProbability: 58.1,
+                    winExpectedValue: 0.8
+                },
+                {
+                    name: "ゴールデンボルト",
+                    odds: 7.2,
+                    winProbability: 12.4,
+                    placeProbability: 45.3,
+                    winExpectedValue: 0.9
+                },
+                {
+                    name: "シルバーアロー",
+                    odds: 12.8,
+                    winProbability: 8.1,
+                    placeProbability: 38.7,
+                    winExpectedValue: 1.0
+                },
+                {
+                    name: "クリムゾンフレーム",
+                    odds: 18.4,
+                    winProbability: 5.2,
+                    placeProbability: 28.9,
+                    winExpectedValue: 0.95
+                },
+                {
+                    name: "エメラルドウィンド",
+                    odds: 25.6,
+                    winProbability: 3.8,
+                    placeProbability: 22.1,
+                    winExpectedValue: 0.97
+                }
+            ];
+            
+            // テストデータ表示
+            const horseList = document.getElementById('horseList');
+            horseList.innerHTML = testPredictions.map((horse, index) => `
+                <div class="horse-card">
+                    <strong>${index + 1}. ${horse.name}</strong><br>
+                    オッズ: ${horse.odds}倍 | 勝率: ${horse.winProbability}% | 複勝率: ${horse.placeProbability}%
+                </div>
+            `).join('');
+            
+            document.getElementById('testDataDisplay').style.display = 'block';
+            
+            testLogs = [];
+            console.log('🏇 テストデータを設定しました', { count: testPredictions.length });
+        }
+        
+        // 馬番取得関数（テスト用）
+        function getHorseNumber(horseName) {
+            const index = testPredictions.findIndex(h => h.name === horseName);
+            return index !== -1 ? index + 1 : '?';
+        }
+        
+        // 3連複・3連単テスト実行
+        function runTripleBoxTest() {
+            if (testPredictions.length === 0) {
+                alert('まずテストデータを設定してください');
+                return;
+            }
+            
+            console.log('🎯 3連複・3連単推奨テスト開始');
+            
+            // BettingRecommenderクラスを使用（モック調整済み）
+            const marks = BettingRecommender.classifyHorses(
+                testPredictions, 
+                [...testPredictions].sort((a, b) => b.winProbability - a.winProbability),
+                [...testPredictions].sort((a, b) => b.winExpectedValue - a.winExpectedValue)
+            );
+            
+            console.log('🏅 印分類結果', {
+                honmei: marks.honmei?.name || 'なし',
+                taikou: marks.taikou?.name || 'なし',
+                tanana: marks.tanana?.name || 'なし',
+                renpuku: marks.renpuku?.name || 'なし'
+            });
+            
+            // 3連複推奨生成
+            const tripleBoxRecommendations = BettingRecommender.generateTripleBoxRecommendations(
+                marks, 
+                testPredictions, 
+                getHorseNumber
+            );
+            
+            // 3連単推奨生成
+            const tripleExactRecommendations = BettingRecommender.generateTripleExactRecommendations(
+                marks, 
+                testPredictions, 
+                getHorseNumber
+            );
+            
+            // 結果表示
+            displayTripleBoxResults([...tripleBoxRecommendations, ...tripleExactRecommendations], marks);
+        }
+        
+        function displayTripleBoxResults(recommendations, marks) {
+            const container = document.getElementById('tripleBoxResults');
+            
+            if (recommendations.length === 0) {
+                container.innerHTML = `
+                    <div class="test-result error">
+                        <h4>❌ 3連複・3連単推奨なし</h4>
+                        <p>条件を満たす組み合わせが見つかりませんでした。</p>
+                        <p><strong>条件:</strong> 3頭以上の印 & 3連複効率15%以上 & 3連単効率8%以上</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = `
+                <div class="test-result success">
+                    <h4>✅ 3連複・3連単推奨生成成功</h4>
+                    <p>推奨数: ${recommendations.length}件</p>
+                    <p>種別: ${recommendations.filter(r => r.category === '3連複').length}件の3連複, ${recommendations.filter(r => r.category === '3連単').length}件の3連単</p>
+                </div>
+                
+                <div class="test-result info">
+                    <h4>🏅 印分類</h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+                        <div>◎ 本命: ${marks.honmei?.name || 'なし'}</div>
+                        <div>○ 対抗: ${marks.taikou?.name || 'なし'}</div>
+                        <div>▲ 単穴: ${marks.tanana?.name || 'なし'}</div>
+                        <div>△ 連複: ${marks.renpuku?.name || 'なし'}</div>
+                    </div>
+                </div>
+            `;
+            
+            recommendations.forEach((rec, index) => {
+                html += `
+                    <div class="recommendation-card">
+                        <h4>📋 ${rec.category}推奨 #${index + 1}</h4>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                            <div>
+                                <strong>印:</strong> ${rec.mark}<br>
+                                <strong>タイプ:</strong> ${rec.type}<br>
+                                <strong>信頼度:</strong> ${rec.confidence}
+                            </div>
+                            <div>
+                                <strong>馬名:</strong><br>
+                                ${rec.horse.replace(/- /g, '<br>')}
+                            </div>
+                            <div>
+                                <strong>オッズ:</strong> ${rec.odds}<br>
+                                <strong>確率:</strong> ${rec.probability}<br>
+                                <strong>推奨金額:</strong> ${rec.amount}
+                            </div>
+                            <div>
+                                <strong>効率:</strong> ${rec.efficiency ? rec.efficiency.toFixed(2) : 'N/A'}<br>
+                                <span style="color: ${rec.efficiency > 1.0 ? 'green' : 'orange'};">
+                                    ${rec.efficiency > 1.0 ? '✅ 期待値プラス' : '⚠️ 期待値注意'}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+        }
+        
+        function clearResults() {
+            document.getElementById('tripleBoxResults').innerHTML = '';
+            document.getElementById('testDataDisplay').style.display = 'none';
+            testLogs = [];
+            updateLogDisplay();
+        }
+    </script>
+    
+    <!-- bettingRecommender.jsのロード -->
+    <script src="../js/bettingRecommender.js"></script>
+    
+    <script>
+        // ページ読み込み時の初期化
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('📄 3連複機能テストページを読み込みました');
+            
+            // BettingRecommenderクラスが利用可能か確認
+            if (typeof BettingRecommender !== 'undefined') {
+                console.log('✅ BettingRecommenderクラスが利用可能です');
+                
+                // 新しいメソッドの存在確認
+                if (typeof BettingRecommender.generateTripleBoxRecommendations === 'function') {
+                    console.log('✅ generateTripleBoxRecommendations メソッドが存在します');
+                } else {
+                    console.log('❌ generateTripleBoxRecommendations メソッドが見つかりません');
+                }
+                
+                if (typeof BettingRecommender.calculateTripleBoxExpectedValue === 'function') {
+                    console.log('✅ calculateTripleBoxExpectedValue メソッドが存在します');
+                } else {
+                    console.log('❌ calculateTripleBoxExpectedValue メソッドが見つかりません');
+                }
+            } else {
+                console.log('❌ BettingRecommenderクラスが見つかりません');
+            }
+        });
+    </script>
+</body>
+</html>

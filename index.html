@@ -1,0 +1,1195 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, shrink-to-fit=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="競馬予測アプリ">
+    <meta name="theme-color" content="#667eea">
+    <meta name="msapplication-TileColor" content="#667eea">
+    <title>競馬予測アプリ（機械学習対応）</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div id="appMessage" style="display:none; position:fixed; top:20px; left:50%; transform:translateX(-50%); background:#ffc; color:#333; padding:12px 24px; border-radius:8px; box-shadow:0 2px 8px #0002; z-index:9999; font-size:1.1em;"></div>
+    <!-- ナビゲーションボタン -->
+    <div class="nav-buttons">
+        <button class="nav-btn" onclick="scrollToTop()" title="一番上へ">↑</button>
+        <button class="nav-btn" onclick="scrollToBottom()" title="一番下へ">↓</button>
+    </div>
+
+    <div class="container">
+        <h1>🏇 競馬予測アプリ（機械学習対応）</h1>
+        
+        <!-- ヘルプ・説明リンク -->
+        <div class="help-section" style="text-align: center; margin-bottom: 20px; background: #e3f2fd; padding: 15px; border-radius: 8px; border-left: 4px solid #2196f3;">
+            <h3 style="color: #1976d2; margin-bottom: 10px;">📖 使い方ガイド</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+                <a href="profitability-metrics-guide.html" target="_blank" style="display: inline-block; background: linear-gradient(45deg, #2e8b57, #228b22); color: white; padding: 10px 15px; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                    💰 収益性分析の解説
+                </a>
+                <a href="kelly-criterion-guide.html" target="_blank" style="display: inline-block; background: linear-gradient(45deg, #1976d2, #1565c0); color: white; padding: 10px 15px; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                    📊 ケリー基準の解説
+                </a>
+                <a href="risk-return-charts-guide.html" target="_blank" style="display: inline-block; background: linear-gradient(45deg, #9c27b0, #7b1fa2); color: white; padding: 10px 15px; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                    📈 グラフの見方解説
+                </a>
+                <button class="btn" onclick="window.open('test-sort-function.html', '_blank')" style="background: linear-gradient(45deg, #ff9800, #f57c00);">
+                    🔄 ソート機能テスト
+                </button>
+                <button class="btn" onclick="window.open('test-final-integration.html', '_blank')" style="background: linear-gradient(45deg, #9c27b0, #673ab7);">
+                    🎯 統合機能テスト
+                </button>
+                <button class="btn" onclick="demoRaceFlowVisualizer()" style="background: linear-gradient(45deg, #ff5722, #e64a19);">
+                    🖼️ 展開図デモ
+                </button>
+                <button class="btn" onclick="demoRaceFlowHeatmap()" style="background: linear-gradient(45deg, #e74c3c, #c0392b);">
+                    🔥 ヒートマップデモ
+                </button>
+            </div>
+        </div>
+        
+        <!-- モード切り替えボタン（携帯用） -->
+        <div class="mode-switch" style="text-align: center; margin-bottom: 20px;">
+            <button class="btn" id="modeToggle" style="background: linear-gradient(45deg, #28a745, #20c997); max-width: 200px;">
+                📱 携帯簡易モード
+            </button>
+        </div>
+
+        <!-- レース基本情報入力セクション -->
+        <div class="section" id="raceInfoSection">
+            <h2>🏁 レース基本情報</h2>
+            <div class="race-info-grid">
+                <div class="form-group">
+                    <label>レース名</label>
+                    <input type="text" id="raceName" placeholder="例：大阪杯、天皇賞(春)等">
+                </div>
+                <div class="form-group">
+                    <label>開催日</label>
+                    <input type="date" id="raceDate" placeholder="開催日を選択">
+                </div>
+                <div class="form-group">
+                    <label>コース</label>
+                    <select id="raceCourse">
+                        <optgroup label="中央競馬場">
+                            <option value="中山">中山</option>
+                            <option value="東京">東京</option>
+                            <option value="京都">京都</option>
+                            <option value="阪神">阪神</option>
+                            <option value="新潟">新潟</option>
+                            <option value="福島">福島</option>
+                            <option value="中京">中京</option>
+                            <option value="小倉">小倉</option>
+                            <option value="札幌">札幌</option>
+                            <option value="函館">函館</option>
+                        </optgroup>
+                        <optgroup label="南関東地方競馬">
+                            <option value="大井">大井</option>
+                            <option value="船橋">船橋</option>
+                            <option value="川崎">川崎</option>
+                            <option value="浦和">浦和</option>
+                        </optgroup>
+                        <optgroup label="その他地方競馬">
+                            <option value="門別">門別</option>
+                            <option value="名古屋">名古屋</option>
+                            <option value="笠松">笠松</option>
+                            <option value="園田">園田</option>
+                            <option value="姫路">姫路</option>
+                            <option value="高知">高知</option>
+                            <option value="佐賀">佐賀</option>
+                            <option value="金沢">金沢</option>
+                            <option value="盛岡">盛岡</option>
+                            <option value="水沢">水沢</option>
+                        </optgroup>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>距離</label>
+                    <select id="raceDistance">
+                        <option value="1000">1000m</option>
+                        <option value="1150">1150m</option>
+                        <option value="1200">1200m</option>
+                        <option value="1400">1400m</option>
+                        <option value="1600">1600m</option>
+                        <option value="1700">1700m</option>
+                        <option value="1800">1800m</option>
+                        <option value="1900">1900m</option>
+                        <option value="2000">2000m</option>
+                        <option value="2100">2100m</option>
+                        <option value="2200">2200m</option>
+                        <option value="2400">2400m</option>
+                        <option value="2500">2500m</option>
+                        <option value="2600">2600m</option>
+                        <option value="3000">3000m</option>
+                        <option value="3200">3200m</option>
+                        <option value="3600">3600m</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>馬場種別</label>
+                    <select id="raceTrackType">
+                        <option value="芝" selected>芝</option>
+                        <option value="ダート">ダート</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>馬場状態</label>
+                    <select id="raceTrackCondition">
+                        <option value="良" selected>良</option>
+                        <option value="稍重">稍重</option>
+                        <option value="重">重</option>
+                        <option value="不良">不良</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>レースレベル</label>
+                    <select id="raceLevel">
+                        <option value="G1">G1</option>
+                        <option value="G2">G2</option>
+                        <option value="G3">G3</option>
+                        <option value="重賞（オープン）">重賞（オープン）</option>
+                        <option value="3勝" selected>3勝</option>
+                        <option value="2勝">2勝</option>
+                        <option value="1勝">1勝</option>
+                        <option value="未勝利">未勝利</option>
+                        <option value="新馬">新馬</option>
+                        <option value="障害重賞">障害重賞</option>
+                        <option value="障害オープン">障害オープン</option>
+                        <option value="障害3勝">障害3勝</option>
+                        <option value="障害未勝利">障害未勝利</option>
+                    </select>
+                </div>
+            </div>
+            <div class="button-group">
+                <button class="btn" onclick="DataConverter.applyRaceInfoToAllHorses()">📋 全馬に適用</button>
+                <button class="btn" onclick="DataConverter.recalculateRestDays()">📅 休養日数を再計算</button>
+            </div>
+        </div>
+
+        <!-- 一括入力セクション -->
+        <div class="section" style="background: #fff3cd; border-left: 4px solid #ffc107;">
+            <h3 style="color: #856404;">📋 一括テキスト入力</h3>
+            
+            <!-- データ変換機能 -->
+            <div style="background: #e3f2fd; padding: 12px; margin-bottom: 15px; border-radius: 8px;">
+                <h4 style="margin-bottom: 8px; color: #1976d2;">🔄 競馬データ変換</h4>
+                <div class="form-group">
+                    <label for="rawDataInput">生データを貼り付け（netkeiba等から）</label>
+                    <textarea id="rawDataInput" placeholder="競馬の生データをここに貼り付けてください..." style="height: 120px; font-family: monospace; font-size: 12px;"></textarea>
+                </div>
+                <div class="btn-grid">
+                    <button class="btn" style="background: linear-gradient(45deg, #9c27b0, #673ab7);" onclick="loadSampleRawData()">📝 サンプル生データ</button>
+                </div>
+            </div>
+
+            <div class="btn-grid">
+                <button class="btn" onclick="DataConverter.bulkInput()">📊 一括入力実行</button>
+                <button class="btn" style="background: linear-gradient(45deg, #6c757d, #495057);" onclick="document.getElementById('rawDataInput').value = ''">🗑️ クリア</button>
+            </div>
+        </div>
+
+        <!-- 馬追加セクション -->
+        <div class="section">
+            <h3>🐎 馬を追加</h3>
+            <div class="btn-grid">
+                <button class="btn" onclick="addHorse()">➕ 馬を追加</button>
+                <button class="btn" onclick="addSampleHorses()">📝 サンプルデータ追加</button>
+                <button class="btn" onclick="clearAllHorses()">🗑️ 全クリア</button>
+            </div>
+        </div>
+
+        <!-- 馬データ入力エリア -->
+        <div id="horsesContainer"></div>
+
+        <!-- 予測実行 -->
+        <div class="section">
+            <h3>🔮 予測実行</h3>
+            <div class="btn-grid">
+                <button class="btn" style="background: linear-gradient(45deg, #28a745, #1e7e34);" onclick="calculatePredictions()">🚀 予測開始</button>
+                <button class="btn" style="background: linear-gradient(45deg, #667eea, #764ba2);" onclick="getAIRecommendation()">🤖 AI推奨を取得</button>
+                <button class="btn" style="background: linear-gradient(45deg, #dc3545, #bd2130);" onclick="openOddsAnalyzer()">💰 オッズ妙味分析</button>
+                <button class="btn" style="background: linear-gradient(45deg, #ff5722, #e64a19);" onclick="showRaceFlowPrediction()">🏇 展開予想</button>
+                <button class="btn" style="background: linear-gradient(45deg, #9c27b0, #673ab7);" onclick="AIRecommendationService.showLearningStats()">📈 AI判断分析</button>
+                <button class="btn" style="background: linear-gradient(45deg, #ff9800, #f57c00); font-size: 0.85em;" onclick="AIRecommendationService.generateTestAIData()">🧪 AIテストデータ生成</button>
+            </div>
+            
+            <!-- AI推奨モード切り替え -->
+            <div class="section" style="background: #e3f2fd; border-left: 4px solid #2196f3; margin-top: 15px;">
+                <h4 style="color: #1976d2; margin-bottom: 10px;">🔧 AI推奨モード設定</h4>
+                
+                <!-- APIキー設定とCORS説明 -->
+                <div style="background: #fff3cd; padding: 12px; border-radius: 8px; margin-bottom: 15px;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="font-weight: bold; color: #856404;">🔑 Claude APIキー設定</span>
+                        <span id="apiKeyStatus" style="font-size: 0.9em;">❌ APIキー未設定</span>
+                    </div>
+                    <p style="font-size: 0.85em; color: #856404; margin-bottom: 10px;">
+                        ⚠️ <strong>注意</strong>: ブラウザのCORS制限により、直接API呼び出しは制限されています。<br>
+                        GitHub Pagesなどの静的ホスティングでは<strong>手動モード</strong>をご利用ください。<br>
+                        ローカル環境（localhost:3001）では自動取得モードが利用可能です。
+                    </p>
+                    <button class="btn" style="background: linear-gradient(45deg, #ffc107, #e0a800);" onclick="AIRecommendationService.showAPIKeySettings()">🔧 APIキーを設定</button>
+                </div>
+                
+                <div style="margin-bottom: 15px;">
+                    <label style="display: flex; align-items: center; margin-bottom: 8px;">
+                        <input type="radio" name="aiMode" value="manual" id="manualMode" checked style="margin-right: 8px;">
+                        <span style="font-weight: bold;">✍️ 手動入力</span>
+                        <span style="margin-left: 10px; font-size: 0.9em; color: #666;">（プロンプトを取得してAI回答を手動入力）</span>
+                    </label>
+                    <label style="display: flex; align-items: center;">
+                        <input type="radio" name="aiMode" value="api" id="apiMode" style="margin-right: 8px;">
+                        <span style="font-weight: bold;">🔗 API自動取得</span>
+                        <span style="margin-left: 10px; font-size: 0.9em; color: #666;">（APIキーを使用してClaude AIから自動取得）</span>
+                    </label>
+                </div>
+                
+                <!-- プロンプト取得ボタン -->
+                <div id="promptSection" style="display: block; background: #fff3cd; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                    <h5 style="color: #856404; margin-bottom: 10px;">📋 AIプロンプト取得</h5>
+                    <div style="margin-bottom: 10px;">
+                        <button class="btn" style="background: linear-gradient(45deg, #ffc107, #e0a800);" onclick="AIRecommendationService.generatePromptForUser()">📤 プロンプトを生成</button>
+                        <span style="margin: 0 10px;">または</span>
+                        <button class="btn" style="background: linear-gradient(45deg, #28a745, #1e7e34); font-size: 0.9em;" onclick="loadSampleHorses(); setTimeout(() => calculatePredictions(), 500);">🐎 テスト用馬データ生成</button>
+                    </div>
+                    <div id="promptOutput" style="margin-top: 10px;"></div>
+                </div>
+                
+                <!-- 手動AI回答入力 -->
+                <div id="manualInputSection" style="display: block; background: #d1ecf1; padding: 15px; border-radius: 8px;">
+                    <h5 style="color: #0c5460; margin-bottom: 10px;">🤖 AI回答を入力</h5>
+                    <textarea id="manualAIResponse" placeholder="Claude AIからの回答をここに貼り付けてください..." style="width: 100%; height: 200px; padding: 10px; border: 1px solid #bee5eb; border-radius: 5px; font-family: monospace; font-size: 12px;"></textarea>
+                    <div class="btn-grid" style="margin-top: 10px;">
+                        <button class="btn" style="background: linear-gradient(45deg, #17a2b8, #138496);" onclick="AIRecommendationService.processManualAIResponse()">🚀 手動回答を処理</button>
+                        <button class="btn" style="background: linear-gradient(45deg, #6c757d, #495057);" onclick="document.getElementById('manualAIResponse').value = ''">🗑️ クリア</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            // AI推奨モード切り替え
+            document.addEventListener('DOMContentLoaded', function() {
+                const apiMode = document.getElementById('apiMode');
+                const manualMode = document.getElementById('manualMode');
+                const promptSection = document.getElementById('promptSection');
+                const manualInputSection = document.getElementById('manualInputSection');
+                
+                function updateAIMode() {
+                    if (manualMode.checked) {
+                        promptSection.style.display = 'block';
+                        manualInputSection.style.display = 'block';
+                    } else {
+                        promptSection.style.display = 'none';
+                        manualInputSection.style.display = 'none';
+                    }
+                }
+                
+                apiMode.addEventListener('change', updateAIMode);
+                manualMode.addEventListener('change', updateAIMode);
+                updateAIMode(); // 初期状態を設定
+            });
+        </script>
+
+        <!-- 予測結果 -->
+        <div id="results" class="results hidden">
+            <h3>📊 予測結果</h3>
+            
+            <!-- 収益性指標の簡易説明 -->
+            <div class="info-panel" style="background: #f0f8ff; padding: 15px; margin-bottom: 15px; border-radius: 8px; border-left: 4px solid #2196f3; display: none;" id="metricsInfo">
+                <h4 style="color: #1976d2; margin-bottom: 10px;">💡 収益性指標の見方（簡易版）</h4>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; font-size: 0.9em;">
+                    <div><strong>💎 効率スコア:</strong> 投資の効率性（80点以上=優秀）</div>
+                    <div><strong>📈 期待値:</strong> 1.0以上で理論的利益</div>
+                    <div><strong>⭐ グレード:</strong> AAA〜Dで投資評価</div>
+                    <div><strong>🐎 穴馬:</strong> オッズ5倍以上で穴馬判定</div>
+                </div>
+                <p style="font-size: 0.85em; color: #1976d2; margin-top: 8px; margin-bottom: 5px;">
+                    詳細は <a href="profitability-metrics-guide.html" target="_blank" style="color: #2e8b57; font-weight: bold;">💰 収益性分析の解説</a> をご覧ください
+                </p>
+            </div>
+            
+            <div id="sortControls" class="section" style="margin-bottom: 15px; display: none;">
+                <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                    <div>
+                        <label for="sortSelect" style="font-weight: bold; margin-right: 10px;">並び順:</label>
+                        <select id="sortSelect" onchange="PredictionEngine.changeSortOrder(this.value)">
+                            <option value="score">スコア順</option>
+                            <!-- アンサンブルスコア順は Phase 6では無効化 (将来のPhase 8で復活検討) -->
+                            <!-- <option value="ensembleScore">🎯 アンサンブルスコア順</option> -->
+                            <option value="place">複勝率順</option>
+                            <option value="win">勝率順</option>
+                            <option value="odds">オッズ順</option>
+                            <option value="efficiency">💎 投資効率順</option>
+                            <option value="expectedValue">🎯 期待値順</option>
+                            <option value="underdog">🐎 穴馬候補順</option>
+                        </select>
+                    </div>
+                    <button class="btn" onclick="toggleMetricsInfo()" style="background: linear-gradient(45deg, #2196f3, #1976d2); font-size: 0.85em;">
+                        💡 指標説明
+                    </button>
+                </div>
+            </div>
+            <div id="resultsContainer"></div>
+            
+            <!-- 拡張推奨システム -->
+            <div id="enhancedRecommendations" style="margin-top: 20px;"></div>
+            
+            <!-- 統合学習セクション -->
+            <div id="learningSection" class="section" style="background: #f0f8ff; border-left: 4px solid #2196f3; margin-top: 20px;">
+                <h3 style="color: #1976d2;">📝 レース結果を入力して学習（統計・AI統合）</h3>
+                <div class="form-group">
+                    <label>実際の着順結果（1着, 2着, 3着の馬名または馬番を入力）</label>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                        <input type="text" id="unifiedFirst" placeholder="1着（馬名 または 馬番）">
+                        <input type="text" id="unifiedSecond" placeholder="2着（馬名 または 馬番）">
+                        <input type="text" id="unifiedThird" placeholder="3着（馬名 または 馬番）">
+                    </div>
+                    
+                    <!-- 拡張学習入力 -->
+                    <div id="enhancedLearningInput" style="background: #e8f5e8; border: 1px solid #4caf50; border-radius: 8px; padding: 15px; margin: 15px 0; display: none;">
+                        <h4 style="color: #2e7d32; margin: 0 0 15px 0;">🎯 拡張学習システム</h4>
+                        
+                        <!-- 注目馬の結果 -->
+                        <div style="margin-bottom: 20px;">
+                            <h5 style="color: #2e7d32; margin: 0 0 10px 0;">🏇 注目馬の的中状況</h5>
+                            <div id="watchListResults"></div>
+                        </div>
+                        
+                        <!-- 戦略別結果 -->
+                        <div style="margin-bottom: 20px;">
+                            <h5 style="color: #2e7d32; margin: 0 0 10px 0;">💡 買い目戦略の結果</h5>
+                            <div id="strategyResults"></div>
+                        </div>
+                        
+                        <!-- 見逃し分析 -->
+                        <div style="margin-bottom: 15px;">
+                            <h5 style="color: #2e7d32; margin: 0 0 10px 0;">👁️ 見逃し分析</h5>
+                            <label style="font-size: 0.9em; color: #2e7d32;">注目度が低すぎた好走馬:</label>
+                            <input type="text" id="oversightHorses" placeholder="馬名を入力（例: ダークホース, サプライズ馬）" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; margin-top: 5px;">
+                        </div>
+                        
+                        <button onclick="processEnhancedLearning()" style="background: linear-gradient(45deg, #4caf50, #2e7d32); color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">
+                            🧠 拡張学習を実行
+                        </button>
+                    </div>
+                
+                    <!-- 学習システム簡潔化：単勝・複勝に集中 -->
+                    <div id="simpleLearningInput" style="background: #e3f2fd; border: 1px solid #2196f3; border-radius: 8px; padding: 15px; margin: 15px 0;">
+                        <h4 style="color: #1976d2; margin: 0 0 10px 0;">🎯 学習システム（簡潔版）</h4>
+                        <p style="color: #1976d2; font-size: 0.85em; margin: 0 0 15px 0;">
+                            💡 <strong>単勝・複勝予測の精度向上</strong>に特化した学習システムです<br>
+                            ・実際の1-3着の結果を入力することで予測アルゴリズムが改善されます<br>
+                            ・連複・3連単機能は将来的に必要に応じて追加予定です
+                        </p>
+                        <p style="color: #666; font-size: 0.8em; margin: 0;">
+                            🔧 システム簡潔化により、より信頼性の高い単勝・複勝予測に集中します
+                        </p>
+                    </div>
+                    
+                    <p style="color: #1976d2; font-size: 0.85em; margin-bottom: 15px;">
+                        💡 <strong>入力方法:</strong><br>
+                        ・馬名: ベラジオ（一部でもOK）<br>
+                        ・馬番: 5（数字のみ）<br>
+                        ・一度の入力で統計学習とAI学習の両方に反映されます
+                    </p>
+                </div>
+                <div class="btn-grid">
+                    <button class="btn" style="background: linear-gradient(45deg, #2196f3, #667eea);" onclick="processUnifiedRaceResult()">🚀 統合学習実行（Phase 4-6自動分析+学習記録）</button>
+                    <button class="btn" style="background: linear-gradient(45deg, #4caf50, #2e7d32);" onclick="showLearningStats()">📈 統計学習状況</button>
+                    <button class="btn" style="background: linear-gradient(45deg, #667eea, #764ba2);" onclick="AIRecommendationService.showLearningStats()">📊 AI判断分析</button>
+                    <button class="btn" style="background: linear-gradient(45deg, #e67e22, #d35400);" onclick="LearningSystem.showSleeperStats()">💎 穴馬学習統計</button>
+                    <button class="btn" style="background: linear-gradient(45deg, #ff5722, #d84315);" onclick="showInvestmentStrategy()">💡 投資戦略アドバイス</button>
+                    <button class="btn" style="background: linear-gradient(45deg, #2e8b57, #228b22);" onclick="showProfitabilityDashboardDirect()">💰 収益性分析</button>
+                    <button class="btn" style="background: linear-gradient(45deg, #ff9800, #f57c00);" onclick="AIRecommendationService.showLearningGraphs()">📈 AI分析グラフ</button>
+                    <button class="btn" style="background: linear-gradient(45deg, #ff9800, #e65100);" onclick="showPhase4DynamicStrategy()" title="レース特性分析・動的投資額調整・パフォーマンス追跡による高度な投資戦略">🎯 高度戦略分析</button>
+                    <button class="btn" style="background: linear-gradient(45deg, #9c27b0, #7b1fa2);" onclick="showPhase5CalibrationReport()">🔬 Phase 5精度分析</button>
+                    <button class="btn" style="background: linear-gradient(45deg, #f44336, #d32f2f); font-size: 0.9em;" onclick="resetAllLearningData()">🔄 全学習データリセット</button>
+                </div>
+                
+                <!-- 学習データ移行セクション -->
+                <div class="section" style="background: #f3e5f5; border-left: 4px solid #9c27b0; margin-top: 15px;">
+                    <h4 style="color: #7b1fa2; margin-bottom: 10px;">📦 学習データの移行</h4>
+                    
+                    <!-- コンパクトなボタン配置 -->
+                    <div class="btn-grid" style="grid-template-columns: 1fr 1fr 1fr 1fr;">
+                        <button class="btn" style="background: linear-gradient(45deg, #9c27b0, #7b1fa2); font-size: 0.85em;" onclick="exportLearningData()">📤 全データエクスポート</button>
+                        <button class="btn" style="background: linear-gradient(45deg, #673ab7, #512da8); font-size: 0.85em;" onclick="document.getElementById('importFile').click()">📥 全データインポート</button>
+                        <button class="btn" style="background: linear-gradient(45deg, #667eea, #764ba2); font-size: 0.85em;" onclick="exportAILearningData()">📤 AIデータエクスポート</button>
+                        <button class="btn" style="background: linear-gradient(45deg, #5a6fd8, #6b4b9d); font-size: 0.85em;" onclick="document.getElementById('importAIFile').click()">📥 AIデータインポート</button>
+                    </div>
+                    
+                    <input type="file" id="importFile" accept=".json" style="display: none;" onchange="importLearningData(event)">
+                    <input type="file" id="importAIFile" accept=".json" style="display: none;" onchange="importAILearningData(event)">
+                    
+                    <p style="font-size: 0.8em; color: #7b1fa2; margin-top: 8px; margin-bottom: 0;">
+                        💡 端末間で学習データを移行できます（JSONファイル形式）
+                    </p>
+                </div>
+                <div id="learningFeedback" style="margin-top: 15px;"></div>
+            </div>
+            
+            <!-- Phase 7: 投資結果記録 -->
+            <div style="background: #f3e5f5; padding: 15px; border-radius: 8px; margin-top: 20px; border-left: 4px solid #9c27b0;">
+                <h4 style="color: #7b1fa2; margin: 0 0 10px 0;">📝 Phase 7: 投資結果記録</h4>
+                <p style="margin: 0 0 15px 0; font-size: 0.9em; color: #555;">
+                    Kelly推奨結果を実際の投資に活用した後、その結果を記録してシステムの学習・改善に活用します。
+                </p>
+                <div class="btn-grid">
+                    <button class="btn" style="background: linear-gradient(45deg, #9c27b0, #7b1fa2);" onclick="window.resultInputUI && window.resultInputUI.showResultInput()">
+                        📊 投資結果を入力
+                    </button>
+                    <button class="btn" style="background: linear-gradient(45deg, #2196f3, #1976d2);" onclick="window.actionableInsightsManager && window.actionableInsightsManager.refreshInsights()">
+                        💡 分析を更新
+                    </button>
+                    <button class="btn" style="background: linear-gradient(45deg, #ff9800, #f57c00);" onclick="showInvestmentHistory()">
+                        📋 投資履歴
+                    </button>
+                    <button class="btn" style="background: linear-gradient(45deg, #4caf50, #2e7d32);" onclick="window.dataIntegrationManager && window.dataIntegrationManager.manualIntegration()">
+                        🔄 データ統合
+                    </button>
+                    <button class="btn" style="background: linear-gradient(45deg, #795548, #5d4037);" onclick="window.phase6To7Bridge && window.phase6To7Bridge.manualBridgeExecution()">
+                        🌉 ブリッジ実行
+                    </button>
+                </div>
+            </div>
+                
+                <!-- AI判断分析グラフ表示エリア -->
+                <div id="learningGraphsSection" class="section" style="display: none; background: #f8f9fa; border-left: 4px solid #ff9800; margin-top: 20px;">
+                    <h3 style="color: #e65100;">📊 AI判断パターン分析グラフ</h3>
+                    
+                    <!-- コンパクトなグラフボタン -->
+                    <div class="btn-grid" style="margin-bottom: 15px; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));">
+                        <button class="btn" style="background: linear-gradient(45deg, #4caf50, #2e7d32); font-size: 0.8em;" onclick="AIRecommendationService.showSuccessRateChart()">📈 成功率</button>
+                        <button class="btn" style="background: linear-gradient(45deg, #2196f3, #1976d2); font-size: 0.8em;" onclick="AIRecommendationService.showConfidenceChart()">🎯 信頼度</button>
+                        <button class="btn" style="background: linear-gradient(45deg, #9c27b0, #7b1fa2); font-size: 0.8em;" onclick="AIRecommendationService.showOddsChart()">💰 オッズ</button>
+                        <button class="btn" style="background: linear-gradient(45deg, #ff9800, #f57c00); font-size: 0.8em;" onclick="AIRecommendationService.showBettingStrategyChart()">🎯 買い目</button>
+                        <button class="btn" style="background: linear-gradient(45deg, #e67e22, #d35400); font-size: 0.8em;" onclick="LearningSystem.showSleeperStats()">💎 穴馬</button>
+                        <button class="btn" style="background: linear-gradient(45deg, #2e8b57, #228b22); font-size: 0.8em;" onclick="showProfitabilityDashboard()">💰 収益</button>
+                        <button class="btn" style="background: linear-gradient(45deg, #f44336, #d32f2f); font-size: 0.8em;" onclick="document.getElementById('learningGraphsSection').style.display='none'">❌ 閉じる</button>
+                    </div>
+                    
+                    <!-- グラフキャンバス -->
+                    <div style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                        <canvas id="learningChart" width="400" height="200"></canvas>
+                    </div>
+                    
+                    <!-- 収益性ダッシュボード（収益性分析ボタン用） -->
+                    <div id="profitabilityDashboard" style="display: none; margin-top: 20px;">
+                        <!-- ProfitabilityVisualizationSystemによって動的に生成される -->
+                    </div>
+                    
+                    <!-- グラフ説明 -->
+                    <div id="chartDescription" style="margin-top: 15px; padding: 15px; background: rgba(255,152,0,0.1); border-radius: 8px; color: #e65100;">
+                        📊 グラフを選択して学習状況を可視化できます
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 統合買い目推奨システム（基本推奨） -->
+            <div id="integratedBettingRecommendations" class="section" style="background: linear-gradient(135deg, #e8f5e8 0%, #f1f8e9 100%); border-left: 4px solid #4caf50; margin-top: 20px;">
+                <h3 style="color: #2e7d32;">🎯 基本買い目推奨</h3>
+                <p style="color: #2e7d32; font-size: 0.9em; margin-bottom: 15px;">
+                    📊 期待値ベースの標準的な買い目推奨（日常使い）
+                </p>
+                <div style="background: #c8e6c9; padding: 8px; border-radius: 4px; margin-bottom: 10px; font-size: 0.85em;">
+                    💡 <strong>使い方</strong>: 手軽に買い目を決めたい時の基本推奨です。より詳細な戦略は下の「🎯 Phase 4動的戦略」ボタンをお試しください。
+                </div>
+                <div id="integratedBettingContainer"></div>
+            </div>
+            
+            <!-- 期待値ベース推奨（統合システム用） -->
+            <div id="expectedValueBettingRecommendations" class="section" style="display: none;">
+                <div id="expectedValueBettingContainer"></div>
+            </div>
+            
+            <!-- 従来の買い目推奨 -->
+            <div id="bettingRecommendations" class="section" style="background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%); border-left: 4px solid #2196f3; margin-top: 15px;">
+                <h3 style="color: #1976d2;">📈 従来システム推奨</h3>
+                <p style="color: #1976d2; font-size: 0.9em; margin-bottom: 15px;">
+                    🏆 従来の学習システムによる推奨（的中実績重視・参考用）
+                </p>
+                <div style="background: #bbdefb; padding: 8px; border-radius: 4px; margin-bottom: 10px; font-size: 0.85em;">
+                    📝 <strong>参考情報</strong>: 過去の的中実績を重視した従来の推奨です。上の「基本買い目推奨」と比較検討にご活用ください。
+                </div>
+                <div id="bettingContainer"></div>
+            </div>
+            
+            <!-- 高度分析システム -->
+            <div class="section" style="background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%); border-left: 4px solid #ff9800; margin-top: 20px;">
+                <h3 style="color: #e65100;">🚀 高度分析システム</h3>
+                <div style="background: #ffcc02; padding: 10px; border-radius: 6px; margin-bottom: 15px; font-size: 0.9em; color: #e65100;">
+                    <strong>🔬 Phase 4-6統合分析</strong><br>
+                    • <strong>Phase 4</strong>: 動的戦略分析・リスク管理・パフォーマンス追跡<br>
+                    • <strong>Phase 5</strong>: キャリブレーション・確率校正・精度向上<br>
+                    • <strong>Phase 6</strong>: ケリー基準・科学的資金管理・ポートフォリオ最適化
+                </div>
+                
+                <div class="btn-grid">
+                    <button class="btn" style="background: linear-gradient(45deg, #ff9800, #f57c00);" onclick="showPhase4DynamicStrategy()">
+                        🎯 Phase 4: 動的戦略分析
+                    </button>
+                    <button class="btn" style="background: linear-gradient(45deg, #9c27b0, #7b1fa2);" onclick="showPhase5CalibrationReport()">
+                        🔬 Phase 5: キャリブレーション分析
+                    </button>
+                    <button class="btn" style="background: linear-gradient(45deg, #4caf50, #2e7d32);" onclick="showPhase6KellyCapitalAnalysis()">
+                        💰 Phase 6: ケリー基準資金管理
+                    </button>
+                </div>
+                
+                <!-- パフォーマンス統計表示ボタン -->
+                <div style="margin-top: 15px; padding: 10px; background: #f5f5f5; border-radius: 8px;">
+                    <h4 style="color: #333; margin: 0 0 10px 0; font-size: 0.9em;">📊 パフォーマンス統計</h4>
+                    <div class="btn-grid">
+                        <button class="btn" style="background: linear-gradient(45deg, #ff9800, #f57c00); font-size: 0.8em;" onclick="showPhase4PerformanceStats()">
+                            📈 Phase 4 統計
+                        </button>
+                        <button class="btn" style="background: linear-gradient(45deg, #9c27b0, #7b1fa2); font-size: 0.8em;" onclick="checkPhase5Data()">
+                            📋 Phase 5 データ状況
+                        </button>
+                        <button class="btn" style="background: linear-gradient(45deg, #4caf50, #2e7d32); font-size: 0.8em;" onclick="showPhase6PerformanceStats()">
+                            📊 Phase 6 統計
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Phase 4: 動的投資戦略システム -->
+        <div id="phase4DynamicStrategy" class="section" style="background: linear-gradient(135deg, #fff3e0 0%, #fce4ec 100%); border-left: 4px solid #ff9800; margin-top: 20px; display: none;">
+            <h3 style="color: #e65100;">🎯 Phase 4: 高度な投資戦略分析</h3>
+            <div style="background: #ffe0b2; padding: 10px; border-radius: 6px; margin-bottom: 15px; font-size: 0.9em;">
+                <strong>🔬 高度分析機能</strong><br>
+                • <strong>レース特性分析</strong>: 混戦度・競争度を分析して最適戦略を提案<br>
+                • <strong>動的投資額調整</strong>: ケリー基準による科学的な投資額計算<br>
+                • <strong>パフォーマンス追跡</strong>: 過去の成績を分析して継続的改善<br>
+                • <strong>リスク管理</strong>: レース状況に応じた1点集中 ↔ 分散投資の自動切り替え
+            </div>
+            
+            <!-- レース戦略分析結果 -->
+            <div id="raceStrategyAnalysis" style="margin-bottom: 15px;"></div>
+            
+            <!-- 動的投資額調整結果 -->
+            <div id="dynamicBettingResults" style="margin-bottom: 15px;"></div>
+            
+            <!-- パフォーマンス追跡結果 -->
+            <div id="performanceTrackingResults"></div>
+        </div>
+
+        <!-- Phase 5: キャリブレーション精度分析システム -->
+        <div id="phase5CalibrationReport" class="section" style="background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%); border-left: 4px solid #9c27b0; margin-top: 20px; display: none;">
+            <h3 style="color: #7b1fa2;">🔬 Phase 5: キャリブレーション精度分析</h3>
+            <!-- レポート内容はJavaScriptで動的生成 -->
+        </div>
+
+        <!-- Phase 6: ケリー基準資金管理システム -->
+        <div id="phase6KellyCapitalManagement" class="section" style="background: linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%); border-left: 4px solid #4caf50; margin-top: 20px; display: none;">
+            <h3 style="color: #2e7d32;">💰 Phase 6: ケリー基準資金管理システム</h3>
+            <div style="background: #dcedc8; padding: 10px; border-radius: 6px; margin-bottom: 15px; font-size: 0.9em;">
+                <strong>🧮 科学的資金管理機能</strong><br>
+                • <strong>ケリー基準計算</strong>: 勝率・オッズから最適投資比率を科学的算出<br>
+                • <strong>動的リスク調整</strong>: 成績に応じてリスクレベルを自動調整<br>
+                • <strong>ドローダウン制御</strong>: 連敗時の資金保護機能<br>
+                • <strong>ポートフォリオ最適化</strong>: 複数馬券の最適配分計算
+            </div>
+            
+            <!-- 資金管理ダッシュボード -->
+            <div id="capitalDashboard" style="margin-bottom: 15px;"></div>
+            
+            <!-- Phase 8α: オッズ妙味検出 -->
+            <div style="background: linear-gradient(45deg, #667eea, #764ba2); padding: 15px; border-radius: 8px; margin-bottom: 15px; color: white;">
+                <h4 style="margin: 0 0 10px 0; color: white;">🎯 Phase 8α: オッズ妙味検出システム</h4>
+                <p style="margin: 0 0 15px 0; font-size: 0.9em; opacity: 0.9;">
+                    市場の歪みを検出し、期待値の高い投資機会を特定します。分析結果は自動的にKelly計算に反映されます。
+                </p>
+                <div class="btn-grid">
+                    <button class="btn" style="background: rgba(255,255,255,0.3); color: white; border: 2px solid rgba(255,255,255,0.5); font-weight: bold;" onclick="openOddsAnalyzer()">
+                        🚀 独立分析ページを開く
+                    </button>
+                    <button class="btn" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3);" onclick="window.demoSimpleOddsValue && window.demoSimpleOddsValue()">
+                        📊 コンソールデモ
+                    </button>
+                    <button class="btn" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3);" onclick="window.analyzeSimpleOddsValue && console.log('📊 詳細結果:', window.analyzeSimpleOddsValue())">
+                        📈 コンソール分析
+                    </button>
+                    <button class="btn" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3);" onclick="window.oddsValueUI && window.oddsValueUI.showOddsValueAnalysis()">
+                        🔬 高度分析
+                    </button>
+                </div>
+                <div style="margin-top: 10px; font-size: 0.8em; opacity: 0.8;">
+                    💡 <strong>新機能:</strong> 市場効率性係数がKelly比率計算に自動統合され、より精密な投資判断が可能になりました
+                </div>
+            </div>
+            
+            <!-- ケリー基準投資推奨 -->
+            <div id="kellyBettingRecommendations" style="margin-bottom: 15px;"></div>
+            
+            <!-- ポートフォリオ分析 -->
+            <div id="portfolioAnalysis" style="margin-bottom: 15px;"></div>
+            
+            <!-- パフォーマンス分析 -->
+            <div id="capitalPerformanceAnalysis"></div>
+        </div>
+    </div>
+
+    <!-- ログレベル制御システム（最初に読み込み） -->
+    <script src="js/logLevelController.js"></script>
+    
+    <script src="js/config.js"></script>
+    <script src="js/pedigreeDatabase.js"></script>
+    <script src="js/dataConverter.js"></script>
+    <script src="js/horseManager.js"></script>
+    <script src="js/dataManager.js"></script>
+    <script src="js/raceAnalysisEngine.js"></script>
+    <script src="js/predictionEngine.js"></script>
+    <script src="js/bettingRecommender.js"></script>
+    <script src="js/learningSystem.js"></script>
+    <script src="js/hybridLearningSystem.js"></script>
+    <script src="js/enhancedLearningSystem.js"></script>
+    <script src="js/learningDataMigration.js"></script>
+    <script src="js/enhancedVisualizationSystem.js"></script>
+    <script src="js/aiRecommendationService.js"></script>
+    <script src="js/profitabilityMetrics.js"></script>
+    <script src="js/investmentEfficiencyCalculator.js"></script>
+    <script src="js/underdogDiscoveryAlgorithm.js"></script>
+    <script src="js/riskReturnAnalyzer.js"></script>
+    <script src="js/profitabilityVisualizationSystem.js"></script>
+    <script src="js/errorHandlingSystem.js"></script>
+    <script src="js/systemIntegration.js"></script>
+    <script src="js/mobileInteractionHandler.js"></script>
+    <script src="js/investmentStrategy.js"></script>
+    <script src="js/enhancedRecommendationSystem.js"></script>
+    <!-- Phase 1: 推奨精度向上システム -->
+    <script src="js/hitCriteriaSystem.js"></script>
+    <script src="js/reliabilityFilter.js"></script>
+    <script src="js/dynamicRecommendationAdjuster.js"></script>
+    <!-- Phase 2: 投資戦略最適化システム -->
+    <script src="js/riskManagementInvestmentSystem.js"></script>
+    <script src="js/kellyBettingSystem.js"></script>
+    <script src="js/profitabilityPatternAnalyzer.js"></script>
+    <script src="js/betTypeOptimizationSystem.js"></script>
+    <script src="js/drawdownControlSystem.js"></script>
+    <!-- Phase 3: リアルタイム学習・最適化システム -->
+    <script src="js/realtimeLearningEngine.js"></script>
+    <script src="js/marketAdaptationSystem.js"></script>
+    <script src="js/multiDimensionalFeatureAnalyzer.js"></script>
+    <script src="js/abTestingSystem.js"></script>
+    <script src="js/raceSpecificAdaptationSystem.js"></script>
+    <!-- Phase 4: 期待値ベース買い目システム -->
+    <script src="js/expectedValueCalculator.js"></script>
+    <script src="js/bettingFilter.js"></script>
+    <script src="js/raceSkipDecisionSystem.js"></script>
+    <script src="js/dynamicBettingManager.js"></script>
+    <script src="js/performanceTracker.js"></script>
+    <script src="js/raceStrategyManager.js"></script>
+    <script src="js/strategyEnhancement.js"></script>
+    <!-- Phase 5: キャリブレーション機能 -->
+    <script src="js/calibrationSystem.js"></script>
+    <script src="js/enhancedPredictionEngine.js"></script>
+    <script src="js/debugUtils.js"></script>
+    <script src="js/phase4Integration.js"></script>
+    <!-- Phase 6: ケリー基準資金管理 -->
+    <script src="js/kellyCapitalManager.js"></script>
+    <script src="js/phase6Integration.js"></script>
+    <!-- Phase 7: 可視化・分析ツール -->
+    <script src="js/portfolioDashboard.js"></script>
+    <script src="js/performanceCharts.js"></script>
+    <script src="js/candidateEvaluationVisualizer.js"></script>
+    <script src="js/realTimeUpdateManager.js"></script>
+    <script src="js/responsiveManager.js"></script>
+    <script src="js/investmentResultRecorder.js"></script>
+    <script src="js/resultInputUI.js"></script>
+    <script src="js/dataIntegrationManager.js"></script>
+    <script src="js/phase6To7Bridge.js"></script>
+    <!-- AnalysisModule定義後に分析モジュールを読み込み -->
+    <script src="js/actionableInsightsManager.js"></script>
+    <script src="js/performanceAnalyzer.js"></script>
+    <script src="js/riskAdjustmentAdvisor.js"></script>
+    <script src="js/portfolioOptimizer.js"></script>
+    <script src="js/scenarioAnalyzer.js"></script>
+    <script src="js/kellyFlexibilityUI.js"></script>
+    <script src="js/oddsValueDetector.js"></script>
+    <script src="js/oddsValueUI.js"></script>
+    <script src="js/raceFlowPredictor.js"></script>
+    <script src="js/raceFlowVisualizer.js"></script>
+    <script src="js/raceFlowHeatmap.js"></script>
+    
+    <!-- Phase 8α: 独立分析ページ連携スクリプト -->
+    <script>
+        /**
+         * 独立オッズ分析ページを開く
+         */
+        function openOddsAnalyzer() {
+            // 馬データを保存
+            let horsesData = [];
+            
+            if (window.horses && window.horses.length > 0) {
+                horsesData = window.horses;
+            } else if (typeof HorseManager !== 'undefined' && HorseManager.getAllHorses && HorseManager.getAllHorses().length > 0) {
+                horsesData = HorseManager.getAllHorses();
+            }
+            
+            if (horsesData.length > 0) {
+                try {
+                    localStorage.setItem('horses', JSON.stringify(horsesData));
+                    console.log(`📊 ${horsesData.length}頭のデータを保存しました`);
+                    
+                    // 予測結果データも保存（存在する場合）
+                    if (window.lastPredictions && window.lastPredictions.length > 0) {
+                        localStorage.setItem('lastPredictions', JSON.stringify(window.lastPredictions));
+                        console.log(`🔍 ${window.lastPredictions.length}頭の予測結果も保存しました`);
+                    } else if (typeof PredictionEngine !== 'undefined' && PredictionEngine.getCurrentPredictions) {
+                        const predictions = PredictionEngine.getCurrentPredictions();
+                        if (predictions && predictions.length > 0) {
+                            localStorage.setItem('lastPredictions', JSON.stringify(predictions));
+                            console.log(`🔍 ${predictions.length}頭の予測結果も保存しました（PredictionEngineから）`);
+                        } else {
+                            console.warn('⚠️ 予測結果データが見つかりません。先に「🚀 予測開始」を実行してください。');
+                        }
+                    } else {
+                        console.warn('⚠️ 予測結果データが見つかりません。先に「🚀 予測開始」を実行してください。');
+                    }
+                } catch (error) {
+                    console.warn('⚠️ データ保存エラー:', error);
+                }
+            } else {
+                console.warn('⚠️ 馬データが見つかりません');
+                if (confirm('馬データが見つかりません。サンプルデータで分析ページを開きますか？')) {
+                    // サンプルデータフラグをセット
+                    localStorage.setItem('useSimpleOddsSampleData', 'true');
+                }
+            }
+            
+            // 独立分析ページを開く
+            const analysisWindow = window.open('odds-value-analyzer.html', '_blank');
+            
+            if (!analysisWindow) {
+                alert('ポップアップがブロックされました。ブラウザの設定でポップアップを許可してください。');
+            } else {
+                console.log('🚀 独立オッズ分析ページを開きました');
+            }
+        }
+        
+        /**
+         * 馬データの手動同期（開発用）
+         */
+        function syncHorseDataToAnalyzer() {
+            const horses = window.horses || (typeof HorseManager !== 'undefined' ? HorseManager.getAllHorses() : []);
+            if (horses.length > 0) {
+                localStorage.setItem('horses', JSON.stringify(horses));
+                console.log(`📊 ${horses.length}頭のデータを手動同期しました`);
+                return true;
+            } else {
+                console.warn('⚠️ 同期する馬データがありません');
+                return false;
+            }
+        }
+        
+        // グローバル関数として公開
+        window.openOddsAnalyzer = openOddsAnalyzer;
+        window.syncHorseDataToAnalyzer = syncHorseDataToAnalyzer;
+        
+        /**
+         * Phase 8β: 展開予想機能
+         */
+        function showRaceFlowPrediction() {
+            if (typeof RaceFlowPredictor === 'undefined') {
+                alert('展開予想システムが利用できません。ページを再読み込みしてください。');
+                return;
+            }
+
+            // 馬データの確認
+            const horses = window.horses || (typeof HorseManager !== 'undefined' ? HorseManager.getAllHorses() : []);
+            if (!horses || horses.length === 0) {
+                alert('馬データが見つかりません。まず馬データを入力し、予測を実行してください。');
+                return;
+            }
+
+            console.log('🏇 展開予想分析開始');
+            
+            try {
+                const predictor = new RaceFlowPredictor();
+                const raceConditions = {
+                    raceName: document.getElementById('raceName')?.value || 'unknown',
+                    course: document.getElementById('raceCourse')?.value || 'unknown',
+                    distance: 2000, // デフォルト値
+                    surface: 'turf'  // デフォルト値
+                };
+                
+                const prediction = predictor.predictRaceFlow(horses, raceConditions);
+                displayRaceFlowResults(prediction);
+                
+                // Kelly計算に反映するための係数を保存
+                window.raceFlowAdjustmentFactors = predictor.getKellyAdjustmentFactors();
+                window.currentRaceFlowPrediction = prediction; // ビジュアライザー用に保存
+                console.log('✅ 展開予想結果をKelly計算用に保存しました');
+                
+            } catch (error) {
+                console.error('❌ 展開予想エラー:', error);
+                alert('展開予想の計算中にエラーが発生しました: ' + error.message);
+            }
+        }
+        
+        /**
+         * 展開予想結果の表示
+         */
+        function displayRaceFlowResults(prediction) {
+            // 既存のダイアログを削除
+            const existingDialog = document.getElementById('raceFlowDialog');
+            if (existingDialog) {
+                existingDialog.remove();
+            }
+
+            // ダイアログコンテナ作成
+            const dialog = document.createElement('div');
+            dialog.id = 'raceFlowDialog';
+            dialog.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.8);
+                z-index: 10000;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                opacity: 0;
+                transition: opacity 0.3s ease;
+            `;
+            
+            const content = document.createElement('div');
+            content.style.cssText = `
+                background: white;
+                border-radius: 12px;
+                max-width: 90vw;
+                max-height: 90vh;
+                overflow-y: auto;
+                padding: 0;
+                box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            `;
+            
+            content.innerHTML = `
+                <div style="background: linear-gradient(45deg, #ff5722, #e64a19); color: white; padding: 20px; border-radius: 12px 12px 0 0; display: flex; justify-content: space-between; align-items: center;">
+                    <h3>🏇 Phase 8β: 展開予想分析結果</h3>
+                    <button onclick="document.getElementById('raceFlowDialog').remove()" style="background: rgba(255,255,255,0.2); border: none; color: white; font-size: 18px; width: 30px; height: 30px; border-radius: 50%; cursor: pointer;">✕</button>
+                </div>
+                
+                <div style="padding: 20px;">
+                    <!-- サマリーセクション -->
+                    <div style="margin-bottom: 25px;">
+                        <h4 style="color: #ff5722; margin-bottom: 15px;">📊 展開サマリー</h4>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px;">
+                            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 0.9em; color: #666; margin-bottom: 5px;">分析対象</div>
+                                <div style="font-size: 1.8em; font-weight: bold; color: #333;">${prediction.summary.totalHorses}頭</div>
+                            </div>
+                            <div style="background: #e8f5e8; padding: 15px; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 0.9em; color: #666; margin-bottom: 5px;">展開有利</div>
+                                <div style="font-size: 1.8em; font-weight: bold; color: #28a745;">${prediction.summary.favoredCount}頭</div>
+                            </div>
+                            <div style="background: #ffeaa7; padding: 15px; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 0.9em; color: #666; margin-bottom: 5px;">展開不利</div>
+                                <div style="font-size: 1.8em; font-weight: bold; color: #e17055;">${prediction.summary.unfavoredCount}頭</div>
+                            </div>
+                            <div style="background: #ddd6fe; padding: 15px; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 0.9em; color: #666; margin-bottom: 5px;">平均影響度</div>
+                                <div style="font-size: 1.8em; font-weight: bold; color: #8b5cf6;">${prediction.summary.averageImpactFactor.toFixed(3)}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 詳細結果テーブル -->
+                    <div style="margin-bottom: 25px;">
+                        <h4 style="color: #ff5722; margin-bottom: 15px;">🐎 各馬の展開分析</h4>
+                        <div style="overflow-x: auto;">
+                            <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                                <thead>
+                                    <tr style="background: #f8f9fa;">
+                                        <th style="padding: 12px 8px; text-align: left; border-bottom: 2px solid #ddd;">馬名</th>
+                                        <th style="padding: 12px 8px; text-align: center; border-bottom: 2px solid #ddd;">脚質</th>
+                                        <th style="padding: 12px 8px; text-align: center; border-bottom: 2px solid #ddd;">枠順</th>
+                                        <th style="padding: 12px 8px; text-align: center; border-bottom: 2px solid #ddd;">展開係数</th>
+                                        <th style="padding: 12px 8px; text-align: center; border-bottom: 2px solid #ddd;">推奨度</th>
+                                        <th style="padding: 12px 8px; text-align: left; border-bottom: 2px solid #ddd;">説明</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${prediction.finalImpacts.map(impact => {
+                                        const factorColor = impact.flowImpactFactor >= 1.05 ? '#28a745' : 
+                                                          impact.flowImpactFactor <= 0.95 ? '#dc3545' : '#6c757d';
+                                        const recommendationBadge = getRecommendationBadge(impact.finalRecommendation);
+                                        
+                                        return `
+                                            <tr style="border-bottom: 1px solid #eee;">
+                                                <td style="padding: 12px 8px; font-weight: bold;">${impact.horse.name}</td>
+                                                <td style="padding: 12px 8px; text-align: center;">${getStyleLabel(impact.runningStyle)}</td>
+                                                <td style="padding: 12px 8px; text-align: center;">${impact.gateNumber}</td>
+                                                <td style="padding: 12px 8px; text-align: center; color: ${factorColor}; font-weight: bold;">${impact.flowImpactFactor.toFixed(3)}</td>
+                                                <td style="padding: 12px 8px; text-align: center;">${recommendationBadge}</td>
+                                                <td style="padding: 12px 8px; font-size: 0.9em; color: #666;">${impact.explanation}</td>
+                                            </tr>
+                                        `;
+                                    }).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Kelly統合ボタン -->
+                    <div style="background: #e3f2fd; border-left: 4px solid #2196f3; padding: 15px; border-radius: 8px;">
+                        <h4 style="color: #1976d2; margin-bottom: 10px;">⚡ Kelly計算への統合</h4>
+                        <p style="color: #1976d2; font-size: 0.9em; margin-bottom: 15px;">
+                            展開予想の結果がKelly基準投資額の計算に自動反映されます。
+                        </p>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+                            <button onclick="rerunKellyWithRaceFlow()" style="background: linear-gradient(45deg, #2196f3, #1976d2); color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer;">
+                                🔄 Kelly再計算実行
+                            </button>
+                            <button onclick="showRaceFlowVisualization()" style="background: linear-gradient(45deg, #ff9800, #f57c00); color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer;">
+                                📊 展開図を表示
+                            </button>
+                            <button onclick="showRaceFlowHeatmap()" style="background: linear-gradient(45deg, #e74c3c, #c0392b); color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer;">
+                                🔥 ヒートマップ
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            dialog.appendChild(content);
+            document.body.appendChild(dialog);
+            
+            // アニメーション表示
+            setTimeout(() => dialog.style.opacity = '1', 10);
+        }
+        
+        // ヘルパー関数
+        function getStyleLabel(style) {
+            const labels = {
+                'escape': '逃げ',
+                'leader': '先行',
+                'stalker': '差し',
+                'closer': '追込'
+            };
+            return labels[style] || style;
+        }
+        
+        function getRecommendationBadge(recommendation) {
+            const badges = {
+                'highly_favored': '<span style="background: #28a745; color: white; padding: 4px 8px; border-radius: 12px; font-size: 0.8em;">🔥 超有利</span>',
+                'favored': '<span style="background: #17a2b8; color: white; padding: 4px 8px; border-radius: 12px; font-size: 0.8em;">👍 有利</span>',
+                'neutral': '<span style="background: #6c757d; color: white; padding: 4px 8px; border-radius: 12px; font-size: 0.8em;">⚖️ 普通</span>',
+                'unfavored': '<span style="background: #ffc107; color: #333; padding: 4px 8px; border-radius: 12px; font-size: 0.8em;">⚠️ 不利</span>',
+                'highly_unfavored': '<span style="background: #dc3545; color: white; padding: 4px 8px; border-radius: 12px; font-size: 0.8em;">❌ 超不利</span>'
+            };
+            return badges[recommendation] || recommendation;
+        }
+        
+        /**
+         * Kelly計算の再実行（展開係数適用）
+         */
+        function rerunKellyWithRaceFlow() {
+            if (typeof KellyCapitalManager !== 'undefined' && window.horses) {
+                try {
+                    console.log('🔄 展開係数を適用してKelly計算を再実行中...');
+                    
+                    // Phase 6のKelly計算を再実行
+                    if (typeof calculateKellyBets === 'function') {
+                        calculateKellyBets();
+                        alert('✅ 展開予想の結果がKelly計算に反映されました！');
+                    } else {
+                        alert('Kelly計算機能が見つかりません。Phase 6を先に実行してください。');
+                    }
+                } catch (error) {
+                    console.error('❌ Kelly再計算エラー:', error);
+                    alert('Kelly計算の再実行に失敗しました: ' + error.message);
+                }
+            } else {
+                alert('Kelly計算システムまたは馬データが見つかりません');
+            }
+        }
+        
+        /**
+         * 展開図の可視化
+         */
+        function showRaceFlowVisualization() {
+            if (!window.currentRaceFlowPrediction) {
+                alert('展開予想データが見つかりません。先に展開予想を実行してください。');
+                return;
+            }
+            
+            try {
+                // ビジュアライザーダイアログを作成
+                const visualizerDialog = document.createElement('div');
+                visualizerDialog.id = 'raceFlowVisualizerDialog';
+                visualizerDialog.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0,0,0,0.8);
+                    z-index: 10002;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    opacity: 0;
+                    transition: opacity 0.3s ease;
+                `;
+                
+                const content = document.createElement('div');
+                content.style.cssText = `
+                    background: white;
+                    border-radius: 12px;
+                    max-width: 95vw;
+                    max-height: 95vh;
+                    overflow-y: auto;
+                    position: relative;
+                `;
+                
+                // 閉じるボタン
+                const closeBtn = document.createElement('button');
+                closeBtn.textContent = '✕ 閉じる';
+                closeBtn.style.cssText = `
+                    position: absolute;
+                    top: 15px;
+                    right: 15px;
+                    background: #e74c3c;
+                    color: white;
+                    border: none;
+                    padding: 8px 16px;
+                    border-radius: 6px;
+                    cursor: pointer;
+                    font-weight: bold;
+                    z-index: 10003;
+                `;
+                closeBtn.onclick = () => {
+                    visualizerDialog.style.opacity = '0';
+                    setTimeout(() => visualizerDialog.remove(), 300);
+                };
+                
+                // ビジュアライザーコンテナ
+                const visualizerContainer = document.createElement('div');
+                visualizerContainer.id = 'raceFlowVisualizationContainer';
+                
+                content.appendChild(closeBtn);
+                content.appendChild(visualizerContainer);
+                visualizerDialog.appendChild(content);
+                document.body.appendChild(visualizerDialog);
+                
+                // ビジュアライザーを表示
+                const visualizer = new RaceFlowVisualizer();
+                visualizer.displayRaceFlowVisualization(
+                    window.currentRaceFlowPrediction, 
+                    'raceFlowVisualizationContainer'
+                );
+                
+                // アニメーション表示
+                setTimeout(() => visualizerDialog.style.opacity = '1', 10);
+                
+                console.log('🖼️ 展開図ビジュアライザーを表示しました');
+                
+            } catch (error) {
+                console.error('❌ ビジュアライザー表示エラー:', error);
+                alert('ビジュアライザーの表示中にエラーが発生しました: ' + error.message);
+            }
+        }
+        
+        /**
+         * 展開係数ヒートマップの表示
+         */
+        function showRaceFlowHeatmap() {
+            if (!window.currentRaceFlowPrediction) {
+                alert('展開予想データが見つかりません。先に展開予想を実行してください。');
+                return;
+            }
+            
+            try {
+                // ヒートマップダイアログを作成
+                const heatmapDialog = document.createElement('div');
+                heatmapDialog.id = 'raceFlowHeatmapDialog';
+                heatmapDialog.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0,0,0,0.8);
+                    z-index: 10004;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    opacity: 0;
+                    transition: opacity 0.3s ease;
+                `;
+                
+                const content = document.createElement('div');
+                content.style.cssText = `
+                    background: white;
+                    border-radius: 12px;
+                    max-width: 95vw;
+                    max-height: 95vh;
+                    overflow-y: auto;
+                    position: relative;
+                `;
+                
+                // 閉じるボタン
+                const closeBtn = document.createElement('button');
+                closeBtn.textContent = '✕ 閉じる';
+                closeBtn.style.cssText = `
+                    position: absolute;
+                    top: 15px;
+                    right: 15px;
+                    background: #e74c3c;
+                    color: white;
+                    border: none;
+                    padding: 8px 16px;
+                    border-radius: 6px;
+                    cursor: pointer;
+                    font-weight: bold;
+                    z-index: 10005;
+                `;
+                closeBtn.onclick = () => {
+                    heatmapDialog.style.opacity = '0';
+                    setTimeout(() => heatmapDialog.remove(), 300);
+                };
+                
+                // ヒートマップコンテナ
+                const heatmapContainer = document.createElement('div');
+                heatmapContainer.id = 'raceFlowHeatmapContainer';
+                
+                content.appendChild(closeBtn);
+                content.appendChild(heatmapContainer);
+                heatmapDialog.appendChild(content);
+                document.body.appendChild(heatmapDialog);
+                
+                // ヒートマップを表示
+                const heatmap = new RaceFlowHeatmap();
+                heatmap.displayHeatmap(
+                    window.currentRaceFlowPrediction, 
+                    'raceFlowHeatmapContainer'
+                );
+                
+                // アニメーション表示
+                setTimeout(() => heatmapDialog.style.opacity = '1', 10);
+                
+                console.log('🔥 展開係数ヒートマップを表示しました');
+                
+            } catch (error) {
+                console.error('❌ ヒートマップ表示エラー:', error);
+                alert('ヒートマップの表示中にエラーが発生しました: ' + error.message);
+            }
+        }
+        
+        window.showRaceFlowPrediction = showRaceFlowPrediction;
+    </script>
+    
+    <!-- ブラウザ互換性・安全性システム -->
+    <script src="js/browserCompatibility.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html> 

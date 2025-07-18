@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏇 競馬予測システム検証ツール</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #ecf0f1;
+        }
+        .tab {
+            padding: 12px 24px;
+            cursor: pointer;
+            border: none;
+            background: none;
+            font-size: 16px;
+            font-weight: bold;
+            color: #7f8c8d;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+        .tab.active {
+            color: #2980b9;
+            border-bottom-color: #2980b9;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #34495e;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 8px 12px;
+            border: 2px solid #ecf0f1;
+            border-radius: 6px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        input:focus, select:focus, textarea:focus {
+            border-color: #3498db;
+            outline: none;
+        }
+        .btn {
+            background: linear-gradient(45deg, #3498db, #2980b9);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            margin: 5px;
+            transition: transform 0.2s;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        .btn-success {
+            background: linear-gradient(45deg, #27ae60, #2ecc71);
+        }
+        .btn-warning {
+            background: linear-gradient(45deg, #f39c12, #e67e22);
+        }
+        .btn-danger {
+            background: linear-gradient(45deg, #e74c3c, #c0392b);
+        }
+        .prediction-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 10px;
+            padding: 10px;
+            border: 1px solid #ecf0f1;
+            border-radius: 6px;
+        }
+        .prediction-header {
+            background: #34495e;
+            color: white;
+            font-weight: bold;
+        }
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        .results-table th, .results-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+        .results-table th {
+            background: #34495e;
+            color: white;
+        }
+        .summary-card {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin: 10px 0;
+            text-align: center;
+        }
+        .summary-value {
+            font-size: 2em;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .import-export {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .notification {
+            padding: 12px;
+            border-radius: 6px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        .notification.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .notification.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <h1>🏇 競馬予測システム検証ツール</h1>
+    
+    <div class="container">
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('input')">📝 データ入力</button>
+            <button class="tab" onclick="switchTab('results')">📊 結果分析</button>
+            <button class="tab" onclick="switchTab('summary')">📈 総合評価</button>
+            <button class="tab" onclick="switchTab('export')">💾 データ管理</button>
+        </div>
+
+        <!-- データ入力タブ -->
+        <div id="input" class="tab-content active">
+            <h2>📋 レース情報・予測結果入力</h2>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <!-- レース基本情報 -->
+                <div>
+                    <h3>🏁 レース基本情報</h3>
+                    <div class="form-group">
+                        <label>開催日</label>
+                        <input type="date" id="raceDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label>競馬場</label>
+                        <select id="raceCourse" required>
+                            <option value="">選択してください</option>
+                            <option value="札幌">札幌</option>
+                            <option value="函館">函館</option>
+                            <option value="福島">福島</option>
+                            <option value="新潟">新潟</option>
+                            <option value="東京">東京</option>
+                            <option value="中山">中山</option>
+                            <option value="中京">中京</option>
+                            <option value="京都">京都</option>
+                            <option value="阪神">阪神</option>
+                            <option value="小倉">小倉</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>レース名</label>
+                        <input type="text" id="raceName" placeholder="例: 第1R 新馬戦" required>
+                    </div>
+                    <div class="form-group">
+                        <label>出走頭数</label>
+                        <input type="number" id="horseCount" min="2" max="18" value="8" required>
+                    </div>
+                    <div class="form-group">
+                        <label>馬場状態</label>
+                        <select id="trackCondition">
+                            <option value="良">良</option>
+                            <option value="稍重">稍重</option>
+                            <option value="重">重</option>
+                            <option value="不良">不良</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- 実際の結果 -->
+                <div>
+                    <h3>🏆 実際の結果</h3>
+                    <div class="form-group">
+                        <label>1着馬番</label>
+                        <input type="number" id="firstPlace" min="1" max="18" required>
+                    </div>
+                    <div class="form-group">
+                        <label>2着馬番</label>
+                        <input type="number" id="secondPlace" min="1" max="18" required>
+                    </div>
+                    <div class="form-group">
+                        <label>3着馬番</label>
+                        <input type="number" id="thirdPlace" min="1" max="18" required>
+                    </div>
+                    <div class="form-group">
+                        <label>単勝払戻金（円）</label>
+                        <input type="number" id="winPayback" min="0" placeholder="例: 280">
+                    </div>
+                    <div class="form-group">
+                        <label>複勝払戻金（円）</label>
+                        <input type="number" id="placePayback" min="0" placeholder="例: 150">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 予測データ入力 -->
+            <div style="margin-top: 30px;">
+                <h3>🎯 予測データ</h3>
+                <div class="prediction-row prediction-header">
+                    <div>馬番</div>
+                    <div>基本スコア</div>
+                    <div>アンサンブル</div>
+                    <div>勝率(%)</div>
+                    <div>複勝率(%)</div>
+                    <div>オッズ</div>
+                </div>
+                <div id="predictionRows"></div>
+                <button class="btn btn-success" onclick="generatePredictionRows()">🐎 予測行を生成</button>
+                <button class="btn" onclick="loadFromApp()">📱 アプリから読み込み</button>
+                <button class="btn btn-warning" onclick="loadFromClipboard()">📋 クリップボードから読み込み</button>
+            </div>
+
+            <div style="text-align: center; margin-top: 30px;">
+                <button class="btn btn-success" onclick="saveRaceData()">💾 このレースを保存</button>
+                <button class="btn btn-warning" onclick="clearForm()">🗑️ フォームクリア</button>
+            </div>
+        </div>
+
+        <!-- 結果分析タブ -->
+        <div id="results" class="tab-content">
+            <h2>📊 レース別結果分析</h2>
+            <div id="raceResultsList"></div>
+        </div>
+
+        <!-- 総合評価タブ -->
+        <div id="summary" class="tab-content">
+            <h2>📈 全体パフォーマンス総合評価</h2>
+            <div style="margin-bottom: 20px;">
+                <button class="btn" onclick="displaySummary()">📊 基本統計</button>
+                <button class="btn btn-warning" onclick="analyzePlacePredictions()">🎯 複勝予想詳細分析</button>
+            </div>
+            <div id="overallSummary"></div>
+        </div>
+
+        <!-- データ管理タブ -->
+        <div id="export" class="tab-content">
+            <h2>💾 データ管理</h2>
+            
+            <div class="import-export">
+                <h3>📤 データエクスポート</h3>
+                <p>検証データをCSV形式でダウンロードできます。</p>
+                <button class="btn" onclick="exportToCSV()">📊 CSV形式でダウンロード</button>
+                <button class="btn" onclick="exportToJSON()">📄 JSON形式でダウンロード</button>
+            </div>
+            
+            <div class="import-export">
+                <h3>📥 データインポート</h3>
+                <p>以前エクスポートしたデータを読み込むことができます。</p>
+                <input type="file" id="importFile" accept=".json,.csv" style="margin-bottom: 10px;">
+                <br>
+                <button class="btn" onclick="importData()">📂 ファイルから読み込み</button>
+            </div>
+            
+            <div class="import-export">
+                <h3>🗑️ データ管理</h3>
+                <button class="btn btn-danger" onclick="clearAllData()">全データ削除</button>
+                <p style="color: #e74c3c; font-size: 0.9em;">※この操作は取り消せません</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="notifications"></div>
+
+    <script>
+        // データ保存用
+        let verificationData = JSON.parse(localStorage.getItem('horseVerificationData') || '[]');
+        
+        // タブ切り替え
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            document.getElementById(tabName).classList.add('active');
+            
+            if (tabName === 'results') {
+                displayResults();
+            } else if (tabName === 'summary') {
+                displaySummary();
+            }
+        }
+        
+        // 通知表示
+        function showNotification(message, type = 'success') {
+            const notificationDiv = document.getElementById('notifications');
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            notificationDiv.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+        
+        // 予測行生成
+        function generatePredictionRows() {
+            const horseCount = parseInt(document.getElementById('horseCount').value) || 8;
+            const container = document.getElementById('predictionRows');
+            container.innerHTML = '';
+            
+            for (let i = 1; i <= horseCount; i++) {
+                const row = document.createElement('div');
+                row.className = 'prediction-row';
+                row.innerHTML = `
+                    <input type="number" value="${i}" readonly style="background: #f8f9fa;">
+                    <input type="number" id="score_${i}" step="0.1" placeholder="0.0" min="0" max="100">
+                    <input type="number" id="ensemble_${i}" step="0.1" placeholder="0.0" min="0" max="100">
+                    <input type="number" id="winRate_${i}" step="0.1" placeholder="0.0" min="0" max="100">
+                    <input type="number" id="placeRate_${i}" step="0.1" placeholder="0.0" min="0" max="100">
+                    <input type="number" id="odds_${i}" step="0.1" placeholder="0.0" min="1">
+                `;
+                container.appendChild(row);
+            }
+        }
+        
+        // アプリから読み込み（同一タブでの連携用）
+        function loadFromApp() {
+            if (typeof PredictionEngine !== 'undefined' && PredictionEngine.currentPredictions) {
+                loadPredictionData(PredictionEngine.currentPredictions);
+                showNotification('🎯 メインアプリから予測データを読み込みました');
+            } else {
+                showNotification('⚠️ メインアプリの予測データが見つかりません。同一タブでindex.htmlから移動してください。', 'error');
+            }
+        }
+        
+        // クリップボードから読み込み
+        async function loadFromClipboard() {
+            try {
+                const text = await navigator.clipboard.readText();
+                const data = JSON.parse(text);
+                
+                if (Array.isArray(data) && data.length > 0 && data[0].score !== undefined) {
+                    loadPredictionData(data);
+                    showNotification('📋 クリップボードから予測データを読み込みました');
+                } else {
+                    showNotification('⚠️ 正しい予測データ形式ではありません', 'error');
+                }
+            } catch (error) {
+                showNotification('⚠️ クリップボードの読み込みに失敗しました', 'error');
+            }
+        }
+        
+        // 予測データを入力フィールドに設定
+        function loadPredictionData(predictions) {
+            const horseCount = predictions.length;
+            document.getElementById('horseCount').value = horseCount;
+            generatePredictionRows();
+            
+            predictions.forEach((horse, index) => {
+                const horseNum = index + 1;
+                const scoreInput = document.getElementById(`score_${horseNum}`);
+                const ensembleInput = document.getElementById(`ensemble_${horseNum}`);
+                const winRateInput = document.getElementById(`winRate_${horseNum}`);
+                const placeRateInput = document.getElementById(`placeRate_${horseNum}`);
+                const oddsInput = document.getElementById(`odds_${horseNum}`);
+                
+                if (scoreInput) scoreInput.value = horse.score || 0;
+                if (ensembleInput) ensembleInput.value = horse.enhancedScore || horse.score || 0;
+                if (winRateInput) winRateInput.value = horse.winProbability || 0;
+                if (placeRateInput) placeRateInput.value = horse.placeProbability || 0;
+                if (oddsInput) oddsInput.value = horse.odds || 0;
+            });
+        }
+        
+        // レースデータ保存
+        function saveRaceData() {
+            const raceData = {
+                id: Date.now(),
+                date: document.getElementById('raceDate').value,
+                course: document.getElementById('raceCourse').value,
+                name: document.getElementById('raceName').value,
+                horseCount: parseInt(document.getElementById('horseCount').value),
+                trackCondition: document.getElementById('trackCondition').value,
+                results: {
+                    first: parseInt(document.getElementById('firstPlace').value),
+                    second: parseInt(document.getElementById('secondPlace').value),
+                    third: parseInt(document.getElementById('thirdPlace').value),
+                    winPayback: parseInt(document.getElementById('winPayback').value) || 0,
+                    placePayback: parseInt(document.getElementById('placePayback').value) || 0
+                },
+                predictions: [],
+                analysis: {}
+            };
+            
+            // 予測データ収集
+            for (let i = 1; i <= raceData.horseCount; i++) {
+                const scoreEl = document.getElementById(`score_${i}`);
+                const ensembleEl = document.getElementById(`ensemble_${i}`);
+                const winRateEl = document.getElementById(`winRate_${i}`);
+                const placeRateEl = document.getElementById(`placeRate_${i}`);
+                const oddsEl = document.getElementById(`odds_${i}`);
+                
+                if (scoreEl && scoreEl.value) {
+                    raceData.predictions.push({
+                        horseNumber: i,
+                        score: parseFloat(scoreEl.value) || 0,
+                        ensembleScore: parseFloat(ensembleEl.value) || 0,
+                        winRate: parseFloat(winRateEl.value) || 0,
+                        placeRate: parseFloat(placeRateEl.value) || 0,
+                        odds: parseFloat(oddsEl.value) || 0
+                    });
+                }
+            }
+            
+            // 分析計算
+            raceData.analysis = calculateRaceAnalysis(raceData);
+            
+            // データ保存
+            verificationData.push(raceData);
+            localStorage.setItem('horseVerificationData', JSON.stringify(verificationData));
+            
+            showNotification(`📊 レース${verificationData.length}件目を保存しました`);
+            clearForm();
+        }
+        
+        // レース分析計算
+        function calculateRaceAnalysis(raceData) {
+            const analysis = {
+                scoreAccuracy: false,
+                ensembleAccuracy: false,
+                winPredictionHit: false,
+                placePredictionHit: false,
+                topScoreHorse: 0,
+                topEnsembleHorse: 0,
+                roi: 0
+            };
+            
+            if (raceData.predictions.length === 0) return analysis;
+            
+            // 最高スコア馬
+            const topScoreHorse = raceData.predictions.reduce((prev, current) => 
+                prev.score > current.score ? prev : current
+            );
+            analysis.topScoreHorse = topScoreHorse.horseNumber;
+            analysis.scoreAccuracy = topScoreHorse.horseNumber === raceData.results.first;
+            
+            // 最高アンサンブルスコア馬
+            const topEnsembleHorse = raceData.predictions.reduce((prev, current) => 
+                prev.ensembleScore > current.ensembleScore ? prev : current
+            );
+            analysis.topEnsembleHorse = topEnsembleHorse.horseNumber;
+            analysis.ensembleAccuracy = topEnsembleHorse.horseNumber === raceData.results.first;
+            
+            // 複勝的中チェック
+            const topPlaceHorses = raceData.predictions
+                .sort((a, b) => b.placeRate - a.placeRate)
+                .slice(0, 3)
+                .map(h => h.horseNumber);
+            
+            analysis.placePredictionHit = [raceData.results.first, raceData.results.second, raceData.results.third]
+                .some(place => topPlaceHorses.includes(place));
+            
+            // ROI計算（簡易版）
+            const investment = 100; // 仮想投資額
+            let returns = 0;
+            
+            if (analysis.scoreAccuracy && raceData.results.winPayback) {
+                returns = raceData.results.winPayback;
+            } else if (analysis.placePredictionHit && raceData.results.placePayback) {
+                returns = raceData.results.placePayback;
+            }
+            
+            analysis.roi = ((returns - investment) / investment) * 100;
+            
+            return analysis;
+        }
+        
+        // 結果表示
+        function displayResults() {
+            const container = document.getElementById('raceResultsList');
+            container.innerHTML = '';
+            
+            if (verificationData.length === 0) {
+                container.innerHTML = '<p>まだデータがありません。データ入力タブからレース結果を登録してください。</p>';
+                return;
+            }
+            
+            verificationData.forEach((race, index) => {
+                const raceDiv = document.createElement('div');
+                raceDiv.className = 'container';
+                raceDiv.innerHTML = `
+                    <h3>レース ${index + 1}: ${race.name} (${race.date})</h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px;">
+                        <div>
+                            <strong>基本情報</strong><br>
+                            競馬場: ${race.course}<br>
+                            馬場: ${race.trackCondition}<br>
+                            出走: ${race.horseCount}頭
+                        </div>
+                        <div>
+                            <strong>結果</strong><br>
+                            1着: ${race.results.first}番<br>
+                            2着: ${race.results.second}番<br>
+                            3着: ${race.results.third}番
+                        </div>
+                        <div>
+                            <strong>的中状況</strong><br>
+                            基本スコア: ${race.analysis.scoreAccuracy ? '✅' : '❌'}<br>
+                            アンサンブル: ${race.analysis.ensembleAccuracy ? '✅' : '❌'}<br>
+                            複勝予想: ${race.analysis.placePredictionHit ? '✅' : '❌'}<br>
+                            ROI: ${race.analysis.roi.toFixed(1)}%
+                        </div>
+                    </div>
+                `;
+                container.appendChild(raceDiv);
+            });
+        }
+        
+        // 総合評価表示
+        function displaySummary() {
+            const container = document.getElementById('overallSummary');
+            container.innerHTML = '';
+            
+            if (verificationData.length === 0) {
+                container.innerHTML = '<p>分析するデータがありません。</p>';
+                return;
+            }
+            
+            // 総合統計計算
+            const totalRaces = verificationData.length;
+            const scoreHits = verificationData.filter(r => r.analysis.scoreAccuracy).length;
+            const ensembleHits = verificationData.filter(r => r.analysis.ensembleAccuracy).length;
+            const placeHits = verificationData.filter(r => r.analysis.placePredictionHit).length;
+            const avgROI = verificationData.reduce((sum, r) => sum + r.analysis.roi, 0) / totalRaces;
+            
+            const scoreAccuracy = (scoreHits / totalRaces) * 100;
+            const ensembleAccuracy = (ensembleHits / totalRaces) * 100;
+            const placeAccuracy = (placeHits / totalRaces) * 100;
+            
+            container.innerHTML = `
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
+                    <div class="summary-card">
+                        <div>総レース数</div>
+                        <div class="summary-value">${totalRaces}</div>
+                        <div>レース</div>
+                    </div>
+                    <div class="summary-card">
+                        <div>基本スコア的中率</div>
+                        <div class="summary-value">${scoreAccuracy.toFixed(1)}%</div>
+                        <div>${scoreHits}/${totalRaces} レース</div>
+                    </div>
+                    <div class="summary-card">
+                        <div>アンサンブル的中率</div>
+                        <div class="summary-value">${ensembleAccuracy.toFixed(1)}%</div>
+                        <div>${ensembleHits}/${totalRaces} レース</div>
+                    </div>
+                    <div class="summary-card">
+                        <div>複勝予想的中率</div>
+                        <div class="summary-value">${placeAccuracy.toFixed(1)}%</div>
+                        <div>${placeHits}/${totalRaces} レース</div>
+                    </div>
+                    <div class="summary-card">
+                        <div>平均ROI</div>
+                        <div class="summary-value">${avgROI.toFixed(1)}%</div>
+                        <div>${avgROI >= 0 ? '利益' : '損失'}</div>
+                    </div>
+                </div>
+                
+                <div style="margin-top: 30px;">
+                    <h3>📊 詳細分析</h3>
+                    <table class="results-table">
+                        <tr>
+                            <th>評価項目</th>
+                            <th>基本スコア</th>
+                            <th>アンサンブル</th>
+                            <th>改善度</th>
+                        </tr>
+                        <tr>
+                            <td>1着的中率</td>
+                            <td>${scoreAccuracy.toFixed(1)}%</td>
+                            <td>${ensembleAccuracy.toFixed(1)}%</td>
+                            <td style="color: ${ensembleAccuracy > scoreAccuracy ? 'green' : 'red'}">
+                                ${(ensembleAccuracy - scoreAccuracy).toFixed(1)}%
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            `;
+        }
+        
+        // フォームクリア
+        function clearForm() {
+            document.getElementById('raceDate').value = '';
+            document.getElementById('raceCourse').value = '';
+            document.getElementById('raceName').value = '';
+            document.getElementById('horseCount').value = '8';
+            document.getElementById('trackCondition').value = '良';
+            document.getElementById('firstPlace').value = '';
+            document.getElementById('secondPlace').value = '';
+            document.getElementById('thirdPlace').value = '';
+            document.getElementById('winPayback').value = '';
+            document.getElementById('placePayback').value = '';
+            document.getElementById('predictionRows').innerHTML = '';
+        }
+        
+        // CSVエクスポート
+        function exportToCSV() {
+            if (verificationData.length === 0) {
+                showNotification('エクスポートするデータがありません', 'error');
+                return;
+            }
+            
+            const headers = ['日付', '競馬場', 'レース名', '基本スコア的中', 'アンサンブル的中', '複勝的中', 'ROI'];
+            const rows = verificationData.map(race => [
+                race.date,
+                race.course,
+                race.name,
+                race.analysis.scoreAccuracy ? '1' : '0',
+                race.analysis.ensembleAccuracy ? '1' : '0',
+                race.analysis.placePredictionHit ? '1' : '0',
+                race.analysis.roi.toFixed(2)
+            ]);
+            
+            const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `horse_verification_${new Date().toISOString().split('T')[0]}.csv`;
+            link.click();
+        }
+        
+        // JSONエクスポート
+        function exportToJSON() {
+            if (verificationData.length === 0) {
+                showNotification('エクスポートするデータがありません', 'error');
+                return;
+            }
+            
+            const dataStr = JSON.stringify(verificationData, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `horse_verification_${new Date().toISOString().split('T')[0]}.json`;
+            link.click();
+        }
+        
+        // データインポート
+        function importData() {
+            const fileInput = document.getElementById('importFile');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                showNotification('ファイルを選択してください', 'error');
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    verificationData = data;
+                    localStorage.setItem('horseVerificationData', JSON.stringify(verificationData));
+                    showNotification(`${data.length}件のデータをインポートしました`);
+                } catch (error) {
+                    showNotification('ファイルの形式が正しくありません', 'error');
+                }
+            };
+            reader.readAsText(file);
+        }
+        
+        // 全データ削除
+        function clearAllData() {
+            if (confirm('本当に全てのデータを削除しますか？この操作は取り消せません。')) {
+                verificationData = [];
+                localStorage.removeItem('horseVerificationData');
+                showNotification('全データを削除しました');
+                displayResults();
+                displaySummary();
+            }
+        }
+        
+        // 複勝予想詳細分析
+        function analyzePlacePredictions() {
+            const container = document.getElementById('overallSummary');
+            
+            if (verificationData.length === 0) {
+                container.innerHTML = '<p>分析するデータがありません。</p>';
+                return;
+            }
+            
+            // 複勝予想の詳細分析
+            const placeAnalysis = {
+                totalPredictions: 0,
+                popularityAnalysis: { // 人気層分析
+                    favorite: { count: 0, hits: 0, odds: [] },     // 1-3番人気
+                    midrange: { count: 0, hits: 0, odds: [] },     // 4-6番人気
+                    outsider: { count: 0, hits: 0, odds: [] }      // 7番人気以下
+                },
+                oddsAnalysis: { // オッズ分析
+                    low: { count: 0, hits: 0, range: '1.0-2.0倍' },    // 100-200円
+                    medium: { count: 0, hits: 0, range: '2.0-5.0倍' }, // 200-500円
+                    high: { count: 0, hits: 0, range: '5.0倍以上' }    // 500円以上
+                },
+                hitPatterns: [] // 的中パターン
+            };
+            
+            verificationData.forEach(race => {
+                if (race.predictions && race.predictions.length > 0) {
+                    // 複勝率でソート
+                    const sortedByPlace = race.predictions
+                        .sort((a, b) => b.placeRate - a.placeRate)
+                        .slice(0, 3); // 上位3頭
+                    
+                    sortedByPlace.forEach(horse => {
+                        placeAnalysis.totalPredictions++;
+                        
+                        // 人気層分析（オッズベース）
+                        const odds = horse.odds || 0;
+                        if (odds <= 3) {
+                            placeAnalysis.popularityAnalysis.favorite.count++;
+                            placeAnalysis.popularityAnalysis.favorite.odds.push(odds);
+                            if ([race.results.first, race.results.second, race.results.third].includes(horse.horseNumber)) {
+                                placeAnalysis.popularityAnalysis.favorite.hits++;
+                            }
+                        } else if (odds <= 7) {
+                            placeAnalysis.popularityAnalysis.midrange.count++;
+                            placeAnalysis.popularityAnalysis.midrange.odds.push(odds);
+                            if ([race.results.first, race.results.second, race.results.third].includes(horse.horseNumber)) {
+                                placeAnalysis.popularityAnalysis.midrange.hits++;
+                            }
+                        } else {
+                            placeAnalysis.popularityAnalysis.outsider.count++;
+                            placeAnalysis.popularityAnalysis.outsider.odds.push(odds);
+                            if ([race.results.first, race.results.second, race.results.third].includes(horse.horseNumber)) {
+                                placeAnalysis.popularityAnalysis.outsider.hits++;
+                            }
+                        }
+                        
+                        // オッズ分析（複勝想定配当）
+                        const estimatedPlaceOdds = odds * 0.4; // 概算複勝配当
+                        if (estimatedPlaceOdds <= 2.0) {
+                            placeAnalysis.oddsAnalysis.low.count++;
+                            if ([race.results.first, race.results.second, race.results.third].includes(horse.horseNumber)) {
+                                placeAnalysis.oddsAnalysis.low.hits++;
+                            }
+                        } else if (estimatedPlaceOdds <= 5.0) {
+                            placeAnalysis.oddsAnalysis.medium.count++;
+                            if ([race.results.first, race.results.second, race.results.third].includes(horse.horseNumber)) {
+                                placeAnalysis.oddsAnalysis.medium.hits++;
+                            }
+                        } else {
+                            placeAnalysis.oddsAnalysis.high.count++;
+                            if ([race.results.first, race.results.second, race.results.third].includes(horse.horseNumber)) {
+                                placeAnalysis.oddsAnalysis.high.hits++;
+                            }
+                        }
+                    });
+                    
+                    // 的中パターン記録
+                    const hitPattern = {
+                        raceIndex: verificationData.indexOf(race),
+                        top3Predictions: sortedByPlace.map(h => ({ 
+                            horseNumber: h.horseNumber, 
+                            placeRate: h.placeRate, 
+                            odds: h.odds 
+                        })),
+                        actualResult: [race.results.first, race.results.second, race.results.third],
+                        hitCount: sortedByPlace.filter(h => 
+                            [race.results.first, race.results.second, race.results.third].includes(h.horseNumber)
+                        ).length
+                    };
+                    placeAnalysis.hitPatterns.push(hitPattern);
+                }
+            });
+            
+            // 結果表示
+            container.innerHTML = `
+                <div class="summary-card">
+                    <h3>🎯 複勝予想詳細分析</h3>
+                    <p>総予想数: ${placeAnalysis.totalPredictions}頭</p>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
+                    <div>
+                        <h4>👑 人気層別分析</h4>
+                        <table class="results-table">
+                            <tr><th>人気層</th><th>予想数</th><th>的中数</th><th>的中率</th><th>平均オッズ</th></tr>
+                            <tr>
+                                <td>人気馬(1-3番)</td>
+                                <td>${placeAnalysis.popularityAnalysis.favorite.count}</td>
+                                <td>${placeAnalysis.popularityAnalysis.favorite.hits}</td>
+                                <td>${placeAnalysis.popularityAnalysis.favorite.count > 0 ? 
+                                    ((placeAnalysis.popularityAnalysis.favorite.hits / placeAnalysis.popularityAnalysis.favorite.count) * 100).toFixed(1) : '0.0'}%</td>
+                                <td>${placeAnalysis.popularityAnalysis.favorite.odds.length > 0 ? 
+                                    (placeAnalysis.popularityAnalysis.favorite.odds.reduce((a,b) => a+b, 0) / placeAnalysis.popularityAnalysis.favorite.odds.length).toFixed(1) : '0.0'}倍</td>
+                            </tr>
+                            <tr>
+                                <td>中人気(4-6番)</td>
+                                <td>${placeAnalysis.popularityAnalysis.midrange.count}</td>
+                                <td>${placeAnalysis.popularityAnalysis.midrange.hits}</td>
+                                <td>${placeAnalysis.popularityAnalysis.midrange.count > 0 ? 
+                                    ((placeAnalysis.popularityAnalysis.midrange.hits / placeAnalysis.popularityAnalysis.midrange.count) * 100).toFixed(1) : '0.0'}%</td>
+                                <td>${placeAnalysis.popularityAnalysis.midrange.odds.length > 0 ? 
+                                    (placeAnalysis.popularityAnalysis.midrange.odds.reduce((a,b) => a+b, 0) / placeAnalysis.popularityAnalysis.midrange.odds.length).toFixed(1) : '0.0'}倍</td>
+                            </tr>
+                            <tr>
+                                <td>穴馬(7番以下)</td>
+                                <td>${placeAnalysis.popularityAnalysis.outsider.count}</td>
+                                <td>${placeAnalysis.popularityAnalysis.outsider.hits}</td>
+                                <td>${placeAnalysis.popularityAnalysis.outsider.count > 0 ? 
+                                    ((placeAnalysis.popularityAnalysis.outsider.hits / placeAnalysis.popularityAnalysis.outsider.count) * 100).toFixed(1) : '0.0'}%</td>
+                                <td>${placeAnalysis.popularityAnalysis.outsider.odds.length > 0 ? 
+                                    (placeAnalysis.popularityAnalysis.outsider.odds.reduce((a,b) => a+b, 0) / placeAnalysis.popularityAnalysis.outsider.odds.length).toFixed(1) : '0.0'}倍</td>
+                            </tr>
+                        </table>
+                    </div>
+                    
+                    <div>
+                        <h4>💰 複勝配当効率分析</h4>
+                        <table class="results-table">
+                            <tr><th>配当レンジ</th><th>予想数</th><th>的中数</th><th>的中率</th><th>効率</th></tr>
+                            <tr>
+                                <td>${placeAnalysis.oddsAnalysis.low.range}</td>
+                                <td>${placeAnalysis.oddsAnalysis.low.count}</td>
+                                <td>${placeAnalysis.oddsAnalysis.low.hits}</td>
+                                <td>${placeAnalysis.oddsAnalysis.low.count > 0 ? 
+                                    ((placeAnalysis.oddsAnalysis.low.hits / placeAnalysis.oddsAnalysis.low.count) * 100).toFixed(1) : '0.0'}%</td>
+                                <td style="color: red;">低効率</td>
+                            </tr>
+                            <tr>
+                                <td>${placeAnalysis.oddsAnalysis.medium.range}</td>
+                                <td>${placeAnalysis.oddsAnalysis.medium.count}</td>
+                                <td>${placeAnalysis.oddsAnalysis.medium.hits}</td>
+                                <td>${placeAnalysis.oddsAnalysis.medium.count > 0 ? 
+                                    ((placeAnalysis.oddsAnalysis.medium.hits / placeAnalysis.oddsAnalysis.medium.count) * 100).toFixed(1) : '0.0'}%</td>
+                                <td style="color: orange;">中効率</td>
+                            </tr>
+                            <tr>
+                                <td>${placeAnalysis.oddsAnalysis.high.range}</td>
+                                <td>${placeAnalysis.oddsAnalysis.high.count}</td>
+                                <td>${placeAnalysis.oddsAnalysis.high.hits}</td>
+                                <td>${placeAnalysis.oddsAnalysis.high.count > 0 ? 
+                                    ((placeAnalysis.oddsAnalysis.high.hits / placeAnalysis.oddsAnalysis.high.count) * 100).toFixed(1) : '0.0'}%</td>
+                                <td style="color: green;">高効率</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+                
+                <div style="margin-top: 30px;">
+                    <h4>📊 的中パターン分析</h4>
+                    <div style="max-height: 300px; overflow-y: auto;">
+                        <table class="results-table">
+                            <tr><th>レース</th><th>複勝予想上位3頭</th><th>実際の結果</th><th>的中数</th></tr>
+                            ${placeAnalysis.hitPatterns.map(pattern => `
+                                <tr>
+                                    <td>R${pattern.raceIndex + 1}</td>
+                                    <td>${pattern.top3Predictions.map(p => `${p.horseNumber}番(${p.placeRate}%)`).join(', ')}</td>
+                                    <td>${pattern.actualResult.join('-')}</td>
+                                    <td style="color: ${pattern.hitCount >= 2 ? 'green' : pattern.hitCount === 1 ? 'orange' : 'red'}">
+                                        ${pattern.hitCount}/3
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // 初期化
+        document.addEventListener('DOMContentLoaded', function() {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('raceDate').value = today;
+            generatePredictionRows();
+        });
+    </script>
+</body>
+</html>

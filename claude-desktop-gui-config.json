@@ -1,0 +1,10 @@
+{
+  "サーバー名": "keiba-app",
+  "説明": "競馬予想アプリのMCPサーバー",
+  "コマンド": "node",
+  "引数": ["/home/hi_ry/keiba-app-unzipped/mcp-server.js"],
+  "環境変数": {
+    "NODE_ENV": "production"
+  },
+  "自動起動": true
+}

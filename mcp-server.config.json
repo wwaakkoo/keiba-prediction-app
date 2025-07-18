@@ -1,0 +1,73 @@
+{
+  "name": "競馬予想アプリMCPサーバー",
+  "version": "1.0.0",
+  "description": "競馬予想・分析・資金管理のためのMCPサーバー",
+  "author": "Keiba App Team",
+  "license": "MIT",
+  "server": {
+    "name": "keiba-app-mcp-server",
+    "version": "1.0.0",
+    "description": "競馬予想アプリのMCPサーバー - 予想、分析、資金管理機能を提供",
+    "capabilities": {
+      "tools": {
+        "listChanged": true,
+        "supportsProgress": true
+      }
+    }
+  },
+  "tools": [
+    {
+      "name": "horse_race_analysis",
+      "category": "analysis",
+      "description": "競馬の分析と予想を行います",
+      "tags": ["競馬", "予想", "分析", "統計"]
+    },
+    {
+      "name": "kelly_betting_system",
+      "category": "finance",
+      "description": "ケリー基準による最適な資金管理",
+      "tags": ["ケリー基準", "資金管理", "投資", "リスク"]
+    },
+    {
+      "name": "enhanced_recommendations",
+      "category": "recommendation",
+      "description": "競馬予想の推奨システム",
+      "tags": ["推奨", "信頼度", "戦略"]
+    },
+    {
+      "name": "performance_analyzer",
+      "category": "analytics",
+      "description": "投資パフォーマンス分析",
+      "tags": ["パフォーマンス", "分析", "改善"]
+    },
+    {
+      "name": "data_manager",
+      "category": "data",
+      "description": "データ管理とエクスポート/インポート",
+      "tags": ["データ", "管理", "エクスポート", "インポート"]
+    },
+    {
+      "name": "ai_integrated_analysis",
+      "category": "ai",
+      "description": "AI統合分析システム",
+      "tags": ["AI", "統合", "分析", "Claude"]
+    }
+  ],
+  "settings": {
+    "logging": {
+      "level": "info",
+      "file": "mcp-server.log"
+    },
+    "performance": {
+      "maxConcurrentRequests": 10,
+      "requestTimeout": 30000
+    },
+    "security": {
+      "allowedOrigins": ["*"],
+      "rateLimit": {
+        "windowMs": 900000,
+        "max": 100
+      }
+    }
+  }
+}
