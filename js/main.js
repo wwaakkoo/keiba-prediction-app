@@ -185,8 +185,21 @@ function processUnifiedLearningWithAnalysisData(firstHorse, secondHorse, thirdHo
         place: [firstHorse, secondHorse, thirdHorse].filter(h => h).map(h => h.name)
     };
     
-    if (window.lastBettingRecommendations) {
+    // 買い目推奨の学習結果を処理・表示
+    let bettingLearningResult = null;
+    if (window.lastBettingRecommendations && window.lastBettingRecommendations.length > 0) {
+        // 推奨がある場合の学習処理
         BettingRecommender.recordBettingRecommendation(window.lastBettingRecommendations, bettingActualResult);
+        bettingLearningResult = BettingRecommender.analyzeBettingPerformance();
+        console.log('🎯 買い目推奨学習結果:', bettingLearningResult);
+    } else {
+        // 見送りの場合でも学習結果を表示
+        console.log('🎯 買い目推奨: 今回は見送り（推奨なし）');
+        bettingLearningResult = {
+            status: 'skip',
+            reason: '統合推奨買い目が見送りとなったため',
+            message: '推奨基準に満たない馬がなかったため、今回は投資を見送りました'
+        };
     }
 
     // 2. AI学習システムに反映
@@ -485,7 +498,10 @@ function processUnifiedLearningWithAnalysisData(firstHorse, secondHorse, thirdHo
             // 実際の投資結果を構築
             const actualResults = {
                 finishing_order: {},
-                payouts: { place: {} }
+                payouts: { place: {} },
+                first: firstHorse?.name,
+                second: secondHorse?.name,
+                third: thirdHorse?.name
             };
             
             // 着順設定（安全なプロパティアクセス）
@@ -495,6 +511,7 @@ function processUnifiedLearningWithAnalysisData(firstHorse, secondHorse, thirdHo
                     const horseNumber = firstHorse.number || firstHorse.horseNumber || (firstIndex + 1);
                     actualResults.finishing_order[horseNumber] = 1;
                     actualResults.payouts.place[horseNumber] = (firstHorse.placeOdds || firstHorse.odds || 1.5) * 100;
+                    console.log(`🥇 1着馬設定: ${firstHorse.name} = 馬番号${horseNumber}、着順1位`);
                 }
             }
             if (secondHorse) {
@@ -503,6 +520,7 @@ function processUnifiedLearningWithAnalysisData(firstHorse, secondHorse, thirdHo
                     const horseNumber = secondHorse.number || secondHorse.horseNumber || (secondIndex + 1);
                     actualResults.finishing_order[horseNumber] = 2;
                     actualResults.payouts.place[horseNumber] = (secondHorse.placeOdds || secondHorse.odds || 1.3) * 100;
+                    console.log(`🥈 2着馬設定: ${secondHorse.name} = 馬番号${horseNumber}、着順2位`);
                 }
             }
             if (thirdHorse) {
@@ -511,6 +529,7 @@ function processUnifiedLearningWithAnalysisData(firstHorse, secondHorse, thirdHo
                     const horseNumber = thirdHorse.number || thirdHorse.horseNumber || (thirdIndex + 1);
                     actualResults.finishing_order[horseNumber] = 3;
                     actualResults.payouts.place[horseNumber] = (thirdHorse.placeOdds || thirdHorse.odds || 1.2) * 100;
+                    console.log(`🥉 3着馬設定: ${thirdHorse.name} = 馬番号${horseNumber}、着順3位`);
                 }
             }
             
@@ -638,6 +657,9 @@ function processUnifiedLearningWithAnalysisData(firstHorse, secondHorse, thirdHo
             console.log('⚠️ Phase 6 Kelly記録でエラーが発生しました');
         }
     }
+
+    // 買い目推奨の学習結果を表示
+    displayBettingRecommendationLearningResult(bettingLearningResult);
 
     // 統合処理完了メッセージとUI更新
     showMessage('🎓 統合学習完了！Phase 1-6の全システムに学習結果が反映されました。', 'success');
@@ -1800,6 +1822,114 @@ function processEnhancedLearning() {
     });
 }
 
+/**
+ * 買い目推奨の学習結果を表示
+ */
+function displayBettingRecommendationLearningResult(bettingLearningResult) {
+    console.log('🎯 買い目推奨学習結果表示開始:', bettingLearningResult);
+    
+    if (!bettingLearningResult) {
+        console.log('⚠️ 買い目推奨学習結果がありません');
+        return;
+    }
+    
+    // 学習結果表示エリアを取得または作成
+    let learningResultsContainer = document.getElementById('learningResults');
+    if (!learningResultsContainer) {
+        // コンテナが存在しない場合は、適切な場所に作成
+        const targetContainer = document.getElementById('results') || 
+                              document.getElementById('predictionResults') || 
+                              document.body;
+        
+        learningResultsContainer = document.createElement('div');
+        learningResultsContainer.id = 'learningResults';
+        learningResultsContainer.style.cssText = `
+            margin: 20px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #007bff;
+        `;
+        targetContainer.appendChild(learningResultsContainer);
+    }
+    
+    // 既存の買い目推奨学習結果を削除
+    const existingBettingResult = learningResultsContainer.querySelector('.betting-learning-result');
+    if (existingBettingResult) {
+        existingBettingResult.remove();
+    }
+    
+    // 新しい結果表示を作成
+    const resultDiv = document.createElement('div');
+    resultDiv.className = 'betting-learning-result';
+    resultDiv.style.cssText = `
+        margin-top: 15px;
+        padding: 15px;
+        background: white;
+        border-radius: 6px;
+        border: 1px solid #dee2e6;
+    `;
+    
+    let resultHTML = '<h4 style="color: #007bff; margin-bottom: 10px;">🎯 買い目推奨の結果:</h4>';
+    
+    if (bettingLearningResult.status === 'skip') {
+        // 見送りの場合
+        resultHTML += `
+            <div style="background: #fff3cd; padding: 12px; border-radius: 6px; border-left: 4px solid #ffc107;">
+                <p style="margin: 0; color: #856404;">
+                    <strong>📋 今回の判定:</strong> 投資見送り<br>
+                    <strong>📝 理由:</strong> ${bettingLearningResult.reason}<br>
+                    <strong>💡 説明:</strong> ${bettingLearningResult.message}
+                </p>
+            </div>
+        `;
+    } else {
+        // 通常の学習結果の場合
+        resultHTML += `
+            <div style="background: #d4edda; padding: 12px; border-radius: 6px; border-left: 4px solid #28a745;">
+                <p style="margin: 0 0 10px 0; color: #155724;">
+                    <strong>📊 買い目推奨成績 (最近${bettingLearningResult.totalRaces}レース):</strong>
+                </p>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-top: 8px;">
+                    <div style="text-align: center; background: #fff; padding: 8px; border-radius: 4px;">
+                        <div style="font-weight: bold; color: #dc3545;">◎本命的中率</div>
+                        <div style="font-size: 1.2em; color: #dc3545;">${(bettingLearningResult.honmeiHitRate * 100).toFixed(1)}%</div>
+                    </div>
+                    <div style="text-align: center; background: #fff; padding: 8px; border-radius: 4px;">
+                        <div style="font-weight: bold; color: #fd7e14;">○対抗的中率</div>
+                        <div style="font-size: 1.2em; color: #fd7e14;">${(bettingLearningResult.taikouHitRate * 100).toFixed(1)}%</div>
+                    </div>
+                    <div style="text-align: center; background: #fff; padding: 8px; border-radius: 4px;">
+                        <div style="font-weight: bold; color: #ffc107;">▲単穴的中率</div>
+                        <div style="font-size: 1.2em; color: #e67c00;">${(bettingLearningResult.tananaHitRate * 100).toFixed(1)}%</div>
+                    </div>
+                    <div style="text-align: center; background: #fff; padding: 8px; border-radius: 4px;">
+                        <div style="font-weight: bold; color: #6f42c1;">△連複的中率</div>
+                        <div style="font-size: 1.2em; color: #6f42c1;">${(bettingLearningResult.renpukuHitRate * 100).toFixed(1)}%</div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // 現在の閾値情報も表示
+        if (bettingLearningResult.currentThresholds) {
+            resultHTML += `
+                <div style="background: #e2e3e5; padding: 10px; border-radius: 6px; margin-top: 10px; font-size: 0.9em;">
+                    <strong>⚙️ 現在の学習済み閾値:</strong>
+                    勝率最低${bettingLearningResult.currentThresholds.winProbabilityMin}%、
+                    期待値最低${bettingLearningResult.currentThresholds.expectedValueMin}、
+                    複勝率最低${bettingLearningResult.currentThresholds.placeProbabilityMin}%
+                </div>
+            `;
+        }
+    }
+    
+    resultDiv.innerHTML = resultHTML;
+    learningResultsContainer.appendChild(resultDiv);
+    
+    console.log('✅ 買い目推奨学習結果表示完了');
+}
+
 // グローバル関数として公開
 window.migrateAndSwitchToEnhanced = migrateAndSwitchToEnhanced;
 window.showInvestmentStrategy = showInvestmentStrategy;
@@ -1808,3 +1938,4 @@ window.showProfitabilityDashboard = showProfitabilityDashboard;
 window.showProfitabilityDashboardDirect = showProfitabilityDashboardDirect;
 window.resetAndRemigrateProfitabilityData = resetAndRemigrateProfitabilityData;
 window.processEnhancedLearning = processEnhancedLearning;
+window.displayBettingRecommendationLearningResult = displayBettingRecommendationLearningResult;

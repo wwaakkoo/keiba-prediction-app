@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phase 7: ダッシュボードテスト</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .test-section {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .control-buttons {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            color: white;
+            transition: transform 0.2s;
+        }
+        .btn:hover {
+            transform: scale(1.05);
+        }
+        .btn-primary { background: linear-gradient(45deg, #2196f3, #1976d2); }
+        .btn-success { background: linear-gradient(45deg, #4caf50, #388e3c); }
+        .btn-warning { background: linear-gradient(45deg, #ff9800, #f57c00); }
+        .btn-danger { background: linear-gradient(45deg, #f44336, #d32f2f); }
+        .test-log {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 0.9em;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1 style="color: #1976d2; text-align: center;">🎯 Phase 7: Kelly Criterion ダッシュボードテスト</h1>
+        
+        <div class="test-section">
+            <h2>🎮 テスト操作パネル</h2>
+            <div class="control-buttons">
+                <button class="btn btn-primary" onclick="initializeDashboard()">
+                    📊 ダッシュボード初期化
+                </button>
+                <button class="btn btn-success" onclick="updateWithSampleData()">
+                    📝 サンプルデータ更新
+                </button>
+                <button class="btn btn-warning" onclick="simulateKellyUpdate()">
+                    ⚡ Kelly データ更新
+                </button>
+                <button class="btn btn-danger" onclick="clearDashboard()">
+                    🗑️ ダッシュボード消去
+                </button>
+            </div>
+            
+            <div class="control-buttons">
+                <button class="btn btn-primary" onclick="testRealTimeUpdates()">
+                    🔄 リアルタイム更新テスト
+                </button>
+                <button class="btn btn-success" onclick="generatePerformanceData()">
+                    📈 パフォーマンスデータ生成
+                </button>
+                <button class="btn btn-warning" onclick="simulateRiskAdjustment()">
+                    ⚖️ リスク調整シミュレーション
+                </button>
+                <button class="btn btn-danger" onclick="resetAllData()">
+                    💥 全データリセット
+                </button>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>📋 テストログ</h2>
+            <div id="testLog" class="test-log">テスト開始を待機中...\n</div>
+        </div>
+
+        <!-- ダッシュボードコンテナ（ここに動的生成） -->
+        <div id="dashboardTestArea">
+            <div class="test-section">
+                <h2>📊 ダッシュボード表示エリア</h2>
+                <p style="color: #666; text-align: center;">「ダッシュボード初期化」ボタンを押すとここにダッシュボードが表示されます</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Phase 7 Dashboard Script -->
+    <script src="js/portfolioDashboard.js"></script>
+    
+    <script>
+        let dashboardInstance = null;
+        let testLogElement = null;
+
+        // ページ読み込み完了時の初期化
+        document.addEventListener('DOMContentLoaded', function() {
+            testLogElement = document.getElementById('testLog');
+            log('✅ Phase 7ダッシュボードテストページ初期化完了');
+            log('📊 PortfolioDashboard クラス利用可能: ' + (typeof PortfolioDashboard !== 'undefined'));
+        });
+
+        // ログ出力
+        function log(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logMessage = `[${timestamp}] ${message}`;
+            if (testLogElement) {
+                testLogElement.textContent += logMessage + '\n';
+                testLogElement.scrollTop = testLogElement.scrollHeight;
+            }
+            console.log(logMessage);
+        }
+
+        // ダッシュボード初期化
+        function initializeDashboard() {
+            log('🎯 ダッシュボード初期化開始...');
+            
+            try {
+                if (dashboardInstance) {
+                    dashboardInstance.stopRealTimeUpdates();
+                }
+                
+                dashboardInstance = new PortfolioDashboard();
+                dashboardInstance.initialize();
+                
+                log('✅ ダッシュボード初期化完了');
+            } catch (error) {
+                log('❌ ダッシュボード初期化エラー: ' + error.message);
+                console.error('Dashboard initialization error:', error);
+            }
+        }
+
+        // サンプルデータ更新
+        function updateWithSampleData() {
+            log('📝 サンプルデータ更新開始...');
+            
+            if (!dashboardInstance) {
+                log('⚠️ ダッシュボード未初期化。初期化を実行します...');
+                initializeDashboard();
+                return;
+            }
+
+            try {
+                dashboardInstance.generateSampleData();
+                dashboardInstance.renderDashboard();
+                log('✅ サンプルデータ更新完了');
+            } catch (error) {
+                log('❌ サンプルデータ更新エラー: ' + error.message);
+            }
+        }
+
+        // Kelly データ更新シミュレーション
+        function simulateKellyUpdate() {
+            log('⚡ Kelly データ更新シミュレーション開始...');
+
+            // サンプルKellyデータをローカルストレージに保存
+            const sampleKellyData = {
+                totalInvestment: 4200 + Math.random() * 1000,
+                expectedReturn: 4800 + Math.random() * 1200,
+                mainCandidates: [
+                    { name: 'テスト馬A', kellyRatio: 0.09, investment: 900, expectedValue: 1.18 },
+                    { name: 'テスト馬B', kellyRatio: 0.06, investment: 600, expectedValue: 1.12 }
+                ],
+                optionalCandidates: [
+                    { name: 'テスト馬C', kellyRatio: 0.04, investment: 400, expectedValue: 1.15 },
+                    { name: 'テスト馬D', kellyRatio: 0.025, investment: 250, expectedValue: 1.08 }
+                ],
+                riskMultiplier: 0.5 + Math.random() * 1.0,
+                conflictResolutions: ['3R-競合解決', '7R-オッズ更新'],
+                portfolioSpread: Math.random() * 0.8 + 0.2,
+                avgKellyRatio: 0.03 + Math.random() * 0.05
+            };
+
+            localStorage.setItem('kellyPortfolioResults', JSON.stringify(sampleKellyData));
+
+            if (dashboardInstance) {
+                dashboardInstance.manualUpdate();
+                log('✅ Kelly データ更新完了');
+            } else {
+                log('⚠️ ダッシュボード未初期化');
+            }
+        }
+
+        // ダッシュボード消去
+        function clearDashboard() {
+            log('🗑️ ダッシュボード消去開始...');
+
+            if (dashboardInstance) {
+                dashboardInstance.stopRealTimeUpdates();
+                dashboardInstance = null;
+            }
+
+            const container = document.getElementById('portfolioDashboardContainer');
+            if (container) {
+                container.remove();
+                log('✅ ダッシュボード消去完了');
+            } else {
+                log('⚠️ ダッシュボードコンテナが見つかりません');
+            }
+        }
+
+        // リアルタイム更新テスト
+        function testRealTimeUpdates() {
+            log('🔄 リアルタイム更新テスト開始...');
+
+            if (!dashboardInstance) {
+                log('⚠️ ダッシュボード未初期化');
+                return;
+            }
+
+            dashboardInstance.startRealTimeUpdates();
+            log('✅ リアルタイム更新開始（30秒間隔）');
+
+            // 10秒後に一度手動更新をテスト
+            setTimeout(() => {
+                simulateKellyUpdate();
+                log('⚡ リアルタイム更新テスト用データ更新');
+            }, 10000);
+        }
+
+        // パフォーマンスデータ生成
+        function generatePerformanceData() {
+            log('📈 パフォーマンスデータ生成開始...');
+
+            const performanceData = Array.from({length: 30}, (_, i) => ({
+                raceId: `R${i + 1}`,
+                date: new Date(Date.now() - (29 - i) * 24 * 60 * 60 * 1000).toLocaleDateString(),
+                winRate: Math.random() * 0.5 + 0.1,
+                roi: (Math.random() - 0.4) * 0.6,
+                cumulativeReturn: i * 150 + Math.random() * 800,
+                totalInvestment: 1200 + Math.random() * 1800,
+                riskMultiplier: Math.random() * 1.0 + 0.3
+            }));
+
+            localStorage.setItem('phase7PerformanceHistory', JSON.stringify(performanceData));
+
+            if (dashboardInstance) {
+                dashboardInstance.manualUpdate();
+                log('✅ パフォーマンスデータ生成・更新完了');
+            }
+        }
+
+        // リスク調整シミュレーション
+        function simulateRiskAdjustment() {
+            log('⚖️ リスク調整シミュレーション開始...');
+
+            const riskAdjustmentData = Array.from({length: 15}, (_, i) => ({
+                date: new Date(Date.now() - (14 - i) * 6 * 60 * 60 * 1000).toLocaleDateString(),
+                multiplier: Math.random() * 1.0 + 0.3,
+                trigger: ['連敗検出', '高勝率継続', 'ドローダウン警告', '好調継続', 'ボラティリティ増加'][Math.floor(Math.random() * 5)],
+                reason: 'パフォーマンス指標に基づく自動調整',
+                previousMultiplier: Math.random() * 1.0 + 0.3
+            }));
+
+            localStorage.setItem('phase7RiskAdjustmentHistory', JSON.stringify(riskAdjustmentData));
+
+            if (dashboardInstance) {
+                dashboardInstance.manualUpdate();
+                log('✅ リスク調整データ生成・更新完了');
+            }
+        }
+
+        // 全データリセット
+        function resetAllData() {
+            log('💥 全データリセット開始...');
+
+            localStorage.removeItem('kellyPortfolioResults');
+            localStorage.removeItem('phase7PerformanceHistory');
+            localStorage.removeItem('phase7RiskAdjustmentHistory');
+
+            if (dashboardInstance) {
+                dashboardInstance.manualUpdate();
+            }
+
+            log('✅ 全データリセット完了');
+        }
+
+        // キーボードショートカット
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey || e.metaKey) {
+                switch(e.key) {
+                    case '1': e.preventDefault(); initializeDashboard(); break;
+                    case '2': e.preventDefault(); updateWithSampleData(); break;
+                    case '3': e.preventDefault(); simulateKellyUpdate(); break;
+                    case '4': e.preventDefault(); clearDashboard(); break;
+                }
+            }
+        });
+
+        // 初期メッセージ
+        setTimeout(() => {
+            log('💡 操作方法:');
+            log('   - ボタンをクリックして各機能をテスト');
+            log('   - Ctrl+1: ダッシュボード初期化');
+            log('   - Ctrl+2: サンプルデータ更新');
+            log('   - Ctrl+3: Kelly データ更新');
+            log('   - Ctrl+4: ダッシュボード消去');
+        }, 1000);
+    </script>
+</body>
+</html>

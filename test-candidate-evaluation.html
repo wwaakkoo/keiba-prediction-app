@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phase 7: 候補評価プロセス可視化テスト</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f0f2f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .test-header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        .test-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        .test-btn.primary {
+            background: #007bff;
+            color: white;
+        }
+        .test-btn.primary:hover {
+            background: #0056b3;
+        }
+        .test-btn.secondary {
+            background: #6c757d;
+            color: white;
+        }
+        .test-btn.secondary:hover {
+            background: #545b62;
+        }
+        .test-btn.success {
+            background: #28a745;
+            color: white;
+        }
+        .test-btn.success:hover {
+            background: #1e7e34;
+        }
+        .demo-data-section {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .demo-data-section h3 {
+            margin: 0 0 15px 0;
+            color: #495057;
+        }
+        .demo-scenarios {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        .scenario-btn {
+            padding: 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            background: #f8f9fa;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+        .scenario-btn:hover {
+            border-color: #007bff;
+            background: #e7f3ff;
+        }
+        .scenario-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #2c3e50;
+        }
+        .scenario-desc {
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="test-header">
+            <h1>🔍 候補評価プロセス可視化テスト</h1>
+            <p>Kelly Criterion選考プロセスの完全透明化システム</p>
+        </div>
+
+        <div class="test-controls">
+            <button class="test-btn primary" onclick="initializeEvaluationTest()">
+                🚀 評価システム初期化
+            </button>
+            <button class="test-btn secondary" onclick="refreshEvaluationData()">
+                🔄 データ更新
+            </button>
+            <button class="test-btn success" onclick="runFullEvaluationDemo()">
+                🎯 フルデモ実行
+            </button>
+        </div>
+
+        <div class="demo-data-section">
+            <h3>📊 デモシナリオ選択</h3>
+            <div class="demo-scenarios">
+                <div class="scenario-btn" onclick="loadScenario('high_performance')">
+                    <div class="scenario-title">高成績シナリオ</div>
+                    <div class="scenario-desc">Kelly比率3-8%の優良候補</div>
+                </div>
+                <div class="scenario-btn" onclick="loadScenario('mixed_performance')">
+                    <div class="scenario-title">混合シナリオ</div>
+                    <div class="scenario-desc">メイン・オプショナル・除外混在</div>
+                </div>
+                <div class="scenario-btn" onclick="loadScenario('low_performance')">
+                    <div class="scenario-title">低成績シナリオ</div>
+                    <div class="scenario-desc">多数が投資対象外</div>
+                </div>
+                <div class="scenario-btn" onclick="loadScenario('conflict_resolution')">
+                    <div class="scenario-title">競合解決シナリオ</div>
+                    <div class="scenario-desc">複数候補の競合処理</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 候補評価可視化コンテナがここに動的生成される -->
+        
+    </div>
+
+    <!-- Phase 6 Scripts -->
+    <script src="js/kellyCapitalManager.js"></script>
+    <script src="js/expectedValueCalculator.js"></script>
+    <script src="js/bettingFilter.js"></script>
+    <script src="js/phase6Integration.js"></script>
+    
+    <!-- Phase 7 Scripts -->
+    <script src="js/portfolioDashboard.js"></script>
+    <script src="js/performanceCharts.js"></script>
+    <script src="js/candidateEvaluationVisualizer.js"></script>
+    
+    <script>
+        let evaluationVisualizer = null;
+        
+        /**
+         * 評価システムテスト初期化
+         */
+        function initializeEvaluationTest() {
+            console.log('🚀 候補評価システムテスト初期化開始');
+            
+            try {
+                // 既存のインスタンスがあれば破棄
+                if (evaluationVisualizer) {
+                    evaluationVisualizer.destroy();
+                }
+                
+                // 新しいインスタンスを作成
+                evaluationVisualizer = new CandidateEvaluationVisualizer();
+                evaluationVisualizer.initialize();
+                
+                showMessage('✅ 候補評価システムが正常に初期化されました', 'success');
+                console.log('✅ 評価システムテスト初期化完了');
+            } catch (error) {
+                console.error('❌ 初期化エラー:', error);
+                showMessage('❌ 初期化に失敗しました: ' + error.message, 'error');
+            }
+        }
+        
+        /**
+         * 評価データの更新
+         */
+        function refreshEvaluationData() {
+            if (!evaluationVisualizer) {
+                showMessage('⚠️ 評価システムが初期化されていません', 'warning');
+                return;
+            }
+            
+            try {
+                evaluationVisualizer.refreshEvaluation();
+                showMessage('🔄 評価データを更新しました', 'info');
+            } catch (error) {
+                console.error('❌ データ更新エラー:', error);
+                showMessage('❌ データ更新に失敗しました: ' + error.message, 'error');
+            }
+        }
+        
+        /**
+         * フルデモの実行
+         */
+        function runFullEvaluationDemo() {
+            console.log('🎯 フル評価デモ実行開始');
+            
+            // シナリオを順次実行
+            const scenarios = ['high_performance', 'mixed_performance', 'low_performance'];
+            let currentIndex = 0;
+            
+            function runNextScenario() {
+                if (currentIndex < scenarios.length) {
+                    const scenario = scenarios[currentIndex];
+                    showMessage(`📊 シナリオ実行中: ${getScenarioName(scenario)}`, 'info');
+                    
+                    setTimeout(() => {
+                        loadScenario(scenario);
+                        currentIndex++;
+                        setTimeout(runNextScenario, 3000); // 3秒間隔
+                    }, 1000);
+                } else {
+                    showMessage('🎉 フルデモ完了！', 'success');
+                }
+            }
+            
+            runNextScenario();
+        }
+        
+        /**
+         * デモシナリオの読み込み
+         */
+        function loadScenario(scenarioType) {
+            console.log('📊 シナリオ読み込み:', scenarioType);
+            
+            if (!evaluationVisualizer) {
+                initializeEvaluationTest();
+                setTimeout(() => loadScenario(scenarioType), 1000);
+                return;
+            }
+            
+            const scenarioData = generateScenarioData(scenarioType);
+            
+            // LocalStorageにシナリオデータを保存
+            localStorage.setItem('kellyPortfolioResults', JSON.stringify(scenarioData));
+            
+            // 評価システムにデータを再読み込み
+            evaluationVisualizer.loadEvaluationData();
+            evaluationVisualizer.renderEvaluationProcess();
+            
+            showMessage(`📊 ${getScenarioName(scenarioType)}を読み込みました`, 'info');
+        }
+        
+        /**
+         * シナリオデータの生成
+         */
+        function generateScenarioData(scenarioType) {
+            const baseData = {
+                totalInvestment: 0,
+                expectedReturn: 0,
+                riskMultiplier: 1.0,
+                conflictResolutions: []
+            };
+            
+            switch (scenarioType) {
+                case 'high_performance':
+                    return {
+                        ...baseData,
+                        totalInvestment: 4500,
+                        expectedReturn: 5200,
+                        riskMultiplier: 0.8,
+                        mainCandidates: [
+                            createCandidate('優秀馬A', 1, 85, 3.2, 0.08),
+                            createCandidate('実力馬B', 3, 78, 4.1, 0.06),
+                            createCandidate('穴馬C', 7, 72, 6.8, 0.05)
+                        ],
+                        optionalCandidates: [
+                            createCandidate('保険馬D', 5, 65, 5.2, 0.03),
+                            createCandidate('サブ馬E', 9, 60, 7.1, 0.02)
+                        ],
+                        rejectedCandidates: [
+                            createCandidate('除外馬F', 11, 45, 2.1, 0.005)
+                        ]
+                    };
+                    
+                case 'mixed_performance':
+                    return {
+                        ...baseData,
+                        totalInvestment: 2800,
+                        expectedReturn: 3100,
+                        riskMultiplier: 1.1,
+                        mainCandidates: [
+                            createCandidate('中堅馬A', 2, 70, 3.8, 0.04),
+                            createCandidate('人気馬B', 1, 68, 2.9, 0.035)
+                        ],
+                        optionalCandidates: [
+                            createCandidate('穴候補C', 8, 58, 8.2, 0.025),
+                            createCandidate('保険馬D', 6, 55, 6.5, 0.02),
+                            createCandidate('サブ馬E', 12, 52, 9.1, 0.015)
+                        ],
+                        rejectedCandidates: [
+                            createCandidate('低評価馬F', 14, 38, 12.5, 0.008),
+                            createCandidate('除外馬G', 16, 35, 15.8, 0.003),
+                            createCandidate('対象外H', 18, 28, 2.0, 0.001)
+                        ]
+                    };
+                    
+                case 'low_performance':
+                    return {
+                        ...baseData,
+                        totalInvestment: 800,
+                        expectedReturn: 850,
+                        riskMultiplier: 1.3,
+                        mainCandidates: [
+                            createCandidate('唯一候補A', 4, 62, 4.5, 0.025)
+                        ],
+                        optionalCandidates: [
+                            createCandidate('微妙馬B', 10, 48, 8.8, 0.018)
+                        ],
+                        rejectedCandidates: [
+                            createCandidate('低スコア馬C', 2, 42, 2.3, 0.008),
+                            createCandidate('人気薄D', 13, 38, 15.2, 0.005),
+                            createCandidate('除外馬E', 15, 35, 18.5, 0.002),
+                            createCandidate('対象外F', 17, 30, 25.8, 0.001),
+                            createCandidate('圏外馬G', 18, 25, 45.2, 0.0005)
+                        ]
+                    };
+                    
+                case 'conflict_resolution':
+                    return {
+                        ...baseData,
+                        totalInvestment: 3200,
+                        expectedReturn: 3600,
+                        riskMultiplier: 0.95,
+                        mainCandidates: [
+                            createCandidate('競合勝者A', 1, 82, 3.1, 0.07),
+                            createCandidate('選定馬B', 5, 75, 4.8, 0.055)
+                        ],
+                        optionalCandidates: [
+                            createCandidate('補欠馬C', 8, 64, 6.2, 0.028)
+                        ],
+                        rejectedCandidates: [
+                            createCandidate('競合敗者D', 2, 80, 3.0, 0.068), // Aと競合して落選
+                            createCandidate('オッズ競合E', 6, 73, 4.9, 0.052), // Bと競合して落選
+                            createCandidate('基準未達F', 12, 45, 8.5, 0.015)
+                        ],
+                        conflictResolutions: [
+                            {
+                                raceId: 'R1',
+                                conflictType: 'same_race_multiple_candidates',
+                                candidates: ['競合勝者A', '競合敗者D'],
+                                resolution: 'highest_kelly_selected',
+                                winner: '競合勝者A'
+                            },
+                            {
+                                raceId: 'R2', 
+                                conflictType: 'odds_similarity',
+                                candidates: ['選定馬B', 'オッズ競合E'],
+                                resolution: 'score_priority',
+                                winner: '選定馬B'
+                            }
+                        ]
+                    };
+                    
+                default:
+                    return generateScenarioData('mixed_performance');
+            }
+        }
+        
+        /**
+         * 候補データの作成
+         */
+        function createCandidate(name, number, score, odds, kellyRatio) {
+            const winProbability = score / 100 * 0.3;
+            const expectedValue = winProbability * odds;
+            
+            return {
+                horse: { name: name, number: number },
+                score: score,
+                odds: odds,
+                winProbability: winProbability,
+                expectedValue: expectedValue,
+                kellyRatio: kellyRatio,
+                confidence: 0.8,
+                raceId: `race_${Math.floor(number / 3) + 1}`,
+                amount: Math.round(kellyRatio * 10000) // Kelly比率×基準額
+            };
+        }
+        
+        /**
+         * シナリオ名の取得
+         */
+        function getScenarioName(scenarioType) {
+            const names = {
+                'high_performance': '高成績シナリオ',
+                'mixed_performance': '混合シナリオ',
+                'low_performance': '低成績シナリオ',
+                'conflict_resolution': '競合解決シナリオ'
+            };
+            return names[scenarioType] || scenarioType;
+        }
+        
+        /**
+         * メッセージ表示
+         */
+        function showMessage(message, type = 'info') {
+            // 既存のメッセージを削除
+            const existingMessage = document.querySelector('.test-message');
+            if (existingMessage) {
+                existingMessage.remove();
+            }
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `test-message ${type}`;
+            messageDiv.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 12px 20px;
+                border-radius: 8px;
+                color: white;
+                font-weight: bold;
+                z-index: 10000;
+                max-width: 400px;
+                animation: slideIn 0.3s ease;
+            `;
+            
+            // タイプ別のスタイル
+            const colors = {
+                success: '#28a745',
+                error: '#dc3545',
+                warning: '#ffc107',
+                info: '#17a2b8'
+            };
+            messageDiv.style.background = colors[type] || colors.info;
+            
+            messageDiv.textContent = message;
+            document.body.appendChild(messageDiv);
+            
+            // 3秒後に自動削除
+            setTimeout(() => {
+                if (messageDiv.parentNode) {
+                    messageDiv.remove();
+                }
+            }, 3000);
+        }
+        
+        // CSS アニメーション追加
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideIn {
+                from {
+                    transform: translateX(100%);
+                    opacity: 0;
+                }
+                to {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+        
+        // ページ読み込み時の自動初期化
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                showMessage('🔍 候補評価テストページが読み込まれました', 'info');
+                initializeEvaluationTest();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

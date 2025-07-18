@@ -146,27 +146,187 @@ class PerformanceTracker {
         let hit = false;
         let payout = 0;
 
+        console.log(`🎲 馬券結果評価開始:`, {
+            betType: bet.type,
+            horse: bet.horse,
+            actualResults: actualResults
+        });
+
         if (bet.type === 'place') {
-            // 複勝の判定
-            const position = actualResults.finishing_order?.[bet.horse.number];
+            // 複勝の判定 - 馬番号の取得を強化
+            const horseNumber = this.getHorseNumber(bet.horse);
+            const position = actualResults.finishing_order?.[horseNumber];
+            
+            console.log(`🎯 複勝判定: 馬名=${bet.horse?.name || 'null'}, 馬番号=${horseNumber}, 着順=${position}`);
+            console.log(`📋 実際の結果データ:`, {
+                finishing_order: actualResults.finishing_order,
+                first: actualResults.first,
+                second: actualResults.second,
+                third: actualResults.third
+            });
+            
+            // 馬番号による的中判定
             hit = position && position <= 3;
-            if (hit && actualResults.payouts?.place?.[bet.horse.number]) {
-                payout = (actualResults.payouts.place[bet.horse.number] / 100) * bet.amount;
+            
+            if (hit && actualResults.payouts?.place?.[horseNumber]) {
+                payout = (actualResults.payouts.place[horseNumber] / 100) * bet.amount;
+                console.log(`💰 馬番号による配当計算: ${payout}`);
             }
+            
+            // 馬番号による判定がうまくいかない場合は馬名による検索
+            if (!hit && bet.horse?.name) {
+                console.log(`🔄 馬名による検索開始: ${bet.horse.name}`);
+                hit = this.checkPlaceByName(bet.horse.name, actualResults);
+                if (hit) {
+                    // 馬名での検索成功時の配当計算
+                    payout = this.calculatePlacePayoutByName(bet.horse.name, bet.amount, actualResults);
+                    console.log(`💰 馬名検索成功: 配当=${payout}`);
+                }
+            }
+            
+            // 最終的な結果を馬番号で再確認（デバッグ用）
+            if (horseNumber) {
+                console.log(`🔍 最終確認: 馬番号${horseNumber}の着順=${actualResults.finishing_order?.[horseNumber]}`);
+            }
+            
+            console.log(`📊 複勝結果: 的中=${hit}, 配当=${payout}`);
+            
         } else if (bet.type === 'wide') {
             // ワイドの判定
-            const pos1 = actualResults.finishing_order?.[bet.horses[0].number];
-            const pos2 = actualResults.finishing_order?.[bet.horses[1].number];
+            const horseNumber1 = this.getHorseNumber(bet.horses[0]);
+            const horseNumber2 = this.getHorseNumber(bet.horses[1]);
+            const pos1 = actualResults.finishing_order?.[horseNumber1];
+            const pos2 = actualResults.finishing_order?.[horseNumber2];
+            
             hit = pos1 && pos2 && pos1 <= 3 && pos2 <= 3;
+            
             if (hit && actualResults.payouts?.wide) {
-                const wideKey = `${bet.horses[0].number}-${bet.horses[1].number}`;
+                const wideKey = `${horseNumber1}-${horseNumber2}`;
                 if (actualResults.payouts.wide[wideKey]) {
                     payout = (actualResults.payouts.wide[wideKey] / 100) * bet.amount;
+                }
+            }
+        } else if (bet.type === 'win') {
+            // 単勝の判定
+            const horseNumber = this.getHorseNumber(bet.horse);
+            const position = actualResults.finishing_order?.[horseNumber];
+            
+            hit = position && position === 1;
+            
+            if (hit && actualResults.payouts?.win?.[horseNumber]) {
+                payout = (actualResults.payouts.win[horseNumber] / 100) * bet.amount;
+            }
+            
+            // 馬番号が見つからない場合は馬名でも検索
+            if (!hit && bet.horse.name) {
+                hit = this.checkWinByName(bet.horse.name, actualResults);
+                if (hit) {
+                    payout = this.calculateWinPayoutByName(bet.horse.name, bet.amount, actualResults);
                 }
             }
         }
 
         return { hit, payout };
+    }
+
+    /**
+     * 馬番号取得の強化
+     */
+    getHorseNumber(horse) {
+        if (!horse) return null;
+        
+        // 複数の方法で馬番号を取得
+        let horseNumber = horse.number || horse.horseNumber || horse.id || horse.num || horse.horseNum;
+        
+        // 文字列の場合は数値に変換
+        if (typeof horseNumber === 'string') {
+            const parsed = parseInt(horseNumber);
+            if (!isNaN(parsed) && parsed > 0) {
+                horseNumber = parsed;
+            }
+        }
+        
+        console.log(`🔢 馬番号取得: ${horse.name || '名前不明'} -> ${horseNumber}`);
+        return horseNumber;
+    }
+
+    /**
+     * 馬名による複勝判定
+     */
+    checkPlaceByName(horseName, actualResults) {
+        if (!horseName || !actualResults) return false;
+        
+        console.log(`🔍 馬名による複勝判定: ${horseName}`);
+        
+        // 実際の結果データから馬名を検索
+        const actualTop3 = [
+            actualResults.first, 
+            actualResults.second, 
+            actualResults.third
+        ];
+        
+        console.log(`🏆 実際の上位3着: ${actualTop3.join(', ')}`);
+        
+        // 完全一致チェック
+        let hit = actualTop3.includes(horseName);
+        
+        // 部分一致チェック（完全一致がない場合）
+        if (!hit) {
+            hit = actualTop3.some(placedHorse => 
+                placedHorse && (
+                    placedHorse.includes(horseName) || 
+                    horseName.includes(placedHorse)
+                )
+            );
+        }
+        
+        console.log(`✅ 馬名判定結果: ${hit ? '的中' : '不的中'}`);
+        return hit;
+    }
+
+    /**
+     * 馬名による単勝判定
+     */
+    checkWinByName(horseName, actualResults) {
+        if (!horseName || !actualResults) return false;
+        return actualResults.first === horseName;
+    }
+
+    /**
+     * 馬名による複勝配当計算
+     */
+    calculatePlacePayoutByName(horseName, betAmount, actualResults) {
+        if (!horseName || !actualResults) return 0;
+        
+        // デフォルト配当率を使用
+        const defaultPlaceOdds = {
+            1: 1.5,  // 1着の複勝配当
+            2: 1.3,  // 2着の複勝配当
+            3: 1.2   // 3着の複勝配当
+        };
+        
+        let position = 0;
+        if (actualResults.first === horseName) position = 1;
+        else if (actualResults.second === horseName) position = 2;
+        else if (actualResults.third === horseName) position = 3;
+        
+        if (position > 0) {
+            const odds = defaultPlaceOdds[position];
+            return betAmount * odds;
+        }
+        
+        return 0;
+    }
+
+    /**
+     * 馬名による単勝配当計算
+     */
+    calculateWinPayoutByName(horseName, betAmount, actualResults) {
+        if (!horseName || !actualResults || actualResults.first !== horseName) return 0;
+        
+        // デフォルト単勝配当率（実際の配当データがない場合）
+        const defaultWinOdds = 2.0;
+        return betAmount * defaultWinOdds;
     }
 
     /**

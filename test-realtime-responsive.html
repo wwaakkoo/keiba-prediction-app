@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phase 7: リアルタイム・レスポンシブテスト</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f0f2f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .test-header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .test-btn {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            min-width: 120px;
+        }
+        .test-btn.primary { background: #007bff; color: white; }
+        .test-btn.success { background: #28a745; color: white; }
+        .test-btn.info { background: #17a2b8; color: white; }
+        .test-btn.warning { background: #ffc107; color: #212529; }
+        .test-btn.danger { background: #dc3545; color: white; }
+        .test-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+        
+        .status-panel {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        .status-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #007bff;
+        }
+        .status-card h4 {
+            margin: 0 0 10px 0;
+            color: #495057;
+        }
+        .status-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #007bff;
+        }
+        .status-label {
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+        
+        .demo-scenarios {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .scenario-buttons {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .scenario-btn {
+            padding: 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            background: #f8f9fa;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+        .scenario-btn:hover {
+            border-color: #007bff;
+            background: #e7f3ff;
+        }
+        .scenario-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .scenario-desc {
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+        
+        .device-info {
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .device-info h4 {
+            margin: 0 0 10px 0;
+        }
+        .device-info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+        }
+        .device-info-item {
+            background: white;
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        
+        /* モバイル対応 */
+        @media (max-width: 767px) {
+            .test-controls {
+                flex-direction: column;
+                align-items: center;
+            }
+            .test-btn {
+                width: 100%;
+                max-width: 300px;
+            }
+            .status-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="test-header">
+            <h1>🚀 リアルタイム・レスポンシブテスト</h1>
+            <p>5秒間隔自動更新 & 全デバイス最適化システム</p>
+        </div>
+
+        <div class="test-controls">
+            <button class="test-btn primary" onclick="initializeRealTimeSystem()">
+                🔄 リアルタイム開始
+            </button>
+            <button class="test-btn danger" onclick="stopRealTimeSystem()">
+                🛑 リアルタイム停止
+            </button>
+            <button class="test-btn info" onclick="forceUpdate()">
+                ⚡ 強制更新
+            </button>
+            <button class="test-btn success" onclick="toggleDebugMode()">
+                🐛 デバッグ切替
+            </button>
+            <button class="test-btn warning" onclick="showUpdateStatus()">
+                📊 更新状況表示
+            </button>
+            <button class="test-btn info" onclick="showResponsiveInfo()">
+                📱 デバイス情報
+            </button>
+        </div>
+
+        <div class="status-panel">
+            <h3>📊 システム状態</h3>
+            <div class="status-grid">
+                <div class="status-card">
+                    <h4>リアルタイム更新</h4>
+                    <div class="status-value" id="realtime-status">停止中</div>
+                    <div class="status-label">5秒間隔自動更新</div>
+                </div>
+                <div class="status-card">
+                    <h4>デバイス</h4>
+                    <div class="status-value" id="device-type">-</div>
+                    <div class="status-label">現在のデバイス</div>
+                </div>
+                <div class="status-card">
+                    <h4>タッチサポート</h4>
+                    <div class="status-value" id="touch-support">-</div>
+                    <div class="status-label">タッチ操作対応</div>
+                </div>
+                <div class="status-card">
+                    <h4>更新回数</h4>
+                    <div class="status-value" id="update-count">0</div>
+                    <div class="status-label">総更新回数</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="demo-scenarios">
+            <h3>🎯 テストシナリオ</h3>
+            <div class="scenario-buttons">
+                <div class="scenario-btn" onclick="testDataUpdate()">
+                    <div class="scenario-title">データ更新テスト</div>
+                    <div class="scenario-desc">LocalStorageデータ変更</div>
+                </div>
+                <div class="scenario-btn" onclick="testResponsiveBreakpoints()">
+                    <div class="scenario-title">レスポンシブテスト</div>
+                    <div class="scenario-desc">画面サイズ変更シミュレート</div>
+                </div>
+                <div class="scenario-btn" onclick="testTouchInteraction()">
+                    <div class="scenario-title">タッチ操作テスト</div>
+                    <div class="scenario-desc">スワイプ・タップ・長押し</div>
+                </div>
+                <div class="scenario-btn" onclick="testUpdatePerformance()">
+                    <div class="scenario-title">パフォーマンステスト</div>
+                    <div class="scenario-desc">更新速度・メモリ使用量</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="device-info">
+            <h4>📱 デバイス情報</h4>
+            <div class="device-info-grid">
+                <div class="device-info-item">
+                    <div><strong>画面サイズ</strong></div>
+                    <div id="screen-size">-</div>
+                </div>
+                <div class="device-info-item">
+                    <div><strong>デバイス</strong></div>
+                    <div id="device-category">-</div>
+                </div>
+                <div class="device-info-item">
+                    <div><strong>向き</strong></div>
+                    <div id="orientation">-</div>
+                </div>
+                <div class="device-info-item">
+                    <div><strong>タッチ</strong></div>
+                    <div id="touch-capability">-</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 可視化コンテナがここに動的生成される -->
+        
+    </div>
+
+    <!-- Phase 6 Scripts -->
+    <script src="js/kellyCapitalManager.js"></script>
+    <script src="js/expectedValueCalculator.js"></script>
+    <script src="js/bettingFilter.js"></script>
+    <script src="js/phase6Integration.js"></script>
+    
+    <!-- Phase 7 Scripts -->
+    <script src="js/portfolioDashboard.js"></script>
+    <script src="js/performanceCharts.js"></script>
+    <script src="js/candidateEvaluationVisualizer.js"></script>
+    <script src="js/realTimeUpdateManager.js"></script>
+    <script src="js/responsiveManager.js"></script>
+    
+    <script>
+        let testUpdateCount = 0;
+        
+        /**
+         * リアルタイムシステムの初期化
+         */
+        function initializeRealTimeSystem() {
+            try {
+                if (window.realTimeUpdateManager) {
+                    window.realTimeUpdateManager.startRealTimeUpdates();
+                    updateStatusDisplay();
+                    showMessage('🔄 リアルタイム更新を開始しました', 'success');
+                } else {
+                    showMessage('❌ リアルタイムマネージャーが見つかりません', 'error');
+                }
+            } catch (error) {
+                showMessage('❌ 初期化エラー: ' + error.message, 'error');
+            }
+        }
+        
+        /**
+         * リアルタイムシステムの停止
+         */
+        function stopRealTimeSystem() {
+            try {
+                if (window.realTimeUpdateManager) {
+                    window.realTimeUpdateManager.stopRealTimeUpdates();
+                    updateStatusDisplay();
+                    showMessage('🛑 リアルタイム更新を停止しました', 'warning');
+                } else {
+                    showMessage('❌ リアルタイムマネージャーが見つかりません', 'error');
+                }
+            } catch (error) {
+                showMessage('❌ 停止エラー: ' + error.message, 'error');
+            }
+        }
+        
+        /**
+         * 強制更新の実行
+         */
+        async function forceUpdate() {
+            try {
+                if (window.realTimeUpdateManager) {
+                    await window.realTimeUpdateManager.forceUpdate();
+                    updateStatusDisplay();
+                    showMessage('⚡ 強制更新を実行しました', 'info');
+                } else {
+                    showMessage('❌ リアルタイムマネージャーが見つかりません', 'error');
+                }
+            } catch (error) {
+                showMessage('❌ 更新エラー: ' + error.message, 'error');
+            }
+        }
+        
+        /**
+         * デバッグモードの切り替え
+         */
+        function toggleDebugMode() {
+            try {
+                if (window.realTimeUpdateManager) {
+                    window.realTimeUpdateManager.toggleDebugMode();
+                    showMessage('🐛 デバッグモードを切り替えました', 'info');
+                } else {
+                    showMessage('❌ リアルタイムマネージャーが見つかりません', 'error');
+                }
+            } catch (error) {
+                showMessage('❌ デバッグモード切替エラー: ' + error.message, 'error');
+            }
+        }
+        
+        /**
+         * 更新状況の表示
+         */
+        function showUpdateStatus() {
+            try {
+                if (window.realTimeUpdateManager) {
+                    window.realTimeUpdateManager.showUpdateStatus();
+                } else {
+                    showMessage('❌ リアルタイムマネージャーが見つかりません', 'error');
+                }
+            } catch (error) {
+                showMessage('❌ 状況表示エラー: ' + error.message, 'error');
+            }
+        }
+        
+        /**
+         * レスポンシブ情報の表示
+         */
+        function showResponsiveInfo() {
+            try {
+                if (window.responsiveManager) {
+                    const info = window.responsiveManager.getResponsiveInfo();
+                    const message = `
+                        📱 デバイス: ${info.currentDevice}
+                        📐 サイズ: ${info.screenSize.width}×${info.screenSize.height}
+                        👆 タッチ: ${info.touchSupport ? 'サポート' : '非サポート'}
+                        🔄 向き: ${info.isLandscape ? '横' : '縦'}
+                    `;
+                    showMessage(message, 'info');
+                } else {
+                    showMessage('❌ レスポンシブマネージャーが見つかりません', 'error');
+                }
+            } catch (error) {
+                showMessage('❌ 情報表示エラー: ' + error.message, 'error');
+            }
+        }
+        
+        /**
+         * データ更新テスト
+         */
+        function testDataUpdate() {
+            try {
+                testUpdateCount++;
+                
+                // テスト用のポートフォリオデータを生成
+                const testData = {
+                    totalInvestment: 1000 + Math.random() * 4000,
+                    expectedReturn: 1100 + Math.random() * 4500,
+                    riskMultiplier: 0.8 + Math.random() * 0.4,
+                    mainCandidates: [
+                        { horse: { name: `テスト馬${testUpdateCount}A`, number: 1 }, kellyRatio: Math.random() * 0.08, amount: 1000 },
+                        { horse: { name: `テスト馬${testUpdateCount}B`, number: 3 }, kellyRatio: Math.random() * 0.06, amount: 800 }
+                    ],
+                    optionalCandidates: [
+                        { horse: { name: `テスト馬${testUpdateCount}C`, number: 5 }, kellyRatio: Math.random() * 0.03, amount: 600 }
+                    ],
+                    timestamp: new Date().toISOString()
+                };
+                
+                // LocalStorageに保存
+                localStorage.setItem('kellyPortfolioResults', JSON.stringify(testData));
+                
+                showMessage(`📊 テストデータ更新 #${testUpdateCount}`, 'success');
+                
+            } catch (error) {
+                showMessage('❌ データ更新テストエラー: ' + error.message, 'error');
+            }
+        }
+        
+        /**
+         * レスポンシブブレークポイントテスト
+         */
+        function testResponsiveBreakpoints() {
+            const breakpoints = [
+                { width: 375, height: 667, name: 'iPhone SE' },
+                { width: 768, height: 1024, name: 'iPad' },
+                { width: 1920, height: 1080, name: 'Desktop' }
+            ];
+            
+            let currentIndex = 0;
+            
+            function simulateResize() {
+                if (currentIndex < breakpoints.length) {
+                    const bp = breakpoints[currentIndex];
+                    
+                    // 画面サイズシミュレート（実際にはウィンドウサイズを変更できないため、CSS変更で代替）
+                    document.body.style.maxWidth = bp.width + 'px';
+                    document.body.style.margin = '0 auto';
+                    
+                    showMessage(`📐 ${bp.name} (${bp.width}×${bp.height}) シミュレート`, 'info');
+                    
+                    currentIndex++;
+                    setTimeout(simulateResize, 2000);
+                } else {
+                    document.body.style.maxWidth = '';
+                    document.body.style.margin = '';
+                    showMessage('✅ レスポンシブテスト完了', 'success');
+                }
+            }
+            
+            simulateResize();
+        }
+        
+        /**
+         * タッチ操作テスト
+         */
+        function testTouchInteraction() {
+            if (window.responsiveManager) {
+                const info = window.responsiveManager.getResponsiveInfo();
+                
+                if (info.touchSupport) {
+                    showMessage('👆 タッチサポートあり - 候補カードをタップ/スワイプしてください', 'info');
+                } else {
+                    showMessage('🖱️ タッチサポートなし - マウス操作でテストしてください', 'warning');
+                }
+            }
+        }
+        
+        /**
+         * パフォーマンステスト
+         */
+        function testUpdatePerformance() {
+            const startTime = performance.now();
+            let updateCount = 0;
+            
+            const performanceTest = setInterval(() => {
+                testDataUpdate();
+                updateCount++;
+                
+                if (updateCount >= 10) {
+                    clearInterval(performanceTest);
+                    const endTime = performance.now();
+                    const avgTime = (endTime - startTime) / updateCount;
+                    
+                    showMessage(`⚡ パフォーマンス結果: ${updateCount}回更新 平均${avgTime.toFixed(1)}ms`, 'success');
+                }
+            }, 100);
+            
+            showMessage('⚡ パフォーマンステスト開始（10回更新）', 'info');
+        }
+        
+        /**
+         * ステータス表示の更新
+         */
+        function updateStatusDisplay() {
+            try {
+                // リアルタイム更新状態
+                const realtimeStatus = document.getElementById('realtime-status');
+                if (window.realTimeUpdateManager && window.realTimeUpdateManager.isActive) {
+                    realtimeStatus.textContent = '稼働中';
+                    realtimeStatus.style.color = '#28a745';
+                } else {
+                    realtimeStatus.textContent = '停止中';
+                    realtimeStatus.style.color = '#dc3545';
+                }
+                
+                // デバイス情報
+                if (window.responsiveManager) {
+                    const info = window.responsiveManager.getResponsiveInfo();
+                    
+                    document.getElementById('device-type').textContent = info.currentDevice;
+                    document.getElementById('touch-support').textContent = info.touchSupport ? 'あり' : 'なし';
+                    document.getElementById('screen-size').textContent = `${info.screenSize.width}×${info.screenSize.height}`;
+                    document.getElementById('device-category').textContent = info.currentDevice;
+                    document.getElementById('orientation').textContent = info.isLandscape ? '横' : '縦';
+                    document.getElementById('touch-capability').textContent = info.touchSupport ? 'あり' : 'なし';
+                }
+                
+                // 更新回数
+                if (window.realTimeUpdateManager) {
+                    const stats = window.realTimeUpdateManager.getUpdateStats();
+                    document.getElementById('update-count').textContent = stats.totalUpdates;
+                }
+                
+            } catch (error) {
+                console.error('ステータス表示更新エラー:', error);
+            }
+        }
+        
+        /**
+         * メッセージ表示
+         */
+        function showMessage(message, type = 'info') {
+            const existingMessage = document.querySelector('.test-message');
+            if (existingMessage) {
+                existingMessage.remove();
+            }
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `test-message ${type}`;
+            messageDiv.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 12px 20px;
+                border-radius: 8px;
+                color: white;
+                font-weight: bold;
+                z-index: 10000;
+                max-width: 400px;
+                white-space: pre-line;
+                animation: slideIn 0.3s ease;
+            `;
+            
+            const colors = {
+                success: '#28a745',
+                error: '#dc3545',
+                warning: '#ffc107',
+                info: '#17a2b8'
+            };
+            messageDiv.style.background = colors[type] || colors.info;
+            
+            messageDiv.textContent = message;
+            document.body.appendChild(messageDiv);
+            
+            setTimeout(() => {
+                if (messageDiv.parentNode) {
+                    messageDiv.remove();
+                }
+            }, 4000);
+        }
+        
+        // 定期的なステータス更新
+        setInterval(updateStatusDisplay, 1000);
+        
+        // 初回ステータス表示
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                updateStatusDisplay();
+                showMessage('🚀 リアルタイム・レスポンシブテストページが読み込まれました', 'success');
+            }, 2000);
+        });
+        
+        // CSS アニメーション
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideIn {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>

@@ -10,14 +10,14 @@ class KellyCapitalManager {
         this.minBetAmount = 100; // 最小投資額
         this.maxBetAmount = 5000; // 最大投資額
         
-        // ポートフォリオ制約設定
+        // ポートフォリオ制約設定（柔軟化対応）
         this.constraints = {
             maxHorsesPerRace: 5,        // 1レース最大5頭
-            minKellyThreshold: 0.01,    // 最小ケリー閾値
+            minKellyThreshold: 0.01,    // 最小ケリー閾値（可変）
             minScoreThreshold: 0.015,   // 最小スコア閾値（ケリー×期待値）
             
             // オプショナルポートフォリオ設定
-            optionalExpectedValueThreshold: 1.05,  // 保険候補の期待値閾値
+            optionalExpectedValueThreshold: 1.05,  // 保険候補の期待値閾値（可変）
             maxOptionalCandidates: 3,              // オプショナル候補最大数
             optionalAllocationRatio: 0.02,         // オプショナル候補への最大配分比率（2%）
             
@@ -25,6 +25,59 @@ class KellyCapitalManager {
             enableConflictResolution: true,         // 競合解決機能のON/OFF
             maxBetsPerRace: 1,                     // 1レースあたり最大投資数（初期値は1）
             conflictResolutionStrategy: 'highest_score'  // 'highest_score' | 'diversify' | 'kelly_priority'
+        };
+        
+        // 🔧 Kelly基準柔軟化設定
+        this.flexibilitySettings = {
+            // 基準プリセット
+            ultraStrictMode: {
+                minKellyThreshold: 0.02,
+                optionalExpectedValueThreshold: 1.10,
+                description: '超厳格基準（精鋭絞り込み）'
+            },
+            veryStrictMode: {
+                minKellyThreshold: 0.015,
+                optionalExpectedValueThreshold: 1.08,
+                description: '極厳格基準（高精度重視）'
+            },
+            strictMode: {
+                minKellyThreshold: 0.01,
+                optionalExpectedValueThreshold: 1.05,
+                description: '厳格基準（従来デフォルト）'
+            },
+            standardMode: {
+                minKellyThreshold: 0.008,
+                optionalExpectedValueThreshold: 1.03,
+                description: '標準基準'
+            },
+            relaxedMode: {
+                minKellyThreshold: 0.005,
+                optionalExpectedValueThreshold: 1.02,
+                description: '緩和基準'
+            },
+            opportunisticMode: {
+                minKellyThreshold: 0.003,
+                optionalExpectedValueThreshold: 1.01,
+                description: '機会重視基準'
+            },
+            customMode: {
+                minKellyThreshold: 0.01,
+                optionalExpectedValueThreshold: 1.05,
+                description: 'カスタム基準'
+            }
+        };
+        
+        // 現在のモード設定
+        this.currentFlexibilityMode = this.loadFlexibilityMode() || 'strictMode';
+        this.applyFlexibilityMode(this.currentFlexibilityMode);
+        
+        // 動的調整設定
+        this.dynamicAdjustment = {
+            enablePerformanceBasedAdjustment: true,  // 成績に基づく自動調整
+            adjustmentSensitivity: 0.5,              // 調整感度 (0.0 - 1.0)
+            recentPerformanceWindow: 10,             // 最近の成績評価期間
+            minSuccessRateForRelaxation: 0.7,        // 緩和に必要な最小成功率
+            maxFailureRateForStrictening: 0.3        // 厳格化する最大失敗率
         };
         this.riskLevel = 'moderate'; // conservative, moderate, aggressive
         this.performanceHistory = this.loadPerformanceHistory();
@@ -37,11 +90,12 @@ class KellyCapitalManager {
      * f = (bp - q) / b
      * f: 最適投資比率, b: オッズ-1, p: 勝率, q: 負け率(1-p)
      */
-    calculateKellyRatio(winProbability, odds, confidence = 1.0) {
+    calculateKellyRatio(winProbability, odds, confidence = 1.0, marketEfficiencyFactor = 1.0) {
         console.log('🧮 ケリー基準計算開始:', {
             winProbability: winProbability,
             odds: odds,
-            confidence: confidence
+            confidence: confidence,
+            marketEfficiencyFactor: marketEfficiencyFactor
         });
 
         // バリデーション
@@ -92,9 +146,18 @@ class KellyCapitalManager {
         // リスクレベル調整
         const riskAdjustedKelly = this.applyRiskAdjustment(adjustedKelly);
         
-        console.log('✅ 最終ケリー比率:', riskAdjustedKelly.toFixed(4));
+        // 🎯 Phase 8α: 市場効率性による最終調整
+        const marketAdjustedKelly = riskAdjustedKelly * marketEfficiencyFactor;
         
-        return Math.max(0, Math.min(this.maxBetRatio, riskAdjustedKelly));
+        console.log('✅ ケリー比率計算詳細:', {
+            raw: kellyRatio.toFixed(4),
+            confidenceAdjusted: adjustedKelly.toFixed(4),
+            riskAdjusted: riskAdjustedKelly.toFixed(4),
+            marketAdjusted: marketAdjustedKelly.toFixed(4),
+            marketFactor: marketEfficiencyFactor.toFixed(3)
+        });
+        
+        return Math.max(0, Math.min(this.maxBetRatio, marketAdjustedKelly));
     }
 
     /**
@@ -113,15 +176,15 @@ class KellyCapitalManager {
     /**
      * 動的投資額計算
      */
-    calculateOptimalBetAmount(expectedValue, winProbability, odds, confidence = 1.0) {
+    calculateOptimalBetAmount(expectedValue, winProbability, odds, confidence = 1.0, marketEfficiencyFactor = 1.0) {
         console.log('💰 動的投資額計算開始:', {
             expectedValue: expectedValue,
             currentCapital: this.currentCapital,
             riskLevel: this.riskLevel
         });
 
-        // ケリー比率計算
-        const kellyRatio = this.calculateKellyRatio(winProbability, odds, confidence);
+        // ケリー比率計算（市場効率性係数込み）
+        const kellyRatio = this.calculateKellyRatio(winProbability, odds, confidence, marketEfficiencyFactor);
         
         if (kellyRatio <= 0) {
             return {
@@ -216,6 +279,74 @@ class KellyCapitalManager {
         } else {
             return 'reject';  // 除外
         }
+    }
+
+    /**
+     * 惜しい候補のログ生成
+     */
+    generateNearMissLog(candidates, minKelly, minScore) {
+        const nearMissThreshold = 0.85; // 基準の85%以上で「惜しい」と判定
+        const nearMissCandidates = [];
+        
+        candidates.forEach(candidate => {
+            const { kellyRatio, expectedValue, expectedValueScore, horse } = candidate;
+            const horseName = horse?.name || candidate.name || 'Unknown';
+            
+            // 惜しい候補の判定
+            const isNearMissKelly = kellyRatio >= (minKelly * nearMissThreshold);
+            const isNearMissScore = expectedValueScore >= (minScore * nearMissThreshold);
+            const isNearMissExpectedValue = expectedValue >= (this.constraints.optionalExpectedValueThreshold * nearMissThreshold);
+            
+            if (candidate.category === 'reject' && (isNearMissKelly || isNearMissScore || isNearMissExpectedValue)) {
+                const reasons = [];
+                
+                // 具体的な不足理由を分析
+                if (kellyRatio < minKelly) {
+                    const shortfall = ((minKelly - kellyRatio) / minKelly * 100).toFixed(1);
+                    reasons.push(`Kelly比率不足: ${(kellyRatio * 100).toFixed(2)}% (基準${(minKelly * 100).toFixed(1)}%まで${shortfall}%不足)`);
+                }
+                
+                if (expectedValue < this.constraints.optionalExpectedValueThreshold) {
+                    const shortfall = ((this.constraints.optionalExpectedValueThreshold - expectedValue) / this.constraints.optionalExpectedValueThreshold * 100).toFixed(1);
+                    reasons.push(`期待値不足: ${expectedValue.toFixed(3)} (基準${this.constraints.optionalExpectedValueThreshold.toFixed(2)}まで${shortfall}%不足)`);
+                }
+                
+                if (expectedValueScore < minScore) {
+                    const shortfall = ((minScore - expectedValueScore) / minScore * 100).toFixed(1);
+                    reasons.push(`総合スコア不足: ${expectedValueScore.toFixed(4)} (基準${minScore.toFixed(3)}まで${shortfall}%不足)`);
+                }
+                
+                // 惜しさレベルの判定
+                let nearMissLevel = 'low';
+                if (isNearMissKelly && isNearMissExpectedValue) {
+                    nearMissLevel = 'high';
+                } else if (isNearMissKelly || isNearMissExpectedValue) {
+                    nearMissLevel = 'medium';
+                }
+                
+                nearMissCandidates.push({
+                    horseName,
+                    kellyRatio: kellyRatio,
+                    expectedValue: expectedValue,
+                    expectedValueScore: expectedValueScore,
+                    reasons: reasons,
+                    nearMissLevel: nearMissLevel,
+                    gap: {
+                        kellyRatio: Math.max(0, minKelly - kellyRatio),
+                        expectedValue: Math.max(0, this.constraints.optionalExpectedValueThreshold - expectedValue),
+                        totalScore: Math.max(0, minScore - expectedValueScore)
+                    }
+                });
+            }
+        });
+        
+        // 惜しさレベルでソート（高い順）
+        nearMissCandidates.sort((a, b) => {
+            const levelOrder = { high: 3, medium: 2, low: 1 };
+            return levelOrder[b.nearMissLevel] - levelOrder[a.nearMissLevel];
+        });
+        
+        return nearMissCandidates.slice(0, 5); // 上位5件まで
     }
 
     /**
@@ -458,13 +589,31 @@ class KellyCapitalManager {
             }))
         });
 
+        // 惜しい候補のログ生成
+        const nearMissCandidates = this.generateNearMissLog(scoredCandidates, minKelly, minScore);
+        
         if (mainCandidates.length === 0 && optionalCandidates.length === 0) {
+            // 惜しい候補情報をLocalStorageに保存
+            const evaluationResult = {
+                status: 'no_recommendations',
+                timestamp: new Date().toISOString(),
+                nearMissCandidates: nearMissCandidates,
+                totalEvaluated: scoredCandidates.length,
+                criteria: {
+                    mainKellyThreshold: minKelly,
+                    minScoreThreshold: minScore,
+                    optionalExpectedValueThreshold: this.constraints.optionalExpectedValueThreshold
+                }
+            };
+            localStorage.setItem('lastKellyEvaluationDetails', JSON.stringify(evaluationResult));
+            
             return {
                 totalAmount: 0,
                 allocations: [],
                 portfolioKelly: 0,
                 recommendation: 'skip',
-                reasoning: '全候補が閾値未満'
+                reasoning: '全候補が閾値未満',
+                nearMissCandidates: nearMissCandidates
             };
         }
 
@@ -1003,6 +1152,239 @@ class KellyCapitalManager {
         this.performanceHistory = [];
         localStorage.removeItem('kelly_capital_data');
         console.log('✅ 資金管理データがリセットされました');
+    }
+
+    // 🔧 Kelly基準柔軟化機能
+
+    /**
+     * 柔軟化モードの適用
+     */
+    applyFlexibilityMode(mode) {
+        if (!this.flexibilitySettings[mode]) {
+            console.warn(`⚠️ 不正な柔軟化モード: ${mode}`);
+            return;
+        }
+
+        const settings = this.flexibilitySettings[mode];
+        this.constraints.minKellyThreshold = settings.minKellyThreshold;
+        this.constraints.optionalExpectedValueThreshold = settings.optionalExpectedValueThreshold;
+        this.currentFlexibilityMode = mode;
+        
+        // 設定を保存
+        this.saveFlexibilityMode(mode);
+        
+        console.log(`🔧 Kelly基準柔軟化モード適用: ${settings.description}`, {
+            minKellyThreshold: settings.minKellyThreshold,
+            optionalExpectedValueThreshold: settings.optionalExpectedValueThreshold
+        });
+    }
+
+    /**
+     * カスタム基準の設定
+     */
+    setCustomFlexibilitySettings(kellyThreshold, expectedValueThreshold) {
+        this.flexibilitySettings.customMode.minKellyThreshold = kellyThreshold;
+        this.flexibilitySettings.customMode.optionalExpectedValueThreshold = expectedValueThreshold;
+        
+        if (this.currentFlexibilityMode === 'customMode') {
+            this.applyFlexibilityMode('customMode');
+        }
+        
+        console.log('🔧 カスタムKelly基準設定完了:', {
+            kellyThreshold,
+            expectedValueThreshold
+        });
+    }
+
+    /**
+     * 動的基準調整（成績に基づく自動調整）
+     */
+    performDynamicAdjustment() {
+        if (!this.dynamicAdjustment.enablePerformanceBasedAdjustment) {
+            return;
+        }
+
+        const recentStats = this.getRecentPerformance();
+        if (recentStats.totalRaces < 5) {
+            console.log('⚠️ 動的調整: データ不足のためスキップ');
+            return;
+        }
+
+        const currentMode = this.currentFlexibilityMode;
+        let suggestedMode = currentMode;
+        
+        // 成績に基づく推奨モード判定
+        if (recentStats.winRate >= this.dynamicAdjustment.minSuccessRateForRelaxation && 
+            recentStats.averageROI > 10) {
+            // 成績が良好 → より緩和的な基準を推奨
+            switch(currentMode) {
+                case 'ultraStrictMode':
+                    suggestedMode = 'veryStrictMode';
+                    break;
+                case 'veryStrictMode':
+                    suggestedMode = 'strictMode';
+                    break;
+                case 'strictMode':
+                    suggestedMode = 'standardMode';
+                    break;
+                case 'standardMode':
+                    suggestedMode = 'relaxedMode';
+                    break;
+                case 'relaxedMode':
+                    suggestedMode = 'opportunisticMode';
+                    break;
+            }
+        } else if (recentStats.winRate <= this.dynamicAdjustment.maxFailureRateForStrictening || 
+                   recentStats.averageROI < -5) {
+            // 成績が悪化 → より厳格な基準を推奨
+            switch(currentMode) {
+                case 'opportunisticMode':
+                    suggestedMode = 'relaxedMode';
+                    break;
+                case 'relaxedMode':
+                    suggestedMode = 'standardMode';
+                    break;
+                case 'standardMode':
+                    suggestedMode = 'strictMode';
+                    break;
+                case 'strictMode':
+                    suggestedMode = 'veryStrictMode';
+                    break;
+                case 'veryStrictMode':
+                    suggestedMode = 'ultraStrictMode';
+                    break;
+            }
+        }
+
+        if (suggestedMode !== currentMode) {
+            console.log(`🔧 動的調整推奨: ${currentMode} → ${suggestedMode}`, {
+                成績: `勝率${(recentStats.winRate * 100).toFixed(1)}% ROI${recentStats.averageROI.toFixed(1)}%`,
+                推奨理由: recentStats.winRate >= this.dynamicAdjustment.minSuccessRateForRelaxation ? '成績良好' : '成績改善必要'
+            });
+            
+            return {
+                currentMode,
+                suggestedMode,
+                reason: recentStats.winRate >= this.dynamicAdjustment.minSuccessRateForRelaxation ? '成績良好のため緩和推奨' : '成績改善のため厳格化推奨',
+                stats: recentStats
+            };
+        }
+
+        return null;
+    }
+
+    /**
+     * 基準変更の影響予測
+     */
+    predictFlexibilityImpact(newMode) {
+        const currentSettings = this.flexibilitySettings[this.currentFlexibilityMode];
+        const newSettings = this.flexibilitySettings[newMode];
+        
+        if (!newSettings) {
+            return { error: '不正なモードです' };
+        }
+
+        const kellyDiff = newSettings.minKellyThreshold - currentSettings.minKellyThreshold;
+        const expectedValueDiff = newSettings.optionalExpectedValueThreshold - currentSettings.optionalExpectedValueThreshold;
+
+        // 過去データを使った影響予測
+        const recentCandidates = this.getRecentCandidatesForPrediction();
+        let currentCount = 0;
+        let newCount = 0;
+
+        recentCandidates.forEach(candidate => {
+            // 現在の基準でのカウント
+            if (candidate.kellyRatio >= currentSettings.minKellyThreshold || 
+                candidate.expectedValue >= currentSettings.optionalExpectedValueThreshold) {
+                currentCount++;
+            }
+            
+            // 新基準でのカウント
+            if (candidate.kellyRatio >= newSettings.minKellyThreshold || 
+                candidate.expectedValue >= newSettings.optionalExpectedValueThreshold) {
+                newCount++;
+            }
+        });
+
+        return {
+            currentMode: this.currentFlexibilityMode,
+            newMode,
+            kellyThresholdChange: kellyDiff,
+            expectedValueThresholdChange: expectedValueDiff,
+            estimatedCandidateChange: newCount - currentCount,
+            estimatedCandidateChangePercent: currentCount > 0 ? ((newCount - currentCount) / currentCount * 100) : 0,
+            recommendation: this.generateFlexibilityRecommendation(kellyDiff, expectedValueDiff, newCount - currentCount)
+        };
+    }
+
+    /**
+     * 柔軟化推奨の生成
+     */
+    generateFlexibilityRecommendation(kellyDiff, expectedValueDiff, candidateChange) {
+        if (candidateChange > 0) {
+            return {
+                type: 'opportunity',
+                message: `より多くの投資機会が期待できます（約${candidateChange}件増）`,
+                risk: kellyDiff < -0.005 ? 'リスク増加に注意' : 'リスク許容範囲内'
+            };
+        } else if (candidateChange < 0) {
+            return {
+                type: 'conservative',
+                message: `より厳選された投資になります（約${Math.abs(candidateChange)}件減）`,
+                risk: 'リスク軽減効果'
+            };
+        } else {
+            return {
+                type: 'neutral',
+                message: '候補数への影響は限定的です',
+                risk: 'リスク変化なし'
+            };
+        }
+    }
+
+    /**
+     * 予測用候補データの取得
+     */
+    getRecentCandidatesForPrediction() {
+        // 最近の評価データから候補を取得
+        const evaluationDetails = localStorage.getItem('lastKellyEvaluationDetails');
+        if (evaluationDetails) {
+            const data = JSON.parse(evaluationDetails);
+            return data.nearMissCandidates || [];
+        }
+        return [];
+    }
+
+    /**
+     * 柔軟化モードの保存
+     */
+    saveFlexibilityMode(mode) {
+        localStorage.setItem('kelly_flexibility_mode', mode);
+    }
+
+    /**
+     * 柔軟化モードの読み込み
+     */
+    loadFlexibilityMode() {
+        return localStorage.getItem('kelly_flexibility_mode');
+    }
+
+    /**
+     * 柔軟化設定の取得
+     */
+    getFlexibilitySettings() {
+        return {
+            currentMode: this.currentFlexibilityMode,
+            availableModes: Object.keys(this.flexibilitySettings).map(key => ({
+                key,
+                ...this.flexibilitySettings[key]
+            })),
+            dynamicAdjustment: this.dynamicAdjustment,
+            currentThresholds: {
+                minKellyThreshold: this.constraints.minKellyThreshold,
+                optionalExpectedValueThreshold: this.constraints.optionalExpectedValueThreshold
+            }
+        };
     }
 }
 

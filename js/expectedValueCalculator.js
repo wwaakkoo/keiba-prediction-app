@@ -74,8 +74,8 @@ class ExpectedValueCalculator {
         // リスク係数計算（1.0〜2.0）
         const riskFactor = this.calculateRiskFactor(horse, analysis);
         
-        // 新期待値計算式
-        const rawExpectedValue = (analysis.estimatedOdds / 100) * logisticProbability * analysis.confidenceScore;
+        // 新期待値計算式（修正版）
+        const rawExpectedValue = horse.odds * logisticProbability;
         
         // 超高オッズ馬の期待値制限を強化（段階的制限）
         let oddsBasedCap;
@@ -95,19 +95,35 @@ class ExpectedValueCalculator {
         
         analysis.expectedValue = Math.min(rawExpectedValue, oddsBasedCap) / riskFactor;
         
-        // ケリー係数チェック（最適賭け率）
-        analysis.kellyRatio = this.calculateKellyRatio(analysis.expectedValue, horse.odds, logisticProbability);
+        // 🎯 Phase 8α: オッズ妙味検出による期待値補正
+        // 全馬データは後で統合処理で設定される
+        analysis.oddsValueAnalysis = this.analyzeOddsValue(horse, analysis, window.horses || []);
+        analysis.marketEfficiencyFactor = analysis.oddsValueAnalysis.marketEfficiencyFactor || 1.0;
         
-        // 超高オッズ馬のケリー係数閾値を強化
-        let kellyThreshold;
-        if (horse.odds >= 50) {
-            kellyThreshold = 0.05;  // 50倍以上：5%以上必要
-        } else if (horse.odds >= 20) {
-            kellyThreshold = 0.03;  // 20-49倍：3%以上必要
-        } else if (horse.odds >= 10) {
-            kellyThreshold = 0.02;  // 10-19倍：2%以上必要
-        } else {
-            kellyThreshold = 0.01;  // 10倍未満：1%以上必要
+        // 市場効率性を考慮した最終期待値
+        analysis.adjustedExpectedValue = analysis.expectedValue * analysis.marketEfficiencyFactor;
+        
+        // ケリー係数チェック（最適賭け率）
+        // Phase6で計算された正規化勝率を優先使用
+        const winProbability = horse.winProbability || logisticProbability;
+        analysis.kellyRatio = this.calculateKellyRatio(analysis.expectedValue, horse.odds, winProbability);
+        
+        // Kelly閾値の動的設定（柔軟化設定を優先）
+        let kellyThreshold = 0.01;
+        
+        // Kelly基準柔軟化システムから現在の基準を取得
+        try {
+            if (typeof KellyCapitalManager !== 'undefined') {
+                const kellyManager = new KellyCapitalManager();
+                kellyThreshold = kellyManager.constraints.minKellyThreshold;
+                console.log(`📊 現在のKelly閾値: ${(kellyThreshold * 100).toFixed(2)}% (${kellyManager.currentFlexibilityMode})`);
+            } else {
+                throw new Error('KellyCapitalManager未定義');
+            }
+        } catch (error) {
+            console.warn('⚠️ Kelly柔軟化設定の取得に失敗、基本閾値を使用');
+            // フォールバック：基本閾値（超厳格基準を考慮）
+            kellyThreshold = 0.02;  // デフォルト2%（超厳格相当）
         }
         
         analysis.shouldDisplay = analysis.kellyRatio >= kellyThreshold;
@@ -271,10 +287,11 @@ class ExpectedValueCalculator {
         // ケリー基準: f = (bp - q) / b
         const kellyRatio = (b * p - q) / b;
         
-        // 期待値による補正
-        const adjustedKelly = kellyRatio * Math.min(1.0, expectedValue);
+        // デバッグ情報を出力
+        console.log(`🔍 ケリー計算詳細: オッズ=${odds}, 勝率=${(p*100).toFixed(2)}%, b=${b.toFixed(2)}, bp-q=${(b*p-q).toFixed(4)}, ケリー=${(kellyRatio*100).toFixed(4)}%`);
         
-        return Math.max(0, adjustedKelly);
+        // ケリー係数が負の場合は投資しない
+        return Math.max(0, kellyRatio);
     }
     
     /**
@@ -1580,6 +1597,340 @@ class ExpectedValueCalculator {
         
         return selected;
     }
+
+    /**
+     * 🎯 Phase 8α: シンプルオッズ妙味分析メソッド
+     * @param {Object} horse - 馬データ
+     * @param {Object} analysis - 期待値分析データ
+     * @param {Array} allHorses - 全馬データ（平均EV計算用）
+     * @returns {Object} オッズ妙味分析結果
+     */
+    static analyzeOddsValue(horse, analysis, allHorses = []) {
+        try {
+            // 全馬の期待値を取得して平均を計算
+            const averageEV = this.calculateAverageExpectedValue(allHorses, horse, analysis);
+            
+            // 妙味スコア計算：(期待値 - 平均期待値) / 平均期待値
+            const oddsValueScore = averageEV > 0 ? (analysis.expectedValue - averageEV) / averageEV : 0;
+            
+            // 市場効率性係数の計算（下方補正なしで強気に）
+            const marketEfficiencyFactor = Math.max(0.5, Math.min(2.0, 1 + Math.max(0, oddsValueScore)));
+            
+            // 過小評価判定（5%以上平均より良い かつ 期待値1.05以上）
+            const isUndervalued = oddsValueScore > 0.05 && analysis.expectedValue > 1.05;
+            
+            // 市場バイアス計算（補完的）
+            const marketProb = 1 / (horse.odds || 1);
+            const theoreticalProb = horse.winProbability || horse.placeProbability || 0;
+            const marketBias = theoreticalProb > 0 ? theoreticalProb - marketProb : 0;
+
+            console.log(`💰 ${horse.name}: 妙味スコア${(oddsValueScore * 100).toFixed(1)}% (期待値${analysis.expectedValue.toFixed(2)} vs 平均${averageEV.toFixed(2)})`);
+
+            return {
+                type: 'simple',
+                expectedValue: analysis.expectedValue,
+                averageExpectedValue: averageEV,
+                oddsValueScore: oddsValueScore,
+                marketEfficiencyFactor: marketEfficiencyFactor,
+                isUndervalued: isUndervalued,
+                marketBias: marketBias,
+                
+                // 分類
+                valueCategory: this.categorizeOddsValue(oddsValueScore),
+                recommendation: this.getSimpleRecommendation(oddsValueScore, analysis.expectedValue),
+                
+                // 詳細情報
+                marketProbability: marketProb,
+                theoreticalProbability: theoreticalProb,
+                overallValueScore: Math.max(0, Math.min(100, 50 + (oddsValueScore * 100))),
+                
+                integrationNote: 'Phase 8α シンプル版'
+            };
+
+        } catch (error) {
+            console.warn('⚠️ オッズ妙味分析エラー:', error);
+            return this.getFallbackAnalysis(horse, analysis);
+        }
+    }
+
+    /**
+     * 基本的な市場効率性計算（フォールバック）
+     */
+    static calculateBasicMarketEfficiency(horse, analysis) {
+        const impliedProbability = 1 / (horse.odds || 1);
+        const theoreticalProbability = horse.winProbability || horse.placeProbability || 0;
+        
+        let efficiencyGap = 0;
+        if (theoreticalProbability > 0) {
+            efficiencyGap = theoreticalProbability - impliedProbability;
+        }
+
+        // 効率性係数の計算（gap > 0 = 過小評価 = 係数上昇）
+        const marketEfficiencyFactor = Math.max(0.5, Math.min(1.5, 
+            1.0 + (efficiencyGap * 2)
+        ));
+
+        return {
+            type: 'basic',
+            impliedProbability: impliedProbability,
+            theoreticalProbability: theoreticalProbability,
+            efficiencyGap: efficiencyGap,
+            marketEfficiencyFactor: marketEfficiencyFactor,
+            overallValueScore: 50 + (efficiencyGap * 500), // -100 to 100 range
+            valueCategory: efficiencyGap > 0.02 ? 'undervalued' : 
+                          efficiencyGap < -0.02 ? 'overvalued' : 'neutral',
+            integrationNote: 'Basic統合'
+        };
+    }
+
+    /**
+     * 妙味スコアを市場効率性係数に変換
+     * @param {number} valueScore - 妙味スコア（0-100）
+     * @returns {number} 市場効率性係数（0.5-1.5）
+     */
+    static convertValueScoreToFactor(valueScore) {
+        // 50を基準として、高いスコア = 過小評価 = 係数上昇
+        // 50点: 1.0倍, 100点: 1.5倍, 0点: 0.5倍
+        const normalizedScore = (valueScore - 50) / 50; // -1 to 1 range
+        return Math.max(0.5, Math.min(1.5, 1.0 + (normalizedScore * 0.5)));
+    }
+
+    /**
+     * 市場効率性レポート生成
+     */
+    static generateMarketEfficiencyReport(horses) {
+        console.log('📊 市場効率性レポート生成開始');
+        
+        if (!horses || horses.length === 0) {
+            console.warn('⚠️ 馬データがありません');
+            return null;
+        }
+
+        const report = {
+            timestamp: new Date().toISOString(),
+            totalHorses: horses.length,
+            analysisResults: [],
+            summary: {
+                averageEfficiencyScore: 0,
+                undervaluedCount: 0,
+                overvaluedCount: 0,
+                neutralCount: 0,
+                recommendations: []
+            }
+        };
+
+        let totalScore = 0;
+
+        horses.forEach(horse => {
+            const analysis = this.calculateHorseExpectedValue(horse);
+            const oddsValue = analysis.oddsValueAnalysis;
+            
+            report.analysisResults.push({
+                horseName: horse.name,
+                horseNumber: horse.number,
+                currentOdds: horse.odds,
+                expectedValue: analysis.expectedValue,
+                adjustedExpectedValue: analysis.adjustedExpectedValue,
+                marketEfficiencyFactor: analysis.marketEfficiencyFactor,
+                valueScore: oddsValue.overallValueScore,
+                valueCategory: oddsValue.valueCategory,
+                recommendation: oddsValue.recommendation
+            });
+
+            totalScore += oddsValue.overallValueScore;
+
+            // カテゴリー集計
+            switch (oddsValue.valueCategory) {
+                case 'highly_undervalued':
+                case 'undervalued':
+                    report.summary.undervaluedCount++;
+                    break;
+                case 'highly_overvalued':
+                case 'overvalued':
+                    report.summary.overvaluedCount++;
+                    break;
+                default:
+                    report.summary.neutralCount++;
+            }
+
+            // 推奨リスト作成
+            if (oddsValue.recommendation === 'strong_buy' || oddsValue.recommendation === 'buy') {
+                report.summary.recommendations.push({
+                    horseName: horse.name,
+                    horseNumber: horse.number,
+                    valueScore: oddsValue.overallValueScore,
+                    recommendation: oddsValue.recommendation,
+                    factor: analysis.marketEfficiencyFactor
+                });
+            }
+        });
+
+        report.summary.averageEfficiencyScore = totalScore / horses.length;
+
+        console.log('📊 市場効率性レポート生成完了:', report);
+        
+        // ローカルストレージに保存
+        try {
+            localStorage.setItem('marketEfficiencyReport', JSON.stringify(report));
+        } catch (error) {
+            console.warn('⚠️ レポート保存エラー:', error);
+        }
+
+        return report;
+    }
+
+    /**
+     * 🎯 シンプル版サポートメソッド群
+     */
+    
+    /**
+     * 平均期待値計算
+     */
+    static calculateAverageExpectedValue(allHorses, currentHorse, currentAnalysis) {
+        if (!allHorses || allHorses.length === 0) {
+            console.log('📊 全馬データなし、フォールバック期待値使用');
+            return 1.1; // デフォルト値
+        }
+
+        // 全馬の期待値を計算
+        const expectedValues = [];
+        
+        allHorses.forEach(horse => {
+            if (horse.name === currentHorse.name) {
+                // 現在の馬は現在の分析結果を使用
+                expectedValues.push(currentAnalysis.expectedValue);
+            } else {
+                // 他の馬は簡易計算
+                const simpleEV = (horse.odds || 1) * (horse.winProbability || horse.placeProbability || 0.1);
+                expectedValues.push(simpleEV);
+            }
+        });
+
+        const averageEV = expectedValues.reduce((sum, ev) => sum + ev, 0) / expectedValues.length;
+        console.log(`📊 平均期待値: ${averageEV.toFixed(3)} (${expectedValues.length}頭から計算)`);
+        
+        return averageEV;
+    }
+
+    /**
+     * 妙味スコアの分類
+     */
+    static categorizeOddsValue(oddsValueScore) {
+        if (oddsValueScore > 0.20) return 'highly_undervalued';    // 20%以上良い
+        if (oddsValueScore > 0.10) return 'undervalued';          // 10%以上良い
+        if (oddsValueScore > -0.10) return 'neutral';             // ±10%以内
+        if (oddsValueScore > -0.20) return 'overvalued';          // 10-20%悪い
+        return 'highly_overvalued';                               // 20%以上悪い
+    }
+
+    /**
+     * シンプル推奨判定
+     */
+    static getSimpleRecommendation(oddsValueScore, expectedValue) {
+        if (oddsValueScore > 0.15 && expectedValue > 1.10) return 'strong_buy';
+        if (oddsValueScore > 0.05 && expectedValue > 1.05) return 'buy';
+        if (oddsValueScore > 0.02 && expectedValue > 1.02) return 'consider';
+        if (oddsValueScore > -0.05) return 'monitor';
+        return 'avoid';
+    }
+
+    /**
+     * フォールバック分析
+     */
+    static getFallbackAnalysis(horse, analysis) {
+        return {
+            type: 'fallback',
+            expectedValue: analysis.expectedValue || 1.0,
+            averageExpectedValue: 1.1,
+            oddsValueScore: 0,
+            marketEfficiencyFactor: 1.0,
+            isUndervalued: false,
+            marketBias: 0,
+            valueCategory: 'neutral',
+            recommendation: 'monitor',
+            marketProbability: 1 / (horse.odds || 1),
+            theoreticalProbability: 0,
+            overallValueScore: 50,
+            integrationNote: 'フォールバック'
+        };
+    }
+
+    /**
+     * 全馬のオッズ妙味一括分析（シンプル版）
+     */
+    static analyzeBatchOddsValue(horses) {
+        console.log('💰 シンプル版オッズ妙味一括分析開始');
+        
+        if (!horses || horses.length === 0) {
+            console.warn('⚠️ 馬データがありません');
+            return [];
+        }
+
+        // 全馬の期待値計算（シンプル版）
+        const analysisResults = horses.map(horse => {
+            // シンプルな期待値計算：オッズ × 勝率
+            const simpleExpectedValue = (horse.odds || 1) * (horse.winProbability || horse.placeProbability || 0.1);
+            
+            const analysis = {
+                expectedValue: simpleExpectedValue,
+                kellyRatio: 0, // 後で計算
+                simplifiedCalculation: true
+            };
+            
+            console.log(`📊 ${horse.name}: オッズ${horse.odds} × 勝率${((horse.winProbability || horse.placeProbability || 0.1) * 100).toFixed(1)}% = 期待値${simpleExpectedValue.toFixed(3)}`);
+            
+            return { horse, analysis };
+        });
+
+        // 平均期待値計算
+        const averageEV = analysisResults.reduce((sum, result) => sum + result.analysis.expectedValue, 0) / analysisResults.length;
+        console.log(`📊 レース平均期待値: ${averageEV.toFixed(3)}`);
+
+        // 各馬のオッズ妙味分析
+        const results = analysisResults.map(({ horse, analysis }) => {
+            const oddsValueScore = (analysis.expectedValue - averageEV) / averageEV;
+            const marketEfficiencyFactor = Math.max(0.5, Math.min(2.0, 1 + Math.max(0, oddsValueScore)));
+            
+            return {
+                horseName: horse.name,
+                horseNumber: horse.number,
+                currentOdds: horse.odds,
+                expectedValue: analysis.expectedValue,
+                averageExpectedValue: averageEV,
+                oddsValueScore: oddsValueScore,
+                marketEfficiencyFactor: marketEfficiencyFactor,
+                isUndervalued: oddsValueScore > 0.05 && analysis.expectedValue > 1.05,
+                valueCategory: this.categorizeOddsValue(oddsValueScore),
+                recommendation: this.getSimpleRecommendation(oddsValueScore, analysis.expectedValue),
+                kellyRatio: analysis.kellyRatio || 0
+            };
+        });
+
+        // サマリー情報
+        const summary = {
+            totalHorses: horses.length,
+            averageExpectedValue: averageEV,
+            undervaluedCount: results.filter(r => r.isUndervalued).length,
+            strongBuyCount: results.filter(r => r.recommendation === 'strong_buy').length,
+            buyCount: results.filter(r => r.recommendation === 'buy').length
+        };
+
+        console.log('💰 シンプル版分析完了:', summary);
+        
+        // ローカルストレージに保存
+        try {
+            localStorage.setItem('simpleOddsValueAnalysis', JSON.stringify({
+                timestamp: new Date().toISOString(),
+                results,
+                summary,
+                type: 'simple'
+            }));
+        } catch (error) {
+            console.warn('⚠️ 分析結果保存エラー:', error);
+        }
+
+        return results;
+    }
 }
 
 // グローバル変数として公開
@@ -1591,10 +1942,77 @@ window.enablePhase5Correction = (mode = 'fixed') => ExpectedValueCalculator.enab
 window.disablePhase5Correction = () => ExpectedValueCalculator.disablePhase5Correction();
 window.generatePhase5EffectReport = () => ExpectedValueCalculator.generatePhase5EffectReport();
 
+// 🎯 Phase 8α シンプル版オッズ妙味検出関数（ブラウザコンソール用）
+window.analyzeSimpleOddsValue = (horses = null) => {
+    const targetHorses = horses || window.horses || [];
+    if (targetHorses.length === 0) {
+        console.warn('⚠️ 馬データが見つかりません');
+        return null;
+    }
+    return ExpectedValueCalculator.analyzeBatchOddsValue(targetHorses);
+};
+
+window.showOddsValueSummary = () => {
+    const results = window.analyzeSimpleOddsValue();
+    if (!results) return;
+    
+    console.log('\n💰 オッズ妙味分析サマリー');
+    console.log('================================');
+    
+    const undervalued = results.filter(r => r.isUndervalued);
+    const strongBuys = results.filter(r => r.recommendation === 'strong_buy');
+    
+    console.log(`📊 総馬数: ${results.length}頭`);
+    console.log(`🎯 過小評価: ${undervalued.length}頭`);
+    console.log(`🔥 強力推奨: ${strongBuys.length}頭`);
+    
+    if (strongBuys.length > 0) {
+        console.log('\n🔥 強力推奨馬:');
+        strongBuys.forEach(horse => {
+            console.log(`  ${horse.horseName}: 妙味${(horse.oddsValueScore * 100).toFixed(1)}% (期待値${horse.expectedValue.toFixed(2)})`);
+        });
+    }
+    
+    if (undervalued.length > 0) {
+        console.log('\n💎 過小評価馬:');
+        undervalued.forEach(horse => {
+            console.log(`  ${horse.horseName}: 妙味${(horse.oddsValueScore * 100).toFixed(1)}% (期待値${horse.expectedValue.toFixed(2)})`);
+        });
+    }
+    
+    return results;
+};
+
+window.demoSimpleOddsValue = () => {
+    console.log('🎯 シンプル版オッズ妙味検出デモ開始');
+    
+    // サンプルデータがない場合は作成
+    if (!window.horses || window.horses.length === 0) {
+        console.log('📝 サンプルデータを生成中...');
+        window.horses = [
+            { name: 'サンプル馬A', number: 1, odds: 3.2, winProbability: 0.35, placeProbability: 0.6 },
+            { name: 'サンプル馬B', number: 2, odds: 8.5, winProbability: 0.15, placeProbability: 0.4 },
+            { name: 'サンプル馬C', number: 3, odds: 2.1, winProbability: 0.45, placeProbability: 0.7 },
+            { name: 'サンプル馬D', number: 4, odds: 15.0, winProbability: 0.08, placeProbability: 0.25 },
+            { name: 'サンプル馬E', number: 5, odds: 5.5, winProbability: 0.20, placeProbability: 0.5 },
+            { name: '妙味馬F', number: 6, odds: 12.0, winProbability: 0.12, placeProbability: 0.3 } // 期待値1.44で高妙味
+        ];
+    }
+    
+    return window.showOddsValueSummary();
+};
+
 console.log('✅ Phase 5統合機能が利用可能になりました');
-console.log('🔍 使用方法:');
+console.log('🔍 Phase 5使用方法:');
 console.log('  auditPhase5Data() - データ監査');
 console.log('  enablePhase5Correction("fixed") - 固定補正有効化');
 console.log('  enablePhase5Correction("weighted") - 重み付け補正有効化');
 console.log('  disablePhase5Correction() - 補正無効化');
 console.log('  generatePhase5EffectReport() - 効果レポート');
+
+console.log('\n💰 Phase 8α シンプル版オッズ妙味検出が利用可能になりました');
+console.log('🎯 Phase 8α使用方法:');
+console.log('  demoSimpleOddsValue() - デモ実行（サンプルデータ付き）');
+console.log('  showOddsValueSummary() - 妙味分析サマリー表示');
+console.log('  analyzeSimpleOddsValue() - 詳細分析結果取得');
+console.log('  理論: (期待値 - 平均期待値) / 平均期待値 > 5% = 過小評価');
