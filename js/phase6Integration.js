@@ -359,11 +359,36 @@ function calculateKellyRecommendations(expectedValueAnalysis) {
             'ソース:', dataSource
         );
 
+        // Phase 8β: 展開予想係数の取得と統合
+        let raceFlowFactor = 1.0; // デフォルト値
+        if (window.raceFlowAdjustmentFactors && horse.horse.name) {
+            raceFlowFactor = window.raceFlowAdjustmentFactors[horse.horse.name] || 1.0;
+        }
+        
+        // Phase 8α: オッズ妙味係数の取得（既存の実装と連携）
+        let marketEfficiencyFactor = 1.0; // デフォルト値
+        if (typeof window.oddsValueUI !== 'undefined' && window.oddsValueUI.currentAnalysis) {
+            const oddsAnalysis = window.oddsValueUI.currentAnalysis.results.find(r => r.horse.name === horse.horse.name);
+            if (oddsAnalysis && oddsAnalysis.marketEfficiencyFactor) {
+                marketEfficiencyFactor = oddsAnalysis.marketEfficiencyFactor;
+            }
+        }
+        
+        // Phase 8統合: 展開係数とオッズ妙味係数を組み合わせ
+        const combinedPhase8Factor = raceFlowFactor * marketEfficiencyFactor;
+        
+        console.log('🎯 Phase 8係数統合:', horse.horse.name, 
+            '展開係数:', raceFlowFactor.toFixed(3),
+            'オッズ妙味係数:', marketEfficiencyFactor.toFixed(3),
+            '統合係数:', combinedPhase8Factor.toFixed(3)
+        );
+
         const kellyResult = kellyCapitalManager.calculateOptimalBetAmount(
             expectedValue,
             winProb,
             odds,
-            confidence
+            confidence,
+            combinedPhase8Factor // Phase 8統合係数を適用
         );
 
         if (kellyResult.amount > 0) {

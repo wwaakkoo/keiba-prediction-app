@@ -43,6 +43,12 @@
                 <button class="btn" onclick="window.open('test-final-integration.html', '_blank')" style="background: linear-gradient(45deg, #9c27b0, #673ab7);">
                     🎯 統合機能テスト
                 </button>
+                <button class="btn" onclick="demoRaceFlowVisualizer()" style="background: linear-gradient(45deg, #ff5722, #e64a19);">
+                    🖼️ 展開図デモ
+                </button>
+                <button class="btn" onclick="demoRaceFlowHeatmap()" style="background: linear-gradient(45deg, #e74c3c, #c0392b);">
+                    🔥 ヒートマップデモ
+                </button>
             </div>
         </div>
         
@@ -204,6 +210,8 @@
             <div class="btn-grid">
                 <button class="btn" style="background: linear-gradient(45deg, #28a745, #1e7e34);" onclick="calculatePredictions()">🚀 予測開始</button>
                 <button class="btn" style="background: linear-gradient(45deg, #667eea, #764ba2);" onclick="getAIRecommendation()">🤖 AI推奨を取得</button>
+                <button class="btn" style="background: linear-gradient(45deg, #dc3545, #bd2130);" onclick="openOddsAnalyzer()">💰 オッズ妙味分析</button>
+                <button class="btn" style="background: linear-gradient(45deg, #ff5722, #e64a19);" onclick="showRaceFlowPrediction()">🏇 展開予想</button>
                 <button class="btn" style="background: linear-gradient(45deg, #9c27b0, #673ab7);" onclick="AIRecommendationService.showLearningStats()">📈 AI判断分析</button>
                 <button class="btn" style="background: linear-gradient(45deg, #ff9800, #f57c00); font-size: 0.85em;" onclick="AIRecommendationService.generateTestAIData()">🧪 AIテストデータ生成</button>
             </div>
@@ -591,6 +599,31 @@
             <!-- 資金管理ダッシュボード -->
             <div id="capitalDashboard" style="margin-bottom: 15px;"></div>
             
+            <!-- Phase 8α: オッズ妙味検出 -->
+            <div style="background: linear-gradient(45deg, #667eea, #764ba2); padding: 15px; border-radius: 8px; margin-bottom: 15px; color: white;">
+                <h4 style="margin: 0 0 10px 0; color: white;">🎯 Phase 8α: オッズ妙味検出システム</h4>
+                <p style="margin: 0 0 15px 0; font-size: 0.9em; opacity: 0.9;">
+                    市場の歪みを検出し、期待値の高い投資機会を特定します。分析結果は自動的にKelly計算に反映されます。
+                </p>
+                <div class="btn-grid">
+                    <button class="btn" style="background: rgba(255,255,255,0.3); color: white; border: 2px solid rgba(255,255,255,0.5); font-weight: bold;" onclick="openOddsAnalyzer()">
+                        🚀 独立分析ページを開く
+                    </button>
+                    <button class="btn" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3);" onclick="window.demoSimpleOddsValue && window.demoSimpleOddsValue()">
+                        📊 コンソールデモ
+                    </button>
+                    <button class="btn" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3);" onclick="window.analyzeSimpleOddsValue && console.log('📊 詳細結果:', window.analyzeSimpleOddsValue())">
+                        📈 コンソール分析
+                    </button>
+                    <button class="btn" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3);" onclick="window.oddsValueUI && window.oddsValueUI.showOddsValueAnalysis()">
+                        🔬 高度分析
+                    </button>
+                </div>
+                <div style="margin-top: 10px; font-size: 0.8em; opacity: 0.8;">
+                    💡 <strong>新機能:</strong> 市場効率性係数がKelly比率計算に自動統合され、より精密な投資判断が可能になりました
+                </div>
+            </div>
+            
             <!-- ケリー基準投資推奨 -->
             <div id="kellyBettingRecommendations" style="margin-bottom: 15px;"></div>
             
@@ -678,6 +711,483 @@
     <script src="js/portfolioOptimizer.js"></script>
     <script src="js/scenarioAnalyzer.js"></script>
     <script src="js/kellyFlexibilityUI.js"></script>
+    <script src="js/oddsValueDetector.js"></script>
+    <script src="js/oddsValueUI.js"></script>
+    <script src="js/raceFlowPredictor.js"></script>
+    <script src="js/raceFlowVisualizer.js"></script>
+    <script src="js/raceFlowHeatmap.js"></script>
+    
+    <!-- Phase 8α: 独立分析ページ連携スクリプト -->
+    <script>
+        /**
+         * 独立オッズ分析ページを開く
+         */
+        function openOddsAnalyzer() {
+            // 馬データを保存
+            let horsesData = [];
+            
+            if (window.horses && window.horses.length > 0) {
+                horsesData = window.horses;
+            } else if (typeof HorseManager !== 'undefined' && HorseManager.getAllHorses && HorseManager.getAllHorses().length > 0) {
+                horsesData = HorseManager.getAllHorses();
+            }
+            
+            if (horsesData.length > 0) {
+                try {
+                    localStorage.setItem('horses', JSON.stringify(horsesData));
+                    console.log(`📊 ${horsesData.length}頭のデータを保存しました`);
+                    
+                    // 予測結果データも保存（存在する場合）
+                    if (window.lastPredictions && window.lastPredictions.length > 0) {
+                        localStorage.setItem('lastPredictions', JSON.stringify(window.lastPredictions));
+                        console.log(`🔍 ${window.lastPredictions.length}頭の予測結果も保存しました`);
+                    } else if (typeof PredictionEngine !== 'undefined' && PredictionEngine.getCurrentPredictions) {
+                        const predictions = PredictionEngine.getCurrentPredictions();
+                        if (predictions && predictions.length > 0) {
+                            localStorage.setItem('lastPredictions', JSON.stringify(predictions));
+                            console.log(`🔍 ${predictions.length}頭の予測結果も保存しました（PredictionEngineから）`);
+                        } else {
+                            console.warn('⚠️ 予測結果データが見つかりません。先に「🚀 予測開始」を実行してください。');
+                        }
+                    } else {
+                        console.warn('⚠️ 予測結果データが見つかりません。先に「🚀 予測開始」を実行してください。');
+                    }
+                } catch (error) {
+                    console.warn('⚠️ データ保存エラー:', error);
+                }
+            } else {
+                console.warn('⚠️ 馬データが見つかりません');
+                if (confirm('馬データが見つかりません。サンプルデータで分析ページを開きますか？')) {
+                    // サンプルデータフラグをセット
+                    localStorage.setItem('useSimpleOddsSampleData', 'true');
+                }
+            }
+            
+            // 独立分析ページを開く
+            const analysisWindow = window.open('odds-value-analyzer.html', '_blank');
+            
+            if (!analysisWindow) {
+                alert('ポップアップがブロックされました。ブラウザの設定でポップアップを許可してください。');
+            } else {
+                console.log('🚀 独立オッズ分析ページを開きました');
+            }
+        }
+        
+        /**
+         * 馬データの手動同期（開発用）
+         */
+        function syncHorseDataToAnalyzer() {
+            const horses = window.horses || (typeof HorseManager !== 'undefined' ? HorseManager.getAllHorses() : []);
+            if (horses.length > 0) {
+                localStorage.setItem('horses', JSON.stringify(horses));
+                console.log(`📊 ${horses.length}頭のデータを手動同期しました`);
+                return true;
+            } else {
+                console.warn('⚠️ 同期する馬データがありません');
+                return false;
+            }
+        }
+        
+        // グローバル関数として公開
+        window.openOddsAnalyzer = openOddsAnalyzer;
+        window.syncHorseDataToAnalyzer = syncHorseDataToAnalyzer;
+        
+        /**
+         * Phase 8β: 展開予想機能
+         */
+        function showRaceFlowPrediction() {
+            if (typeof RaceFlowPredictor === 'undefined') {
+                alert('展開予想システムが利用できません。ページを再読み込みしてください。');
+                return;
+            }
+
+            // 馬データの確認
+            const horses = window.horses || (typeof HorseManager !== 'undefined' ? HorseManager.getAllHorses() : []);
+            if (!horses || horses.length === 0) {
+                alert('馬データが見つかりません。まず馬データを入力し、予測を実行してください。');
+                return;
+            }
+
+            console.log('🏇 展開予想分析開始');
+            
+            try {
+                const predictor = new RaceFlowPredictor();
+                const raceConditions = {
+                    raceName: document.getElementById('raceName')?.value || 'unknown',
+                    course: document.getElementById('raceCourse')?.value || 'unknown',
+                    distance: 2000, // デフォルト値
+                    surface: 'turf'  // デフォルト値
+                };
+                
+                const prediction = predictor.predictRaceFlow(horses, raceConditions);
+                displayRaceFlowResults(prediction);
+                
+                // Kelly計算に反映するための係数を保存
+                window.raceFlowAdjustmentFactors = predictor.getKellyAdjustmentFactors();
+                window.currentRaceFlowPrediction = prediction; // ビジュアライザー用に保存
+                console.log('✅ 展開予想結果をKelly計算用に保存しました');
+                
+            } catch (error) {
+                console.error('❌ 展開予想エラー:', error);
+                alert('展開予想の計算中にエラーが発生しました: ' + error.message);
+            }
+        }
+        
+        /**
+         * 展開予想結果の表示
+         */
+        function displayRaceFlowResults(prediction) {
+            // 既存のダイアログを削除
+            const existingDialog = document.getElementById('raceFlowDialog');
+            if (existingDialog) {
+                existingDialog.remove();
+            }
+
+            // ダイアログコンテナ作成
+            const dialog = document.createElement('div');
+            dialog.id = 'raceFlowDialog';
+            dialog.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.8);
+                z-index: 10000;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                opacity: 0;
+                transition: opacity 0.3s ease;
+            `;
+            
+            const content = document.createElement('div');
+            content.style.cssText = `
+                background: white;
+                border-radius: 12px;
+                max-width: 90vw;
+                max-height: 90vh;
+                overflow-y: auto;
+                padding: 0;
+                box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            `;
+            
+            content.innerHTML = `
+                <div style="background: linear-gradient(45deg, #ff5722, #e64a19); color: white; padding: 20px; border-radius: 12px 12px 0 0; display: flex; justify-content: space-between; align-items: center;">
+                    <h3>🏇 Phase 8β: 展開予想分析結果</h3>
+                    <button onclick="document.getElementById('raceFlowDialog').remove()" style="background: rgba(255,255,255,0.2); border: none; color: white; font-size: 18px; width: 30px; height: 30px; border-radius: 50%; cursor: pointer;">✕</button>
+                </div>
+                
+                <div style="padding: 20px;">
+                    <!-- サマリーセクション -->
+                    <div style="margin-bottom: 25px;">
+                        <h4 style="color: #ff5722; margin-bottom: 15px;">📊 展開サマリー</h4>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px;">
+                            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 0.9em; color: #666; margin-bottom: 5px;">分析対象</div>
+                                <div style="font-size: 1.8em; font-weight: bold; color: #333;">${prediction.summary.totalHorses}頭</div>
+                            </div>
+                            <div style="background: #e8f5e8; padding: 15px; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 0.9em; color: #666; margin-bottom: 5px;">展開有利</div>
+                                <div style="font-size: 1.8em; font-weight: bold; color: #28a745;">${prediction.summary.favoredCount}頭</div>
+                            </div>
+                            <div style="background: #ffeaa7; padding: 15px; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 0.9em; color: #666; margin-bottom: 5px;">展開不利</div>
+                                <div style="font-size: 1.8em; font-weight: bold; color: #e17055;">${prediction.summary.unfavoredCount}頭</div>
+                            </div>
+                            <div style="background: #ddd6fe; padding: 15px; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 0.9em; color: #666; margin-bottom: 5px;">平均影響度</div>
+                                <div style="font-size: 1.8em; font-weight: bold; color: #8b5cf6;">${prediction.summary.averageImpactFactor.toFixed(3)}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 詳細結果テーブル -->
+                    <div style="margin-bottom: 25px;">
+                        <h4 style="color: #ff5722; margin-bottom: 15px;">🐎 各馬の展開分析</h4>
+                        <div style="overflow-x: auto;">
+                            <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                                <thead>
+                                    <tr style="background: #f8f9fa;">
+                                        <th style="padding: 12px 8px; text-align: left; border-bottom: 2px solid #ddd;">馬名</th>
+                                        <th style="padding: 12px 8px; text-align: center; border-bottom: 2px solid #ddd;">脚質</th>
+                                        <th style="padding: 12px 8px; text-align: center; border-bottom: 2px solid #ddd;">枠順</th>
+                                        <th style="padding: 12px 8px; text-align: center; border-bottom: 2px solid #ddd;">展開係数</th>
+                                        <th style="padding: 12px 8px; text-align: center; border-bottom: 2px solid #ddd;">推奨度</th>
+                                        <th style="padding: 12px 8px; text-align: left; border-bottom: 2px solid #ddd;">説明</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${prediction.finalImpacts.map(impact => {
+                                        const factorColor = impact.flowImpactFactor >= 1.05 ? '#28a745' : 
+                                                          impact.flowImpactFactor <= 0.95 ? '#dc3545' : '#6c757d';
+                                        const recommendationBadge = getRecommendationBadge(impact.finalRecommendation);
+                                        
+                                        return `
+                                            <tr style="border-bottom: 1px solid #eee;">
+                                                <td style="padding: 12px 8px; font-weight: bold;">${impact.horse.name}</td>
+                                                <td style="padding: 12px 8px; text-align: center;">${getStyleLabel(impact.runningStyle)}</td>
+                                                <td style="padding: 12px 8px; text-align: center;">${impact.gateNumber}</td>
+                                                <td style="padding: 12px 8px; text-align: center; color: ${factorColor}; font-weight: bold;">${impact.flowImpactFactor.toFixed(3)}</td>
+                                                <td style="padding: 12px 8px; text-align: center;">${recommendationBadge}</td>
+                                                <td style="padding: 12px 8px; font-size: 0.9em; color: #666;">${impact.explanation}</td>
+                                            </tr>
+                                        `;
+                                    }).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Kelly統合ボタン -->
+                    <div style="background: #e3f2fd; border-left: 4px solid #2196f3; padding: 15px; border-radius: 8px;">
+                        <h4 style="color: #1976d2; margin-bottom: 10px;">⚡ Kelly計算への統合</h4>
+                        <p style="color: #1976d2; font-size: 0.9em; margin-bottom: 15px;">
+                            展開予想の結果がKelly基準投資額の計算に自動反映されます。
+                        </p>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+                            <button onclick="rerunKellyWithRaceFlow()" style="background: linear-gradient(45deg, #2196f3, #1976d2); color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer;">
+                                🔄 Kelly再計算実行
+                            </button>
+                            <button onclick="showRaceFlowVisualization()" style="background: linear-gradient(45deg, #ff9800, #f57c00); color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer;">
+                                📊 展開図を表示
+                            </button>
+                            <button onclick="showRaceFlowHeatmap()" style="background: linear-gradient(45deg, #e74c3c, #c0392b); color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer;">
+                                🔥 ヒートマップ
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            dialog.appendChild(content);
+            document.body.appendChild(dialog);
+            
+            // アニメーション表示
+            setTimeout(() => dialog.style.opacity = '1', 10);
+        }
+        
+        // ヘルパー関数
+        function getStyleLabel(style) {
+            const labels = {
+                'escape': '逃げ',
+                'leader': '先行',
+                'stalker': '差し',
+                'closer': '追込'
+            };
+            return labels[style] || style;
+        }
+        
+        function getRecommendationBadge(recommendation) {
+            const badges = {
+                'highly_favored': '<span style="background: #28a745; color: white; padding: 4px 8px; border-radius: 12px; font-size: 0.8em;">🔥 超有利</span>',
+                'favored': '<span style="background: #17a2b8; color: white; padding: 4px 8px; border-radius: 12px; font-size: 0.8em;">👍 有利</span>',
+                'neutral': '<span style="background: #6c757d; color: white; padding: 4px 8px; border-radius: 12px; font-size: 0.8em;">⚖️ 普通</span>',
+                'unfavored': '<span style="background: #ffc107; color: #333; padding: 4px 8px; border-radius: 12px; font-size: 0.8em;">⚠️ 不利</span>',
+                'highly_unfavored': '<span style="background: #dc3545; color: white; padding: 4px 8px; border-radius: 12px; font-size: 0.8em;">❌ 超不利</span>'
+            };
+            return badges[recommendation] || recommendation;
+        }
+        
+        /**
+         * Kelly計算の再実行（展開係数適用）
+         */
+        function rerunKellyWithRaceFlow() {
+            if (typeof KellyCapitalManager !== 'undefined' && window.horses) {
+                try {
+                    console.log('🔄 展開係数を適用してKelly計算を再実行中...');
+                    
+                    // Phase 6のKelly計算を再実行
+                    if (typeof calculateKellyBets === 'function') {
+                        calculateKellyBets();
+                        alert('✅ 展開予想の結果がKelly計算に反映されました！');
+                    } else {
+                        alert('Kelly計算機能が見つかりません。Phase 6を先に実行してください。');
+                    }
+                } catch (error) {
+                    console.error('❌ Kelly再計算エラー:', error);
+                    alert('Kelly計算の再実行に失敗しました: ' + error.message);
+                }
+            } else {
+                alert('Kelly計算システムまたは馬データが見つかりません');
+            }
+        }
+        
+        /**
+         * 展開図の可視化
+         */
+        function showRaceFlowVisualization() {
+            if (!window.currentRaceFlowPrediction) {
+                alert('展開予想データが見つかりません。先に展開予想を実行してください。');
+                return;
+            }
+            
+            try {
+                // ビジュアライザーダイアログを作成
+                const visualizerDialog = document.createElement('div');
+                visualizerDialog.id = 'raceFlowVisualizerDialog';
+                visualizerDialog.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0,0,0,0.8);
+                    z-index: 10002;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    opacity: 0;
+                    transition: opacity 0.3s ease;
+                `;
+                
+                const content = document.createElement('div');
+                content.style.cssText = `
+                    background: white;
+                    border-radius: 12px;
+                    max-width: 95vw;
+                    max-height: 95vh;
+                    overflow-y: auto;
+                    position: relative;
+                `;
+                
+                // 閉じるボタン
+                const closeBtn = document.createElement('button');
+                closeBtn.textContent = '✕ 閉じる';
+                closeBtn.style.cssText = `
+                    position: absolute;
+                    top: 15px;
+                    right: 15px;
+                    background: #e74c3c;
+                    color: white;
+                    border: none;
+                    padding: 8px 16px;
+                    border-radius: 6px;
+                    cursor: pointer;
+                    font-weight: bold;
+                    z-index: 10003;
+                `;
+                closeBtn.onclick = () => {
+                    visualizerDialog.style.opacity = '0';
+                    setTimeout(() => visualizerDialog.remove(), 300);
+                };
+                
+                // ビジュアライザーコンテナ
+                const visualizerContainer = document.createElement('div');
+                visualizerContainer.id = 'raceFlowVisualizationContainer';
+                
+                content.appendChild(closeBtn);
+                content.appendChild(visualizerContainer);
+                visualizerDialog.appendChild(content);
+                document.body.appendChild(visualizerDialog);
+                
+                // ビジュアライザーを表示
+                const visualizer = new RaceFlowVisualizer();
+                visualizer.displayRaceFlowVisualization(
+                    window.currentRaceFlowPrediction, 
+                    'raceFlowVisualizationContainer'
+                );
+                
+                // アニメーション表示
+                setTimeout(() => visualizerDialog.style.opacity = '1', 10);
+                
+                console.log('🖼️ 展開図ビジュアライザーを表示しました');
+                
+            } catch (error) {
+                console.error('❌ ビジュアライザー表示エラー:', error);
+                alert('ビジュアライザーの表示中にエラーが発生しました: ' + error.message);
+            }
+        }
+        
+        /**
+         * 展開係数ヒートマップの表示
+         */
+        function showRaceFlowHeatmap() {
+            if (!window.currentRaceFlowPrediction) {
+                alert('展開予想データが見つかりません。先に展開予想を実行してください。');
+                return;
+            }
+            
+            try {
+                // ヒートマップダイアログを作成
+                const heatmapDialog = document.createElement('div');
+                heatmapDialog.id = 'raceFlowHeatmapDialog';
+                heatmapDialog.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0,0,0,0.8);
+                    z-index: 10004;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    opacity: 0;
+                    transition: opacity 0.3s ease;
+                `;
+                
+                const content = document.createElement('div');
+                content.style.cssText = `
+                    background: white;
+                    border-radius: 12px;
+                    max-width: 95vw;
+                    max-height: 95vh;
+                    overflow-y: auto;
+                    position: relative;
+                `;
+                
+                // 閉じるボタン
+                const closeBtn = document.createElement('button');
+                closeBtn.textContent = '✕ 閉じる';
+                closeBtn.style.cssText = `
+                    position: absolute;
+                    top: 15px;
+                    right: 15px;
+                    background: #e74c3c;
+                    color: white;
+                    border: none;
+                    padding: 8px 16px;
+                    border-radius: 6px;
+                    cursor: pointer;
+                    font-weight: bold;
+                    z-index: 10005;
+                `;
+                closeBtn.onclick = () => {
+                    heatmapDialog.style.opacity = '0';
+                    setTimeout(() => heatmapDialog.remove(), 300);
+                };
+                
+                // ヒートマップコンテナ
+                const heatmapContainer = document.createElement('div');
+                heatmapContainer.id = 'raceFlowHeatmapContainer';
+                
+                content.appendChild(closeBtn);
+                content.appendChild(heatmapContainer);
+                heatmapDialog.appendChild(content);
+                document.body.appendChild(heatmapDialog);
+                
+                // ヒートマップを表示
+                const heatmap = new RaceFlowHeatmap();
+                heatmap.displayHeatmap(
+                    window.currentRaceFlowPrediction, 
+                    'raceFlowHeatmapContainer'
+                );
+                
+                // アニメーション表示
+                setTimeout(() => heatmapDialog.style.opacity = '1', 10);
+                
+                console.log('🔥 展開係数ヒートマップを表示しました');
+                
+            } catch (error) {
+                console.error('❌ ヒートマップ表示エラー:', error);
+                alert('ヒートマップの表示中にエラーが発生しました: ' + error.message);
+            }
+        }
+        
+        window.showRaceFlowPrediction = showRaceFlowPrediction;
+    </script>
+    
     <!-- ブラウザ互換性・安全性システム -->
     <script src="js/browserCompatibility.js"></script>
     <script src="js/main.js"></script>

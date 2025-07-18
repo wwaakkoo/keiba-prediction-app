@@ -90,11 +90,12 @@ class KellyCapitalManager {
      * f = (bp - q) / b
      * f: 最適投資比率, b: オッズ-1, p: 勝率, q: 負け率(1-p)
      */
-    calculateKellyRatio(winProbability, odds, confidence = 1.0) {
+    calculateKellyRatio(winProbability, odds, confidence = 1.0, marketEfficiencyFactor = 1.0) {
         console.log('🧮 ケリー基準計算開始:', {
             winProbability: winProbability,
             odds: odds,
-            confidence: confidence
+            confidence: confidence,
+            marketEfficiencyFactor: marketEfficiencyFactor
         });
 
         // バリデーション
@@ -145,9 +146,18 @@ class KellyCapitalManager {
         // リスクレベル調整
         const riskAdjustedKelly = this.applyRiskAdjustment(adjustedKelly);
         
-        console.log('✅ 最終ケリー比率:', riskAdjustedKelly.toFixed(4));
+        // 🎯 Phase 8α: 市場効率性による最終調整
+        const marketAdjustedKelly = riskAdjustedKelly * marketEfficiencyFactor;
         
-        return Math.max(0, Math.min(this.maxBetRatio, riskAdjustedKelly));
+        console.log('✅ ケリー比率計算詳細:', {
+            raw: kellyRatio.toFixed(4),
+            confidenceAdjusted: adjustedKelly.toFixed(4),
+            riskAdjusted: riskAdjustedKelly.toFixed(4),
+            marketAdjusted: marketAdjustedKelly.toFixed(4),
+            marketFactor: marketEfficiencyFactor.toFixed(3)
+        });
+        
+        return Math.max(0, Math.min(this.maxBetRatio, marketAdjustedKelly));
     }
 
     /**
@@ -166,15 +176,15 @@ class KellyCapitalManager {
     /**
      * 動的投資額計算
      */
-    calculateOptimalBetAmount(expectedValue, winProbability, odds, confidence = 1.0) {
+    calculateOptimalBetAmount(expectedValue, winProbability, odds, confidence = 1.0, marketEfficiencyFactor = 1.0) {
         console.log('💰 動的投資額計算開始:', {
             expectedValue: expectedValue,
             currentCapital: this.currentCapital,
             riskLevel: this.riskLevel
         });
 
-        // ケリー比率計算
-        const kellyRatio = this.calculateKellyRatio(winProbability, odds, confidence);
+        // ケリー比率計算（市場効率性係数込み）
+        const kellyRatio = this.calculateKellyRatio(winProbability, odds, confidence, marketEfficiencyFactor);
         
         if (kellyRatio <= 0) {
             return {
