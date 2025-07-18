@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "keiba-app": {
+      "command": "node",
+      "args": ["mcp-server.js"],
+      "cwd": "/home/hi_ry/keiba-app-unzipped",
+      "env": {
+        "NODE_ENV": "production"
+      }
+    }
+  }
+}
